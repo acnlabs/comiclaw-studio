@@ -108,7 +108,7 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
                 )}
                 {item.kind === "SERIES" && (
                   <Link
-                    href={`/w/${item.id}`}
+                    href={`/series/${item.id}`}
                     className="pointer-events-auto mt-2 inline-flex items-center gap-1 rounded-full bg-accent px-3.5 py-1.5 text-xs font-medium text-zinc-950 transition-opacity hover:opacity-90"
                   >
                     观看全集(全 {item.episodeCount} 集)→

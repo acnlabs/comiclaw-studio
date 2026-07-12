@@ -15,7 +15,7 @@ export interface WorkCardData {
 export default function WorkCard({ work }: { work: WorkCardData }) {
   return (
     <Link
-      href={`/w/${work.id}`}
+      href={`/series/${work.id}`}
       className="group overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/50 transition-colors hover:border-zinc-600"
     >
       <div className="relative aspect-[3/4] bg-zinc-950">
