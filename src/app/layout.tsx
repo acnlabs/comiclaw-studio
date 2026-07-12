@@ -1,23 +1,31 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import SiteNav from "@/components/SiteNav";
+import { LocaleProvider } from "@/components/LocaleProvider";
+import { getLocale } from "@/lib/locale";
+import { translate } from "@/lib/i18n";
 
-export const metadata: Metadata = {
-  title: "ComicLaw Studio",
-  description:
-    "漫剧大虾创作工作台:集中呈现 15s 智能体宣传短视频的剧本、资产、分镜与成片交付物",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  return {
+    title: "ComicLaw",
+    description: translate(locale, "meta.description"),
+  };
+}
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
   return (
-    <html lang="zh-CN" className="h-full antialiased">
+    <html lang={locale === "zh" ? "zh-CN" : "en"} className="h-full antialiased">
       <body className="min-h-full flex flex-col">
-        <SiteNav />
-        {children}
+        <LocaleProvider locale={locale}>
+          <SiteNav />
+          {children}
+        </LocaleProvider>
       </body>
     </html>
   );

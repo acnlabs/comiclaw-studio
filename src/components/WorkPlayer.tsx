@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { fmtDuration } from "@/lib/format";
+import { useT } from "@/components/LocaleProvider";
 
 interface EpisodeData {
   id: string;
@@ -21,6 +22,7 @@ export default function WorkPlayer({
   coverUrl: string | null;
   episodes: EpisodeData[];
 }) {
+  const { t } = useT();
   const [current, setCurrent] = useState<EpisodeData | null>(episodes[0] ?? null);
   const src = current?.videoUrl ?? videoUrl;
 
@@ -38,7 +40,7 @@ export default function WorkPlayer({
           />
         ) : (
           <div className="flex aspect-video items-center justify-center text-sm text-zinc-600">
-            暂无可播放内容
+            {t("series.nothingToPlay")}
           </div>
         )}
       </div>
@@ -46,7 +48,7 @@ export default function WorkPlayer({
       {episodes.length > 0 && (
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-3">
           <h3 className="px-2 pb-2 text-sm font-medium text-zinc-400">
-            选集(全 {episodes.length} 集)
+            {t("series.episodeList", { n: episodes.length })}
           </h3>
           <div className="grid max-h-80 grid-cols-4 gap-2 overflow-y-auto lg:grid-cols-3">
             {episodes.map((e) => (
@@ -75,7 +77,7 @@ export default function WorkPlayer({
           </div>
           {current?.title && (
             <p className="px-2 pt-2 text-xs text-zinc-500">
-              第 {current.order} 集:{current.title}
+              {t("series.episodeItem", { n: current.order, title: current.title })}
             </p>
           )}
         </div>

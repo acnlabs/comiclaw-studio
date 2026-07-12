@@ -2,16 +2,13 @@
 
 import { useState } from "react";
 import type { ShotData } from "@/lib/types";
+import type { MessageKey } from "@/lib/i18n";
+import { useT } from "@/components/LocaleProvider";
 import { fmtDuration } from "@/lib/format";
 import { VersionPills, EmptyState, Badge, ShotMedia } from "@/components/ui";
 
-const TYPE_LABEL: Record<string, string> = {
-  CHARACTER: "角色",
-  SCENE: "场景",
-  PROP: "道具",
-};
-
 function ShotCard({ shot }: { shot: ShotData }) {
+  const { t } = useT();
   const [selected, setSelected] = useState(shot.versions[0]?.version ?? 1);
   const current = shot.versions.find((v) => v.version === selected) ?? shot.versions[0];
 
@@ -26,7 +23,7 @@ function ShotCard({ shot }: { shot: ShotData }) {
           />
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-zinc-600">
-            画面生成中
+            {t("panel.storyboard.inProgress")}
           </div>
         )}
         <div className="absolute left-2 top-2 flex items-center gap-1.5">
@@ -53,7 +50,7 @@ function ShotCard({ shot }: { shot: ShotData }) {
           <div className="flex flex-wrap gap-1.5">
             {shot.assetRefs.map(({ asset }) => (
               <Badge key={asset.id}>
-                {TYPE_LABEL[asset.type] ?? asset.type} · {asset.name}
+                {t(`assetType.${asset.type}` as MessageKey)} · {asset.name}
               </Badge>
             ))}
           </div>
@@ -72,15 +69,16 @@ function ShotCard({ shot }: { shot: ShotData }) {
 }
 
 export default function StoryboardPanel({ shots }: { shots: ShotData[] }) {
-  if (shots.length === 0) return <EmptyState text="分镜尚未产出" />;
+  const { t } = useT();
+  if (shots.length === 0) return <EmptyState text={t("panel.storyboard.empty")} />;
 
   const total = shots.reduce((sum, s) => sum + (s.duration ?? 0), 0);
 
   return (
     <div className="space-y-4">
       <p className="text-sm text-zinc-500">
-        共 {shots.length} 个镜头
-        {total > 0 && <> · 总时长约 {fmtDuration(total)}</>}
+        {t("panel.storyboard.summary", { n: shots.length })}
+        {total > 0 && <> · {t("panel.storyboard.totalDuration", { t: fmtDuration(total) })}</>}
       </p>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {shots.map((shot) => (

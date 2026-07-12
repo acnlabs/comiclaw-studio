@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useT } from "@/components/LocaleProvider";
 
 export interface FeedItem {
   id: string;
@@ -17,6 +18,7 @@ export interface FeedItem {
 
 // TikTok 式竖版信息流:滚动吸附逐条观看,进入视口自动播放
 export default function VideoFeed({ items }: { items: FeedItem[] }) {
+  const { t, tCategory } = useT();
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const [muted, setMuted] = useState(true);
@@ -60,7 +62,7 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
   if (items.length === 0) {
     return (
       <div className="flex flex-1 items-center justify-center py-24 text-sm text-zinc-500">
-        还没有发布的作品。项目发行上架后会自动出现在这里。
+        {t("feed.empty")}
       </div>
     );
   }
@@ -94,7 +96,11 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
 
               {/* 类型角标 */}
               <span className="absolute left-3 top-3 rounded-md bg-zinc-950/70 px-2 py-0.5 text-xs font-medium text-accent">
-                {item.kind === "SERIES" ? (item.category ?? "短剧") : "短视频"}
+                {item.kind === "SERIES"
+                  ? item.category
+                    ? tCategory(item.category)
+                    : t("common.series")
+                  : t("common.video")}
               </span>
 
               {/* 底部信息 */}
@@ -111,7 +117,7 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
                     href={`/series/${item.id}`}
                     className="pointer-events-auto mt-2 inline-flex items-center gap-1 rounded-full bg-accent px-3.5 py-1.5 text-xs font-medium text-zinc-950 transition-opacity hover:opacity-90"
                   >
-                    观看全集(全 {item.episodeCount} 集)→
+                    {t("feed.watchAll", { n: item.episodeCount })}
                   </Link>
                 )}
               </div>
@@ -124,21 +130,21 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
       <div className="absolute right-3 top-1/2 flex -translate-y-1/2 flex-col gap-2 sm:right-6">
         <button
           onClick={() => setMuted((m) => !m)}
-          title={muted ? "开启声音" : "静音"}
+          title={muted ? t("feed.unmute") : t("feed.mute")}
           className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-700 bg-zinc-900/80 text-base backdrop-blur transition-colors hover:bg-zinc-800"
         >
           {muted ? "🔇" : "🔊"}
         </button>
         <button
           onClick={() => scrollByPage(-1)}
-          title="上一个"
+          title={t("feed.prev")}
           className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-700 bg-zinc-900/80 text-zinc-300 backdrop-blur transition-colors hover:bg-zinc-800"
         >
           ↑
         </button>
         <button
           onClick={() => scrollByPage(1)}
-          title="下一个"
+          title={t("feed.next")}
           className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-700 bg-zinc-900/80 text-zinc-300 backdrop-blur transition-colors hover:bg-zinc-800"
         >
           ↓

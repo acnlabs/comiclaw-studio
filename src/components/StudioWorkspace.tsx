@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { ProjectData, StageKey } from "@/lib/types";
+import type { MessageKey } from "@/lib/i18n";
+import { useT } from "@/components/LocaleProvider";
 import { fmtDate } from "@/lib/format";
 import PipelineHeader from "@/components/PipelineHeader";
 import ScriptPanel from "@/components/panels/ScriptPanel";
@@ -13,15 +15,16 @@ import ReleasePanel from "@/components/panels/ReleasePanel";
 
 type TabKey = Exclude<StageKey, "DONE">;
 
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "SCRIPT", label: "剧本" },
-  { key: "ASSETS", label: "资产" },
-  { key: "STORYBOARD", label: "分镜" },
-  { key: "FILM", label: "成片" },
-  { key: "RELEASE", label: "发行" },
+const TABS: { key: TabKey }[] = [
+  { key: "SCRIPT" },
+  { key: "ASSETS" },
+  { key: "STORYBOARD" },
+  { key: "FILM" },
+  { key: "RELEASE" },
 ];
 
 export default function StudioWorkspace({ project }: { project: ProjectData }) {
+  const { t } = useT();
   const initialTab: TabKey =
     project.currentStage === "DONE" ? "RELEASE" : (project.currentStage as TabKey);
   const [tab, setTab] = useState<TabKey>(
@@ -46,13 +49,21 @@ export default function StudioWorkspace({ project }: { project: ProjectData }) {
           title="返回 Studio"
         >
           COMICLAW STUDIO
-          <span className="text-zinc-600">漫剧大虾 · 创作工作台</span>
+          <span className="text-zinc-600">{t("studio.brandSub")}</span>
         </Link>
         <h1 className="mt-2 text-2xl font-bold text-zinc-50 sm:text-3xl">{project.name}</h1>
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-zinc-500">
-          {project.clientName && <span>客户:{project.clientName}</span>}
-          {project.agentName && <span>智能体:{project.agentName}</span>}
-          <span>更新于 {fmtDate(project.updatedAt)}</span>
+          {project.clientName && (
+            <span>
+              {t("common.client")}:{project.clientName}
+            </span>
+          )}
+          {project.agentName && (
+            <span>
+              {t("common.agent")}:{project.agentName}
+            </span>
+          )}
+          <span>{t("common.updatedAt", { date: fmtDate(project.updatedAt) })}</span>
         </div>
         {project.description && (
           <p className="mt-3 max-w-3xl text-sm leading-relaxed text-zinc-400">
@@ -67,19 +78,19 @@ export default function StudioWorkspace({ project }: { project: ProjectData }) {
       {/* Tab 导航 */}
       <nav className="sticky top-12 z-10 -mx-4 border-b border-zinc-800/80 bg-[#0b0b10]/90 px-4 backdrop-blur sm:-mx-6 sm:px-6">
         <div className="flex gap-1 overflow-x-auto">
-          {TABS.map((t) => (
+          {TABS.map((item) => (
             <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
+              key={item.key}
+              onClick={() => setTab(item.key)}
               className={`relative shrink-0 px-4 py-3 text-sm font-medium transition-colors ${
-                tab === t.key ? "text-accent" : "text-zinc-500 hover:text-zinc-300"
+                tab === item.key ? "text-accent" : "text-zinc-500 hover:text-zinc-300"
               }`}
             >
-              {t.label}
-              {countOf[t.key] > 0 && (
-                <span className="ml-1.5 text-xs text-zinc-600">{countOf[t.key]}</span>
+              {t(`stage.${item.key}` as MessageKey)}
+              {countOf[item.key] > 0 && (
+                <span className="ml-1.5 text-xs text-zinc-600">{countOf[item.key]}</span>
               )}
-              {tab === t.key && (
+              {tab === item.key && (
                 <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-accent" />
               )}
             </button>

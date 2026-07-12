@@ -2,15 +2,19 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useT } from "@/components/LocaleProvider";
+import LocaleToggle from "@/components/LocaleToggle";
+import type { MessageKey } from "@/lib/i18n";
 
-const MENUS = [
-  { href: "/", label: "推荐" },
-  { href: "/series", label: "短剧" },
-  { href: "/studio", label: "Studio" },
+const MENUS: { href: string; labelKey: MessageKey }[] = [
+  { href: "/", labelKey: "nav.recommend" },
+  { href: "/series", labelKey: "nav.series" },
+  { href: "/studio", labelKey: "nav.studio" },
 ];
 
 export default function SiteNav() {
   const pathname = usePathname();
+  const { t } = useT();
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -30,13 +34,16 @@ export default function SiteNav() {
                 isActive(m.href) ? "text-accent" : "text-zinc-400 hover:text-zinc-200"
               }`}
             >
-              {m.label}
+              {t(m.labelKey)}
               {isActive(m.href) && (
                 <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-accent" />
               )}
             </Link>
           ))}
         </nav>
+        <div className="ml-auto">
+          <LocaleToggle />
+        </div>
       </div>
     </div>
   );

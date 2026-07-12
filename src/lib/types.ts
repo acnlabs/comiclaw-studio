@@ -8,21 +8,18 @@ export type StageKey =
   | "RELEASE"
   | "DONE";
 
-export const STAGES: { key: StageKey; label: string; hint: string }[] = [
-  { key: "SCRIPT", label: "剧本", hint: "创作与解析" },
-  { key: "ASSETS", label: "资产", hint: "角色 · 场景 · 道具" },
-  { key: "STORYBOARD", label: "分镜", hint: "逐镜生成" },
-  { key: "FILM", label: "成片", hint: "后期合成" },
-  { key: "RELEASE", label: "发行", hint: "上架分发" },
-];
+// 流水线五阶段(展示文案见 i18n 的 stage.* / stageHint.*)
+export const STAGE_KEYS = [
+  "SCRIPT",
+  "ASSETS",
+  "STORYBOARD",
+  "FILM",
+  "RELEASE",
+] as const satisfies readonly StageKey[];
 
 export type AssetTypeKey = "CHARACTER" | "SCENE" | "PROP";
 
-export const ASSET_TYPES: { key: AssetTypeKey; label: string }[] = [
-  { key: "CHARACTER", label: "角色" },
-  { key: "SCENE", label: "场景" },
-  { key: "PROP", label: "道具" },
-];
+export const ASSET_TYPE_KEYS: AssetTypeKey[] = ["CHARACTER", "SCENE", "PROP"];
 
 export interface ScriptVersionData {
   id: string;

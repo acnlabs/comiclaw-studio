@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { fmtDate } from "@/lib/format";
+import { useT } from "@/components/LocaleProvider";
 
 export interface WorkCardData {
   id: string;
@@ -8,11 +11,13 @@ export interface WorkCardData {
   title: string;
   coverUrl: string | null;
   authorName: string | null;
-  publishedAt: Date;
+  publishedAt: string;
   episodeCount?: number;
 }
 
 export default function WorkCard({ work }: { work: WorkCardData }) {
+  const { t, tCategory } = useT();
+
   return (
     <Link
       href={`/series/${work.id}`}
@@ -31,12 +36,16 @@ export default function WorkCard({ work }: { work: WorkCardData }) {
         )}
         <div className="absolute left-2 top-2 flex gap-1.5">
           <span className="rounded-md bg-zinc-950/80 px-2 py-0.5 text-xs font-medium text-accent">
-            {work.kind === "SERIES" ? (work.category ?? "短剧") : "短视频"}
+            {work.kind === "SERIES"
+              ? work.category
+                ? tCategory(work.category)
+                : t("common.series")
+              : t("common.video")}
           </span>
         </div>
         {work.kind === "SERIES" && work.episodeCount != null && (
           <span className="absolute bottom-2 right-2 rounded-md bg-zinc-950/80 px-2 py-0.5 text-xs text-zinc-300">
-            全 {work.episodeCount} 集
+            {t("common.episodes", { n: work.episodeCount })}
           </span>
         )}
       </div>
@@ -44,7 +53,7 @@ export default function WorkCard({ work }: { work: WorkCardData }) {
         <h3 className="line-clamp-2 text-sm font-medium text-zinc-100">{work.title}</h3>
         <p className="mt-1 text-xs text-zinc-500">
           {work.authorName && <>{work.authorName} · </>}
-          {fmtDate(work.publishedAt.toISOString())}
+          {fmtDate(work.publishedAt)}
         </p>
       </div>
     </Link>

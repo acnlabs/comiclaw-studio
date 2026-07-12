@@ -4,20 +4,22 @@ import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import type { ScriptVersionData } from "@/lib/types";
 import { fmtDate } from "@/lib/format";
+import { useT } from "@/components/LocaleProvider";
 import { VersionPills, EmptyState } from "@/components/ui";
 
 export default function ScriptPanel({ versions }: { versions: ScriptVersionData[] }) {
+  const { t } = useT();
   const [selected, setSelected] = useState(versions[0]?.version ?? 1);
   const current = versions.find((v) => v.version === selected) ?? versions[0];
 
-  if (!current) return <EmptyState text="剧本尚未产出" />;
+  if (!current) return <EmptyState text={t("panel.script.empty")} />;
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-zinc-100">
-            {current.title ?? "剧本"}
+            {current.title ?? t("panel.script.defaultTitle")}
             <span className="ml-2 text-sm font-normal text-zinc-500">
               V{current.version} · {fmtDate(current.createdAt)}
             </span>
@@ -35,7 +37,7 @@ export default function ScriptPanel({ versions }: { versions: ScriptVersionData[
 
       {current.changeLog && (
         <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm text-amber-200/90">
-          本版改动:{current.changeLog}
+          {t("panel.script.changeLog", { text: current.changeLog })}
         </div>
       )}
 

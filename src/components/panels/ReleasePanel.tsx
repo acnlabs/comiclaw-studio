@@ -1,11 +1,13 @@
 "use client";
 
 import type { ReleaseData } from "@/lib/types";
+import { useT } from "@/components/LocaleProvider";
 import { fmtDate } from "@/lib/format";
 import { EmptyState, Badge } from "@/components/ui";
 
 export default function ReleasePanel({ releases }: { releases: ReleaseData[] }) {
-  if (releases.length === 0) return <EmptyState text="发行计划尚未确定" />;
+  const { t } = useT();
+  if (releases.length === 0) return <EmptyState text={t("panel.release.empty")} />;
 
   return (
     <div className="mx-auto max-w-2xl space-y-3">
@@ -18,9 +20,11 @@ export default function ReleasePanel({ releases }: { releases: ReleaseData[] }) 
             <div className="flex items-center gap-2">
               <span className="font-medium text-zinc-100">{r.platform}</span>
               {r.status === "PUBLISHED" ? (
-                <Badge tone="green">已上架 · {fmtDate(r.publishedAt)}</Badge>
+                <Badge tone="green">
+                  {t("panel.release.published", { date: fmtDate(r.publishedAt) })}
+                </Badge>
               ) : (
-                <Badge tone="amber">待上架</Badge>
+                <Badge tone="amber">{t("panel.release.pending")}</Badge>
               )}
             </div>
             {r.notes && <p className="mt-1 text-xs text-zinc-500">{r.notes}</p>}
@@ -32,7 +36,7 @@ export default function ReleasePanel({ releases }: { releases: ReleaseData[] }) 
               rel="noreferrer"
               className="shrink-0 rounded-full bg-accent px-4 py-1.5 text-sm font-medium text-zinc-950 transition-opacity hover:opacity-90"
             >
-              观看
+              {t("panel.release.watch")}
             </a>
           )}
         </div>

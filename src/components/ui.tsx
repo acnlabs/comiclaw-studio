@@ -1,5 +1,7 @@
 "use client";
 
+import { useT } from "@/components/LocaleProvider";
+
 // 通用小组件:版本切换、空状态、徽章
 
 export function VersionPills({
@@ -11,10 +13,11 @@ export function VersionPills({
   selected: number;
   onSelect: (v: number) => void;
 }) {
+  const { t } = useT();
   if (versions.length <= 1) return null;
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <span className="text-xs text-zinc-500">版本</span>
+      <span className="text-xs text-zinc-500">{t("common.version")}</span>
       {versions.map((v) => (
         <button
           key={v}
@@ -33,11 +36,12 @@ export function VersionPills({
 }
 
 export function EmptyState({ text }: { text: string }) {
+  const { t } = useT();
   return (
     <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-800 py-20 text-center">
       <div className="mb-3 text-3xl">🎬</div>
       <p className="text-sm text-zinc-500">{text}</p>
-      <p className="mt-1 text-xs text-zinc-600">comiclaw 正在制作中,完成后会自动出现在这里</p>
+      <p className="mt-1 text-xs text-zinc-600">{t("panel.emptyHint")}</p>
     </div>
   );
 }

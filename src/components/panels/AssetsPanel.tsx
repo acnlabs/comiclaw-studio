@@ -1,11 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { ASSET_TYPES, type AssetData } from "@/lib/types";
+import { ASSET_TYPE_KEYS, type AssetData } from "@/lib/types";
+import type { MessageKey } from "@/lib/i18n";
+import { useT } from "@/components/LocaleProvider";
 import { fmtDate } from "@/lib/format";
 import { VersionPills, EmptyState } from "@/components/ui";
 
 function AssetCard({ asset }: { asset: AssetData }) {
+  const { t } = useT();
   const [selected, setSelected] = useState(asset.versions[0]?.version ?? 1);
   const current = asset.versions.find((v) => v.version === selected) ?? asset.versions[0];
 
@@ -17,7 +20,7 @@ function AssetCard({ asset }: { asset: AssetData }) {
           <img src={current.imageUrl} alt={asset.name} className="h-full w-full object-cover" />
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-zinc-600">
-            设定图制作中
+            {t("panel.assets.inProgress")}
           </div>
         )}
       </div>
@@ -45,9 +48,10 @@ function AssetCard({ asset }: { asset: AssetData }) {
 }
 
 export default function AssetsPanel({ assets }: { assets: AssetData[] }) {
+  const { t } = useT();
   const [typeFilter, setTypeFilter] = useState<string>("ALL");
 
-  if (assets.length === 0) return <EmptyState text="资产尚未产出" />;
+  if (assets.length === 0) return <EmptyState text={t("panel.assets.empty")} />;
 
   const counts = new Map<string, number>();
   for (const a of assets) counts.set(a.type, (counts.get(a.type) ?? 0) + 1);
@@ -65,19 +69,19 @@ export default function AssetsPanel({ assets }: { assets: AssetData[] }) {
               : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
           }`}
         >
-          全部 {assets.length}
+          {t("panel.assets.all", { n: assets.length })}
         </button>
-        {ASSET_TYPES.filter((t) => counts.has(t.key)).map((t) => (
+        {ASSET_TYPE_KEYS.filter((key) => counts.has(key)).map((key) => (
           <button
-            key={t.key}
-            onClick={() => setTypeFilter(t.key)}
+            key={key}
+            onClick={() => setTypeFilter(key)}
             className={`rounded-full px-3.5 py-1.5 text-sm transition-colors ${
-              typeFilter === t.key
+              typeFilter === key
                 ? "bg-accent font-medium text-zinc-950"
                 : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
             }`}
           >
-            {t.label} {counts.get(t.key)}
+            {t(`assetType.${key}` as MessageKey)} {counts.get(key)}
           </button>
         ))}
       </div>

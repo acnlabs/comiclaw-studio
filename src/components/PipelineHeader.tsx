@@ -1,21 +1,24 @@
 "use client";
 
-import { STAGES, type StageKey } from "@/lib/types";
+import { STAGE_KEYS, type StageKey } from "@/lib/types";
+import { useT } from "@/components/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n";
 
 // 五阶段流水线:已完成(实心)、进行中(高亮)、未开始(灰)
 export default function PipelineHeader({ currentStage }: { currentStage: string }) {
+  const { t } = useT();
   const currentIdx =
     currentStage === "DONE"
-      ? STAGES.length
-      : STAGES.findIndex((s) => s.key === (currentStage as StageKey));
+      ? STAGE_KEYS.length
+      : STAGE_KEYS.findIndex((s) => s === (currentStage as StageKey));
 
   return (
     <div className="flex items-center gap-1 overflow-x-auto py-2 sm:gap-2">
-      {STAGES.map((stage, i) => {
+      {STAGE_KEYS.map((stage, i) => {
         const done = i < currentIdx;
         const active = i === currentIdx;
         return (
-          <div key={stage.key} className="flex shrink-0 items-center gap-1 sm:gap-2">
+          <div key={stage} className="flex shrink-0 items-center gap-1 sm:gap-2">
             {i > 0 && (
               <div className={`h-px w-4 sm:w-8 ${done || active ? "bg-accent/60" : "bg-zinc-800"}`} />
             )}
@@ -44,9 +47,11 @@ export default function PipelineHeader({ currentStage }: { currentStage: string 
                   active ? "text-accent" : done ? "text-zinc-300" : "text-zinc-600"
                 }`}
               >
-                {stage.label}
+                {t(`stage.${stage}` as MessageKey)}
               </span>
-              <span className="hidden text-xs text-zinc-600 md:inline">{stage.hint}</span>
+              <span className="hidden text-xs text-zinc-600 md:inline">
+                {t(`stageHint.${stage}` as MessageKey)}
+              </span>
             </div>
           </div>
         );
