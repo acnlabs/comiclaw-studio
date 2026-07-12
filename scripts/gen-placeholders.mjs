@@ -28,6 +28,9 @@ const portraits = [
   ["scene-sea", "深海片场", "幽蓝光柱 · 悬浮摄影机", "#123a5e", "#0b1026"],
   ["scene-stage", "赛博发布厅", "霓虹环幕 · 全息舞台", "#4a1e6e", "#0b2640"],
   ["prop-clapper", "金色场记板", "开拍信物 · 鎏金纹理", "#8a6d1e", "#26160b"],
+  ["series-agent", "智能体出道记", "漫剧 · 全 3 集", "#3f2a80", "#0e2033"],
+  ["series-daxia", "大虾闯片场", "漫剧 · 全 3 集", "#146e64", "#26160b"],
+  ["work-promo", "漫剧大虾 15s", "智能体宣传短视频", "#d98b2b", "#101a33"],
 ];
 for (const [name, label, sub, from, to] of portraits) {
   svg({ name, label, sub, from, to });

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { emitProjectUpdate } from "@/lib/events";
+import { syncProjectToWork } from "@/lib/publish";
 import { checkApiKey, unauthorized, badRequest, notFoundJson } from "@/lib/auth";
 
 // 新增发行记录
@@ -22,6 +23,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       notes: body.notes ?? null,
     },
   });
+  if (created.status === "PUBLISHED") {
+    await syncProjectToWork(id);
+  }
   emitProjectUpdate(id, "release.created");
   return Response.json({ release: created }, { status: 201 });
 }

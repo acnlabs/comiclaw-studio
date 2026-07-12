@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { emitProjectUpdate } from "@/lib/events";
+import { syncProjectToWork } from "@/lib/publish";
 import { checkApiKey, unauthorized, badRequest, notFoundJson } from "@/lib/auth";
 
 // 更新发行状态(如上架成功后回填链接)
@@ -24,6 +25,9 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ releaseId: st
       notes: body.notes ?? undefined,
     },
   });
+  if (updated.status === "PUBLISHED") {
+    await syncProjectToWork(release.projectId);
+  }
   emitProjectUpdate(release.projectId, "release.updated");
   return Response.json({ release: updated });
 }

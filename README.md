@@ -1,8 +1,17 @@
 # ComicLaw Studio
 
-漫剧大虾(ComicLaw)创作工作台:集中呈现 15s 智能体宣传短视频的全流程交付物,解决对话式智能体「客户看不到中间产物、反馈滞后」的问题。
+漫剧大虾(ComicLaw)内容平台 + 创作工作台。comiclaw(部署于飞书秒搭的 OpenClaw 实例)在制作过程中通过 REST API 把交付物推送到 Studio;客户通过免登录分享链接实时查看剧本、资产、分镜与成片,页面经 SSE 自动刷新;发行上架的作品自动同步发布到平台前台展示。
 
-comiclaw(部署于飞书秒搭的 OpenClaw 实例)在制作过程中通过 REST API 把交付物推送到 Studio;客户通过免登录分享链接实时查看剧本、资产、分镜与成片,页面经 SSE 自动刷新。
+## 站点结构
+
+| 菜单 | 路径 | 内容 |
+|------|------|------|
+| 推荐 | `/` | 作品流:用 comiclaw 创作的短视频与短剧,点击进入作品页(`/w/<id>`) |
+| 短剧 | `/series` | 短剧库,子类目前仅「漫剧」;短剧作品带分集播放 |
+| Studio | `/studio` | 工作台入口:品牌介绍;携带 `?key=<ADMIN_KEY>` 显示全部项目(管理视图) |
+| 项目工作台 | `/p/<shareToken>` | 客户专属链接,查看单个项目全流程交付物 |
+
+**发行同步**:项目的发行记录状态变为 `PUBLISHED` 时,自动将最新成片发布为平台作品(幂等,同一项目只对应一个作品),出现在「推荐」流。整部短剧可通过 `POST /api/agent/works` 直接发布。
 
 ## 工作流与页面
 
@@ -62,7 +71,8 @@ npm run dev
 | POST | `/api/agent/shots/:shotId/versions` | 推送分镜新版画面 | `mediaUrl`*, `mediaType`, `notes` |
 | POST | `/api/agent/projects/:id/film-versions` | 推送成片新版本 | `videoUrl`*, `duration`, `notes` |
 | POST | `/api/agent/projects/:id/releases` | 新增发行记录 | `platform`*, `url`, `status`, `notes` |
-| PATCH | `/api/agent/releases/:releaseId` | 更新发行状态 | `status`(PENDING/PUBLISHED), `url`, `publishedAt` |
+| PATCH | `/api/agent/releases/:releaseId` | 更新发行状态(置为 PUBLISHED 时自动同步发布平台作品) | `status`(PENDING/PUBLISHED), `url`, `publishedAt` |
+| POST | `/api/agent/works` | 直接发布平台作品(如整部短剧) | `kind`*(VIDEO/SERIES), `title`*, `category`, `videoUrl`, `coverUrl`, `description`, `authorName`, `episodes[]`(order/title/videoUrl/duration) |
 
 示例:创建项目并推送剧本
 
@@ -115,10 +125,14 @@ docker run -d --name studio -p 3000:3000 \
 
 ```
 prisma/                 # 数据模型、迁移与演示 seed
-src/lib/                # Prisma 单例、事件总线、API 认证、类型
+src/lib/                # Prisma 单例、事件总线、API 认证、发行同步、类型
 src/app/api/agent/      # Agent 推送接口(Bearer Key 认证)
 src/app/api/projects/   # 客户侧 SSE 接口
+src/app/page.tsx        # 推荐(作品流)
+src/app/series/         # 短剧库
+src/app/w/[id]/         # 作品播放页(短剧带分集)
+src/app/studio/         # Studio 入口(品牌页 / 管理视图)
 src/app/p/[token]/      # 客户工作台页面(免登录分享链接)
-src/components/         # 流水线头部、五个内容面板
-scripts/                # 演示占位图生成
+src/components/         # 全站导航、作品卡片/播放器、流水线头部、五个内容面板
+scripts/                # 演示占位图生成、页面截图
 ```

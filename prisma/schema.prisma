@@ -137,6 +137,37 @@ model FilmVersion {
   @@unique([projectId, version])
 }
 
+// ---------- 平台作品(推荐 / 短剧) ----------
+
+// 发行完成的内容回流为平台作品;短剧可含多集
+model Work {
+  id          String   @id @default(cuid())
+  kind        String // VIDEO(短视频) | SERIES(短剧)
+  category    String? // 短剧子类,目前仅「漫剧」
+  title       String
+  description String?
+  coverUrl    String?
+  videoUrl    String? // VIDEO 类作品的正片
+  authorName  String? // 创作者(客户 / 智能体名)
+  projectId   String?  @unique // 来源 studio 项目(同步发布时填写)
+  publishedAt DateTime @default(now())
+
+  episodes Episode[]
+}
+
+model Episode {
+  id       String  @id @default(cuid())
+  workId   String
+  order    Int
+  title    String?
+  videoUrl String
+  duration Float?
+
+  work Work @relation(fields: [workId], references: [id], onDelete: Cascade)
+
+  @@unique([workId, order])
+}
+
 // ---------- 发行 ----------
 
 model Release {

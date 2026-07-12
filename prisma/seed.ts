@@ -236,7 +236,61 @@ async function main() {
     ],
   });
 
-  console.log(`Seeded demo project: /p/${project.shareToken}`);
+  // ---------- 平台作品(推荐 / 短剧) ----------
+
+  await prisma.work.deleteMany({});
+
+  // 已发行的宣传片作品(模拟发行上架后同步发布的结果)
+  await prisma.work.create({
+    data: {
+      kind: "VIDEO",
+      title: "「漫剧大虾」智能体 15s 宣传短视频",
+      description: "大虾队长 15 秒讲清:对话即可为智能体产出宣传片,数字人还能主演短剧。",
+      coverUrl: "/demo/work-promo.svg",
+      videoUrl: DEMO_VIDEO,
+      authorName: "ACN Labs",
+      projectId: project.id,
+    },
+  });
+
+  // 漫剧短剧(演示)
+  await prisma.work.create({
+    data: {
+      kind: "SERIES",
+      category: "漫剧",
+      title: "智能体出道记",
+      description: "一个客服智能体从工具到偶像的出道之路,由客户数字人主演。",
+      coverUrl: "/demo/series-agent.svg",
+      authorName: "小智科技",
+      episodes: {
+        create: [
+          { order: 1, title: "被用户吐槽的第一天", videoUrl: DEMO_VIDEO, duration: 62 },
+          { order: 2, title: "数字形象大改造", videoUrl: DEMO_VIDEO, duration: 58 },
+          { order: 3, title: "全网首播", videoUrl: DEMO_VIDEO, duration: 65 },
+        ],
+      },
+    },
+  });
+
+  await prisma.work.create({
+    data: {
+      kind: "SERIES",
+      category: "漫剧",
+      title: "大虾闯片场",
+      description: "大虾队长带你逛遍 AI 片场:剧本间、资产库、分镜台的幕后故事。",
+      coverUrl: "/demo/series-daxia.svg",
+      authorName: "漫剧大虾官方",
+      episodes: {
+        create: [
+          { order: 1, title: "剧本间的秘密", videoUrl: DEMO_VIDEO, duration: 55 },
+          { order: 2, title: "资产库奇遇", videoUrl: DEMO_VIDEO, duration: 60 },
+          { order: 3, title: "分镜台之夜", videoUrl: DEMO_VIDEO, duration: 57 },
+        ],
+      },
+    },
+  });
+
+  console.log(`Seeded demo project: /p/${project.shareToken} + 3 works`);
 }
 
 main()

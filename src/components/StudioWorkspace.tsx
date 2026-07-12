@@ -41,9 +41,9 @@ export default function StudioWorkspace({ project }: { project: ProjectData }) {
       {/* 头部 */}
       <header className="border-b border-zinc-800/80 py-6">
         <Link
-          href="/"
+          href="/studio"
           className="inline-flex items-center gap-2 text-xs tracking-widest text-accent transition-opacity hover:opacity-80"
-          title="返回首页"
+          title="返回 Studio"
         >
           COMICLAW STUDIO
           <span className="text-zinc-600">漫剧大虾 · 创作工作台</span>
@@ -65,7 +65,7 @@ export default function StudioWorkspace({ project }: { project: ProjectData }) {
       </header>
 
       {/* Tab 导航 */}
-      <nav className="sticky top-0 z-10 -mx-4 border-b border-zinc-800/80 bg-[#0b0b10]/90 px-4 backdrop-blur sm:-mx-6 sm:px-6">
+      <nav className="sticky top-12 z-10 -mx-4 border-b border-zinc-800/80 bg-[#0b0b10]/90 px-4 backdrop-blur sm:-mx-6 sm:px-6">
         <div className="flex gap-1 overflow-x-auto">
           {TABS.map((t) => (
             <button
