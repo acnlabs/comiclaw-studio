@@ -30,6 +30,8 @@
 
 Next.js 16(App Router)+ TypeScript + Tailwind CSS 4 + Prisma 6 + SQLite,SSE 实时推送。单实例部署即可运行,无外部服务依赖。
 
+**国际化**:界面支持中文 / 英文,右上角手动切换(存 cookie,一年有效),首次访问按浏览器 `Accept-Language` 自动判断,默认中文;不使用 URL 前缀,分享链接在两种语言下通用。词条在 `src/lib/i18n.ts` 集中维护。注意:剧本、作品标题等由 comiclaw 推送的内容数据不做界面翻译。
+
 ## 本地开发
 
 ```bash
