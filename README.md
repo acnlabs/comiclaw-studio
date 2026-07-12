@@ -38,6 +38,11 @@ npm run dev
 |------|------|
 | `DATABASE_URL` | SQLite 连接串,如 `file:./dev.db` |
 | `STUDIO_API_KEY` | Agent 推送接口的 Bearer Key,生产环境务必改为强随机值 |
+| `ADMIN_KEY` | 首页项目列表的管理密钥:访问 `/?key=<ADMIN_KEY>` 可见全部项目;不设置则任何人都看不到列表 |
+
+### 访问隔离
+
+客户之间相互隔离:每个项目一个不可猜测的 `shareToken`,客户只能通过专属链接 `/p/<shareToken>` 查看自己的项目。首页对普通访客只显示品牌介绍,携带管理密钥才显示全部项目列表(运营方内部使用)。
 
 ## Agent API
 
@@ -85,6 +90,7 @@ docker run -d --name studio -p 3000:3000 \
   -v studio-data:/app/data \
   -e DATABASE_URL="file:/app/data/studio.db" \
   -e STUDIO_API_KEY="<强随机值>" \
+  -e ADMIN_KEY="<强随机值>" \
   comiclaw-studio
 ```
 
