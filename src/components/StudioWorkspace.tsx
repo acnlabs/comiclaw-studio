@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import type { ProjectData, StageKey } from "@/lib/types";
 import { fmtDate } from "@/lib/format";
 import PipelineHeader from "@/components/PipelineHeader";
@@ -39,10 +40,14 @@ export default function StudioWorkspace({ project }: { project: ProjectData }) {
     <div className="mx-auto w-full max-w-6xl flex-1 px-4 pb-16 sm:px-6">
       {/* 头部 */}
       <header className="border-b border-zinc-800/80 py-6">
-        <div className="flex items-center gap-2 text-xs tracking-widest text-accent">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-xs tracking-widest text-accent transition-opacity hover:opacity-80"
+          title="返回首页"
+        >
           COMICLAW STUDIO
           <span className="text-zinc-600">漫剧大虾 · 创作工作台</span>
-        </div>
+        </Link>
         <h1 className="mt-2 text-2xl font-bold text-zinc-50 sm:text-3xl">{project.name}</h1>
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-zinc-500">
           {project.clientName && <span>客户:{project.clientName}</span>}
