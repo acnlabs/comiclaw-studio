@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")       // Pooler URL — used by Vercel serverless at runtime
+  directUrl = env("DIRECT_URL")         // Direct URL — used by prisma migrate at build time
 }
 
 // ---------- 项目 ----------
