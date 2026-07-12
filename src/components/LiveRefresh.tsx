@@ -3,7 +3,10 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-// 订阅项目 SSE,收到更新事件后刷新服务端数据
+// 实时刷新:SSE 即时推送(单实例部署下秒级);
+// 同时以低频轮询兜底(Serverless 部署下 SSE 跨实例不可达时仍能更新)。
+const POLL_INTERVAL_MS = 30_000;
+
 export default function LiveRefresh({ token }: { token: string }) {
   const router = useRouter();
 
@@ -19,7 +22,13 @@ export default function LiveRefresh({ token }: { token: string }) {
         // ignore malformed payload
       }
     };
-    return () => es.close();
+
+    const poll = setInterval(() => router.refresh(), POLL_INTERVAL_MS);
+
+    return () => {
+      es.close();
+      clearInterval(poll);
+    };
   }, [token, router]);
 
   return null;

@@ -1,0 +1,33 @@
+# 自有服务器一键部署:应用 + PostgreSQL
+# 使用:STUDIO_API_KEY=xxx ADMIN_KEY=yyy docker compose up -d --build
+services:
+  studio:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://studio:${POSTGRES_PASSWORD:-studio}@db:5432/studio
+      STUDIO_API_KEY: ${STUDIO_API_KEY:?set STUDIO_API_KEY}
+      ADMIN_KEY: ${ADMIN_KEY:?set ADMIN_KEY}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: studio
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-studio}
+      POSTGRES_DB: studio
+    volumes:
+      - studio-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U studio"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  studio-pgdata:

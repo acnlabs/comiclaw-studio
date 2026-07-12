@@ -9,14 +9,10 @@ RUN npm ci
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
-# 构建时提供占位数据库地址,运行时以环境变量覆盖
-ENV DATABASE_URL="file:/app/data/studio.db"
-RUN npx prisma generate && npm run build
+RUN npx prisma generate && npx next build
 
 ENV NODE_ENV=production
 EXPOSE 3000
 
-# 数据库文件放在 /app/data,挂载卷持久化
-VOLUME ["/app/data"]
-
+# 运行时需提供 DATABASE_URL(PostgreSQL)、STUDIO_API_KEY、ADMIN_KEY
 CMD ["sh", "-c", "npx prisma migrate deploy && npm start"]
