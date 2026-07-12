@@ -1,151 +1,144 @@
 # ComicLaw Studio
 
-漫剧大虾(ComicLaw)内容平台 + 创作工作台。comiclaw(部署于飞书秒搭的 OpenClaw 实例)在制作过程中通过 REST API 把交付物推送到 Studio;客户通过免登录分享链接实时查看剧本、资产、分镜与成片,页面经 SSE 自动刷新;发行上架的作品自动同步发布到平台前台展示。
+English | [简体中文](README.zh-CN.md)
 
-## 站点结构
+Content platform + creation workspace for ComicLaw (漫剧大虾), a conversational drama-creation agent. The comiclaw agent (an OpenClaw instance deployed on Feishu Miaoda) pushes deliverables to Studio via REST API during production; clients follow the script, assets, storyboard and final film in real time through a login-free share link (SSE auto-refresh); released works are automatically published to the public-facing platform.
 
-| 菜单 | 路径 | 内容 |
-|------|------|------|
-| 推荐 | `/` | TikTok 式滑动观看的作品流(短视频 + 短剧,横竖版自适应) |
-| 短剧 | `/series` | 短剧库,子类目前仅「漫剧」;详情页(`/series/<id>`)带分集播放 |
-| Studio | `/studio` | 工作台入口:品牌介绍;携带 `?key=<ADMIN_KEY>` 显示全部项目(管理视图) |
-| 项目工作台 | `/p/<shareToken>` | 客户专属链接,查看单个项目全流程交付物 |
+## Site structure
 
-**发行同步**:项目的发行记录状态变为 `PUBLISHED` 时,自动将最新成片发布为平台作品(幂等,同一项目只对应一个作品),出现在「推荐」流。整部短剧可通过 `POST /api/agent/works` 直接发布。
+| Menu | Path | Content |
+|------|------|---------|
+| For You | `/` | TikTok-style swipe feed (short videos + series, orientation-adaptive, autoplay) |
+| Series | `/series` | Series library (currently one sub-category: Comic Drama); detail page `/series/<id>` with episode player |
+| Studio | `/studio` | Workspace entry: brand page; append `?key=<ADMIN_KEY>` for the admin view of all projects |
+| Project workspace | `/p/<shareToken>` | Client-private link showing every deliverable of one project |
 
-## 工作流与页面
+**Release sync**: when a project's release record is set to `PUBLISHED`, the latest film cut is automatically published as a platform work (idempotent — one work per project) and appears in the For You feed. A whole series can be published directly via `POST /api/agent/works`.
 
-固定五阶段流水线:**剧本 → 资产 → 分镜 → 成片 → 发行**
+## Workflow & pages
 
-| 模块 | 内容 |
-|------|------|
-| 流水线头部 | 项目信息 + 当前阶段进度 |
-| 剧本 | 分场剧本(Markdown 渲染),多版本切换,含改动说明 |
-| 资产 | 角色 / 场景 / 道具设定卡,多版本设定图 |
-| 分镜 | 镜头网格:画面(图/视频)、时长、台词、画面描述、引用资产 |
-| 成片 | 视频播放器 + 版本历史与剪辑说明 |
-| 发行 | 各平台上架状态与观看链接 |
+Fixed five-stage pipeline: **Script → Assets → Storyboard → Film → Release**
 
-## 技术栈
+| Module | Content |
+|--------|---------|
+| Pipeline header | Project info + current stage progress |
+| Script | Scene-by-scene script (Markdown), version switching with change logs |
+| Assets | Character / scene / prop design cards, multi-version images |
+| Storyboard | Shot grid: frame (image/video), duration, dialogue, action, referenced assets |
+| Film | Video player + version history and editor's notes |
+| Release | Per-platform publish status and watch links |
 
-Next.js 16(App Router)+ TypeScript + Tailwind CSS 4 + Prisma 6 + PostgreSQL,SSE 实时推送 + 30s 轮询兜底(Serverless 环境下 SSE 跨实例不可达时仍能更新)。
+## Tech stack
 
-**国际化**:界面支持中文 / 英文,右上角手动切换(存 cookie,一年有效),首次访问按浏览器 `Accept-Language` 自动判断,默认中文;不使用 URL 前缀,分享链接在两种语言下通用。词条在 `src/lib/i18n.ts` 集中维护。注意:剧本、作品标题等由 comiclaw 推送的内容数据不做界面翻译。
+Next.js 16 (App Router) + TypeScript + Tailwind CSS 4 + Prisma 6 + PostgreSQL. Realtime via SSE with a 30s polling fallback (keeps pages updating on serverless where SSE can't cross instances).
 
-## 本地开发
+**i18n**: the UI ships in English and Chinese — manual toggle in the top-right corner (cookie, one year), first visit auto-detected from `Accept-Language`, no URL prefix so share links work in both languages. All strings live in `src/lib/i18n.ts`. Note: content pushed by comiclaw (scripts, work titles, etc.) is data and is not translated by the UI.
+
+## Local development
 
 ```bash
 npm install
-# 准备一个 PostgreSQL(本机安装或 docker run postgres:16-alpine 均可),配置 .env 的 DATABASE_URL
-npx prisma migrate dev   # 初始化数据库
-npm run db:seed          # 写入演示项目
+# Prepare a PostgreSQL (local install or `docker run postgres:16-alpine`), set DATABASE_URL in .env
+npx prisma migrate dev   # initialize the database
+npm run db:seed          # seed the demo project
 npm run dev
 ```
 
-打开 <http://localhost:3000/p/demo> 查看演示项目「漫剧大虾 15s 宣传短视频」。
+Open <http://localhost:3000/p/demo> to see the demo project.
 
-环境变量(见 `.env.example`):
+Environment variables (see `.env.example`):
 
-| 变量 | 说明 |
-|------|------|
-| `DATABASE_URL` | PostgreSQL 连接串,如 `postgresql://studio:studio@localhost:5432/studio` |
-| `STUDIO_API_KEY` | Agent 推送接口的 Bearer Key,生产环境务必改为强随机值 |
-| `ADMIN_KEY` | 首页项目列表的管理密钥:访问 `/?key=<ADMIN_KEY>` 可见全部项目;不设置则任何人都看不到列表 |
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | PostgreSQL connection string, e.g. `postgresql://studio:studio@localhost:5432/studio` |
+| `STUDIO_API_KEY` | Bearer key for the agent push API — use a strong random value in production |
+| `ADMIN_KEY` | Admin key for the project list: visit `/studio?key=<ADMIN_KEY>`; if unset, nobody sees the list |
 
-### 访问隔离
+### Access isolation
 
-客户之间相互隔离:每个项目一个不可猜测的 `shareToken`,客户只能通过专属链接 `/p/<shareToken>` 查看自己的项目。首页对普通访客只显示品牌介绍,携带管理密钥才显示全部项目列表(运营方内部使用)。
+Clients are isolated from each other: every project gets an unguessable `shareToken`, and a client can only view their own project via `/p/<shareToken>`. The Studio page shows only branding to regular visitors; the full project list requires the admin key (for the operator).
 
 ## Agent API
 
-所有 `/api/agent/*` 接口需要请求头 `Authorization: Bearer <STUDIO_API_KEY>`,请求体为 JSON。
+All `/api/agent/*` endpoints require the header `Authorization: Bearer <STUDIO_API_KEY>` with JSON bodies.
 
-| 方法 | 路径 | 作用 | 关键字段 |
-|------|------|------|----------|
-| POST | `/api/agent/projects` | 创建项目,返回 `sharePath` 分享路径 | `name`*, `clientName`, `agentName`, `description`, `coverUrl` |
-| GET | `/api/agent/projects` | 项目列表 | — |
-| GET | `/api/agent/projects/:id` | 项目全量数据 | — |
-| PATCH | `/api/agent/projects/:id` | 更新信息 / 推进阶段 | `currentStage`(SCRIPT/ASSETS/STORYBOARD/FILM/RELEASE/DONE) |
-| POST | `/api/agent/projects/:id/script-versions` | 推送新版剧本(版本自动递增) | `content`*, `title`, `logline`, `changeLog` |
-| POST | `/api/agent/projects/:id/assets` | 创建资产(可带首版设定图) | `type`*(CHARACTER/SCENE/PROP), `name`*, `description`, `imageUrl`, `notes` |
-| POST | `/api/agent/assets/:assetId/versions` | 推送资产新版设定图 | `imageUrl`*, `notes` |
-| POST | `/api/agent/projects/:id/shots` | 创建分镜(可带首版画面与资产引用) | `order`*, `title`, `duration`, `dialogue`, `action`, `mediaUrl`, `mediaType`(IMAGE/VIDEO), `assetIds` |
-| PATCH | `/api/agent/shots/:shotId` | 更新分镜文字信息 / 资产引用 | 同上(不含 order) |
-| POST | `/api/agent/shots/:shotId/versions` | 推送分镜新版画面 | `mediaUrl`*, `mediaType`, `notes` |
-| POST | `/api/agent/projects/:id/film-versions` | 推送成片新版本 | `videoUrl`*, `duration`, `notes` |
-| POST | `/api/agent/projects/:id/releases` | 新增发行记录 | `platform`*, `url`, `status`, `notes` |
-| PATCH | `/api/agent/releases/:releaseId` | 更新发行状态(置为 PUBLISHED 时自动同步发布平台作品) | `status`(PENDING/PUBLISHED), `url`, `publishedAt` |
-| POST | `/api/agent/works` | 直接发布平台作品(如整部短剧) | `kind`*(VIDEO/SERIES), `title`*, `category`, `videoUrl`, `coverUrl`, `description`, `authorName`, `episodes[]`(order/title/videoUrl/duration) |
+| Method | Path | Purpose | Key fields |
+|--------|------|---------|-----------|
+| POST | `/api/agent/projects` | Create project, returns `sharePath` | `name`*, `clientName`, `agentName`, `description`, `coverUrl` |
+| GET | `/api/agent/projects` | List projects | — |
+| GET | `/api/agent/projects/:id` | Full project data | — |
+| PATCH | `/api/agent/projects/:id` | Update info / advance stage | `currentStage` (SCRIPT/ASSETS/STORYBOARD/FILM/RELEASE/DONE) |
+| POST | `/api/agent/projects/:id/script-versions` | Push a new script version (auto-increment) | `content`*, `title`, `logline`, `changeLog` |
+| POST | `/api/agent/projects/:id/assets` | Create asset (optionally with first design image) | `type`* (CHARACTER/SCENE/PROP), `name`*, `description`, `imageUrl`, `notes` |
+| POST | `/api/agent/assets/:assetId/versions` | Push a new asset design version | `imageUrl`*, `notes` |
+| POST | `/api/agent/projects/:id/shots` | Create shot (optionally with first frame and asset refs) | `order`*, `title`, `duration`, `dialogue`, `action`, `mediaUrl`, `mediaType` (IMAGE/VIDEO), `assetIds` |
+| PATCH | `/api/agent/shots/:shotId` | Update shot text / asset refs | same as above (except order) |
+| POST | `/api/agent/shots/:shotId/versions` | Push a new shot frame version | `mediaUrl`*, `mediaType`, `notes` |
+| POST | `/api/agent/projects/:id/film-versions` | Push a new film cut | `videoUrl`*, `duration`, `notes` |
+| POST | `/api/agent/projects/:id/releases` | Add a release record | `platform`*, `url`, `status`, `notes` |
+| PATCH | `/api/agent/releases/:releaseId` | Update release status (setting PUBLISHED auto-publishes the work) | `status` (PENDING/PUBLISHED), `url`, `publishedAt` |
+| POST | `/api/agent/works` | Publish a platform work directly (e.g. a whole series) | `kind`* (VIDEO/SERIES), `title`*, `category`, `videoUrl`, `coverUrl`, `description`, `authorName`, `episodes[]` (order/title/videoUrl/duration) |
 
-示例:创建项目并推送剧本
+Example — create a project and push a script:
 
 ```bash
 KEY="dev-secret-key"; BASE="http://localhost:3000"
 PID=$(curl -s -X POST $BASE/api/agent/projects \
   -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
-  -d '{"name":"「小智客服」15s 宣传短视频","clientName":"小智科技","agentName":"小智客服"}' \
+  -d '{"name":"Aria 15s promo video","clientName":"Aria Inc.","agentName":"Aria"}' \
   | python3 -c 'import sys,json;print(json.load(sys.stdin)["id"])')
 
 curl -s -X POST $BASE/api/agent/projects/$PID/script-versions \
   -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
-  -d '{"title":"小智出道","logline":"15 秒讲清小智","content":"# 场次 1\n..."}'
+  -d '{"title":"Aria debuts","logline":"Aria in 15 seconds","content":"# Scene 1\n..."}'
 ```
 
-媒体文件(设定图、视频)以 URL 引用,直接使用即梦 / Seedance 等工具产出的链接即可。
+Media (design images, videos) are referenced by URL — links produced by Jimeng / Seedance etc. work as-is.
 
-## 部署
+## Deployment
 
-### 国际版:Vercel + Neon(免费档即可)
+### International: Vercel + Neon (free tiers)
 
-1. **代码仓库**:Vercel 免费档(Hobby)只能部署个人账号下的仓库,组织仓库需付费。把代码镜像到个人仓库:
+1. **Repository**: Vercel's Hobby plan can deploy **public** GitHub organization repositories directly (private org repos require Pro; alternatively mirror the code to a personal repo).
+2. **Database**: create a free PostgreSQL on [neon.tech](https://neon.tech) and copy the connection string.
+3. **Import & deploy**: in the Vercel console, import the repo (Next.js auto-detected; the `vercel-build` script runs database migrations automatically) and set the environment variables `DATABASE_URL` (Neon), `STUDIO_API_KEY`, `ADMIN_KEY`.
+4. (Optional) seed demo data by running `npm run db:seed` locally with `DATABASE_URL` pointed at Neon.
 
-   ```bash
-   # 在 GitHub 个人账号下新建空仓库(如 <you>/comiclaw-studio),然后:
-   git clone https://github.com/acnlabs/comiclaw-studio.git
-   cd comiclaw-studio && git checkout <分支>
-   git remote add personal https://github.com/<you>/comiclaw-studio.git
-   git push personal HEAD:main
-   ```
+> On Vercel serverless, SSE can't cross instances; pages fall back to 30s polling, which is fine for viewing scenarios.
 
-2. **数据库**:在 [neon.tech](https://neon.tech) 创建免费 PostgreSQL,拿到连接串。
-3. **导入部署**:Vercel 控制台 Import 个人仓库(框架自动识别 Next.js;构建命令走仓库里的 `vercel-build`,会自动执行数据库迁移),配置环境变量:`DATABASE_URL`(Neon 连接串)、`STUDIO_API_KEY`、`ADMIN_KEY`。
-4. (可选)部署后在 Vercel 控制台或本地执行 `npm run db:seed` 写入演示数据(本地把 `DATABASE_URL` 指向 Neon 即可)。
-
-> Vercel Serverless 下 SSE 跨实例不可达,页面靠 30s 轮询兜底更新,展示场景足够。
-
-### 中国区(主):云服务器 + Docker Compose
+### China (primary): cloud server + Docker Compose
 
 ```bash
-STUDIO_API_KEY="<强随机值>" ADMIN_KEY="<强随机值>" POSTGRES_PASSWORD="<强随机值>" \
+STUDIO_API_KEY="<strong-random>" ADMIN_KEY="<strong-random>" POSTGRES_PASSWORD="<strong-random>" \
   docker compose up -d --build
 ```
 
-一条命令拉起 应用 + PostgreSQL,启动时自动执行数据库迁移。绑定自有域名需 ICP 备案;前期可用 `IP:端口` 或已备案域名。
+One command brings up the app + PostgreSQL, with migrations applied on startup. A custom domain requires ICP filing in mainland China; use `IP:port` or an already-filed domain early on.
 
-> 不建议部署回飞书秒搭:秒搭的「导入应用」是一次性转换而非持续部署,且无法运行自定义 Node 服务端。
+> Deploying back to Feishu Miaoda is not recommended: its "import app" is a one-time conversion rather than continuous deployment, and it can't run a custom Node server.
 
-## 与 comiclaw(OpenClaw 实例)对接
+## Integrating with comiclaw (OpenClaw instance)
 
-客户体验闭环:客户在飞书与 comiclaw 对话 → comiclaw 创建项目并回复分享链接(`<studio 域名>/p/<shareToken>`)→ 制作过程中持续推送交付物 → 客户打开链接实时查看 → 发行上架后作品自动发布到平台前台。
+The client experience loop: client chats with comiclaw in Feishu → comiclaw creates a project and replies with the share link (`<studio domain>/p/<shareToken>`) → deliverables are pushed continuously during production → the client watches progress in real time → released works are published to the platform automatically.
 
-现成的 OpenClaw 技能包在 [`skills/comiclaw-studio/`](skills/comiclaw-studio/):
+A ready-made OpenClaw skill package lives in [`skills/comiclaw-studio/`](skills/comiclaw-studio/):
 
-- `SKILL.md`:工作流规范(开工建项目并发链接、每阶段产出立即推送、返工推新版本、阶段推进、发行登记);
-- `scripts/studio.sh`:API 命令行封装,`studio.sh help` 查看全部命令。
+- `SKILL.md`: workflow contract (create the project and send the link up front, push each stage's deliverables immediately, push new versions on rework, advance the pipeline, record releases);
+- `scripts/studio.sh`: CLI wrapper for the API — run `studio.sh help` for all commands.
 
-接入步骤:把 `skills/comiclaw-studio/` 放入 OpenClaw 实例的 skills 目录,并在技能环境中配置 `STUDIO_BASE_URL`(Studio 部署地址)与 `STUDIO_API_KEY`。
+To integrate: drop `skills/comiclaw-studio/` into the OpenClaw instance's skills directory and configure `STUDIO_BASE_URL` (the Studio deployment URL) and `STUDIO_API_KEY` in the skill environment.
 
-## 目录结构
+## Directory layout
 
 ```
-prisma/                 # 数据模型、迁移与演示 seed
-src/lib/                # Prisma 单例、事件总线、API 认证、发行同步、类型
-src/app/api/agent/      # Agent 推送接口(Bearer Key 认证)
-src/app/api/projects/   # 客户侧 SSE 接口
-src/app/page.tsx        # 推荐(作品流)
-src/app/series/         # 短剧库与短剧详情页(分集播放)
-src/app/studio/         # Studio 入口(品牌页 / 管理视图)
-src/app/p/[token]/      # 客户工作台页面(免登录分享链接)
-src/components/         # 全站导航、作品卡片/播放器、流水线头部、五个内容面板
-scripts/                # 演示占位图生成、页面截图
+prisma/                 # data model, migrations, demo seed
+src/lib/                # Prisma singleton, event bus, API auth, release sync, i18n, types
+src/app/api/agent/      # agent push API (Bearer key auth)
+src/app/api/projects/   # client-side SSE endpoint
+src/app/page.tsx        # For You (swipe feed)
+src/app/series/         # series library & detail page (episode player)
+src/app/studio/         # Studio entry (brand page / admin view)
+src/app/p/[token]/      # client workspace (login-free share link)
+src/components/         # site nav, work cards/player, pipeline header, five panels
+scripts/                # demo placeholder generation, page screenshots
 ```
