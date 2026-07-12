@@ -1,0 +1,153 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- 项目 ----------
+
+// 工作流固定五阶段:剧本 -> 资产 -> 分镜 -> 成片 -> 发行
+// 阶段不建表,作为项目上的状态字段
+model Project {
+  id          String   @id @default(cuid())
+  shareToken  String   @unique @default(cuid()) // 客户免登录访问令牌
+  name        String // 项目名,如「XX智能体 15s 宣传短视频」
+  clientName  String? // 客户名称
+  agentName   String? // 被宣传的智能体名称
+  description String?
+  coverUrl    String? // 项目封面图
+  currentStage String  @default("SCRIPT") // SCRIPT | ASSETS | STORYBOARD | FILM | RELEASE | DONE
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  scriptVersions ScriptVersion[]
+  assets         Asset[]
+  shots          Shot[]
+  filmVersions   FilmVersion[]
+  releases       Release[]
+}
+
+// ---------- 剧本 ----------
+
+model ScriptVersion {
+  id        String   @id @default(cuid())
+  projectId String
+  version   Int // 从 1 递增
+  title     String?
+  logline   String? // 一句话梗概
+  content   String // 剧本正文(Markdown,分场)
+  changeLog String? // 本版改动说明
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, version])
+}
+
+// ---------- 资产(角色/场景/道具) ----------
+
+model Asset {
+  id          String   @id @default(cuid())
+  projectId   String
+  type        String // CHARACTER | SCENE | PROP
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project  Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  versions AssetVersion[]
+  shotRefs ShotAsset[]
+}
+
+model AssetVersion {
+  id        String   @id @default(cuid())
+  assetId   String
+  version   Int
+  imageUrl  String // 设定图
+  notes     String? // 本版设计说明
+  createdAt DateTime @default(now())
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([assetId, version])
+}
+
+// ---------- 分镜 ----------
+
+model Shot {
+  id        String   @id @default(cuid())
+  projectId String
+  order     Int // 镜头序号,从 1 开始
+  title     String? // 镜头名,如「开场:LOGO 浮现」
+  duration  Float? // 时长(秒)
+  dialogue  String? // 台词 / 旁白
+  action    String? // 画面描述
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project   Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  versions  ShotVersion[]
+  assetRefs ShotAsset[]
+
+  @@unique([projectId, order])
+}
+
+model ShotVersion {
+  id        String   @id @default(cuid())
+  shotId    String
+  version   Int
+  mediaUrl  String // 画面(图或视频片段)
+  mediaType String   @default("IMAGE") // IMAGE | VIDEO
+  notes     String?
+  createdAt DateTime @default(now())
+
+  shot Shot @relation(fields: [shotId], references: [id], onDelete: Cascade)
+
+  @@unique([shotId, version])
+}
+
+// 分镜引用的资产
+model ShotAsset {
+  shotId  String
+  assetId String
+
+  shot  Shot  @relation(fields: [shotId], references: [id], onDelete: Cascade)
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@id([shotId, assetId])
+}
+
+// ---------- 成片 ----------
+
+model FilmVersion {
+  id        String   @id @default(cuid())
+  projectId String
+  version   Int
+  videoUrl  String
+  duration  Float? // 秒
+  notes     String? // 本版剪辑说明
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, version])
+}
+
+// ---------- 发行 ----------
+
+model Release {
+  id          String    @id @default(cuid())
+  projectId   String
+  platform    String // 抖音 | 视频号 | B站 | ...
+  url         String?
+  status      String    @default("PENDING") // PENDING | PUBLISHED
+  publishedAt DateTime?
+  notes       String?
+  createdAt   DateTime  @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}

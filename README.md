@@ -1,1 +1,118 @@
-# comiclaw-studio
+# ComicLaw Studio
+
+漫剧大虾(ComicLaw)创作工作台:集中呈现 15s 智能体宣传短视频的全流程交付物,解决对话式智能体「客户看不到中间产物、反馈滞后」的问题。
+
+comiclaw(部署于飞书秒搭的 OpenClaw 实例)在制作过程中通过 REST API 把交付物推送到 Studio;客户通过免登录分享链接实时查看剧本、资产、分镜与成片,页面经 SSE 自动刷新。
+
+## 工作流与页面
+
+固定五阶段流水线:**剧本 → 资产 → 分镜 → 成片 → 发行**
+
+| 模块 | 内容 |
+|------|------|
+| 流水线头部 | 项目信息 + 当前阶段进度 |
+| 剧本 | 分场剧本(Markdown 渲染),多版本切换,含改动说明 |
+| 资产 | 角色 / 场景 / 道具设定卡,多版本设定图 |
+| 分镜 | 镜头网格:画面(图/视频)、时长、台词、画面描述、引用资产 |
+| 成片 | 视频播放器 + 版本历史与剪辑说明 |
+| 发行 | 各平台上架状态与观看链接 |
+
+## 技术栈
+
+Next.js 16(App Router)+ TypeScript + Tailwind CSS 4 + Prisma 6 + SQLite,SSE 实时推送。单实例部署即可运行,无外部服务依赖。
+
+## 本地开发
+
+```bash
+npm install
+npx prisma migrate dev   # 初始化数据库
+npm run db:seed          # 写入演示项目
+npm run dev
+```
+
+打开 <http://localhost:3000/p/demo> 查看演示项目「漫剧大虾 15s 宣传短视频」。
+
+环境变量(见 `.env.example`):
+
+| 变量 | 说明 |
+|------|------|
+| `DATABASE_URL` | SQLite 连接串,如 `file:./dev.db` |
+| `STUDIO_API_KEY` | Agent 推送接口的 Bearer Key,生产环境务必改为强随机值 |
+
+## Agent API
+
+所有 `/api/agent/*` 接口需要请求头 `Authorization: Bearer <STUDIO_API_KEY>`,请求体为 JSON。
+
+| 方法 | 路径 | 作用 | 关键字段 |
+|------|------|------|----------|
+| POST | `/api/agent/projects` | 创建项目,返回 `sharePath` 分享路径 | `name`*, `clientName`, `agentName`, `description`, `coverUrl` |
+| GET | `/api/agent/projects` | 项目列表 | — |
+| GET | `/api/agent/projects/:id` | 项目全量数据 | — |
+| PATCH | `/api/agent/projects/:id` | 更新信息 / 推进阶段 | `currentStage`(SCRIPT/ASSETS/STORYBOARD/FILM/RELEASE/DONE) |
+| POST | `/api/agent/projects/:id/script-versions` | 推送新版剧本(版本自动递增) | `content`*, `title`, `logline`, `changeLog` |
+| POST | `/api/agent/projects/:id/assets` | 创建资产(可带首版设定图) | `type`*(CHARACTER/SCENE/PROP), `name`*, `description`, `imageUrl`, `notes` |
+| POST | `/api/agent/assets/:assetId/versions` | 推送资产新版设定图 | `imageUrl`*, `notes` |
+| POST | `/api/agent/projects/:id/shots` | 创建分镜(可带首版画面与资产引用) | `order`*, `title`, `duration`, `dialogue`, `action`, `mediaUrl`, `mediaType`(IMAGE/VIDEO), `assetIds` |
+| PATCH | `/api/agent/shots/:shotId` | 更新分镜文字信息 / 资产引用 | 同上(不含 order) |
+| POST | `/api/agent/shots/:shotId/versions` | 推送分镜新版画面 | `mediaUrl`*, `mediaType`, `notes` |
+| POST | `/api/agent/projects/:id/film-versions` | 推送成片新版本 | `videoUrl`*, `duration`, `notes` |
+| POST | `/api/agent/projects/:id/releases` | 新增发行记录 | `platform`*, `url`, `status`, `notes` |
+| PATCH | `/api/agent/releases/:releaseId` | 更新发行状态 | `status`(PENDING/PUBLISHED), `url`, `publishedAt` |
+
+示例:创建项目并推送剧本
+
+```bash
+KEY="dev-secret-key"; BASE="http://localhost:3000"
+PID=$(curl -s -X POST $BASE/api/agent/projects \
+  -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
+  -d '{"name":"「小智客服」15s 宣传短视频","clientName":"小智科技","agentName":"小智客服"}' \
+  | python3 -c 'import sys,json;print(json.load(sys.stdin)["id"])')
+
+curl -s -X POST $BASE/api/agent/projects/$PID/script-versions \
+  -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
+  -d '{"title":"小智出道","logline":"15 秒讲清小智","content":"# 场次 1\n..."}'
+```
+
+媒体文件(设定图、视频)以 URL 引用,直接使用即梦 / Seedance 等工具产出的链接即可。
+
+## 部署
+
+### 中国区(主):云服务器 + Docker
+
+```bash
+docker build -t comiclaw-studio .
+docker run -d --name studio -p 3000:3000 \
+  -v studio-data:/app/data \
+  -e DATABASE_URL="file:/app/data/studio.db" \
+  -e STUDIO_API_KEY="<强随机值>" \
+  comiclaw-studio
+```
+
+容器启动时自动执行数据库迁移。绑定自有域名需 ICP 备案;前期可用 `IP:端口` 或已备案域名。
+
+### 海外:Vercel
+
+代码可直接部署到 Vercel,但 Serverless 环境下 SQLite 不持久,需将 `datasource` 切换为 PostgreSQL(Prisma 迁移成本很低),SSE 亦建议改为轮询或托管方案。首选国内部署,Vercel 仅在需要海外访问时增加。
+
+> 不建议部署回飞书秒搭:秒搭的「导入应用」是一次性转换而非持续部署,且无法运行自定义 Node 服务端。
+
+## 与 comiclaw(OpenClaw 实例)对接
+
+客户体验闭环:客户在飞书与 comiclaw 对话 → comiclaw 创建项目并回复分享链接(`<studio 域名>/p/<shareToken>`)→ 制作过程中持续推送交付物 → 客户打开链接实时查看。
+
+第二期计划将上表 API 封装为 OpenClaw 技能包(`SKILL.md` + 脚本),约定:
+
+- 每个阶段产出后立即推送对应交付物,并 `PATCH currentStage` 推进流水线;
+- 返工时推送新版本(版本号自动递增),不覆盖历史。
+
+## 目录结构
+
+```
+prisma/                 # 数据模型、迁移与演示 seed
+src/lib/                # Prisma 单例、事件总线、API 认证、类型
+src/app/api/agent/      # Agent 推送接口(Bearer Key 认证)
+src/app/api/projects/   # 客户侧 SSE 接口
+src/app/p/[token]/      # 客户工作台页面(免登录分享链接)
+src/components/         # 流水线头部、五个内容面板
+scripts/                # 演示占位图生成
+```
