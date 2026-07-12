@@ -114,12 +114,14 @@ docker run -d --name studio -p 3000:3000 \
 
 ## 与 comiclaw(OpenClaw 实例)对接
 
-客户体验闭环:客户在飞书与 comiclaw 对话 → comiclaw 创建项目并回复分享链接(`<studio 域名>/p/<shareToken>`)→ 制作过程中持续推送交付物 → 客户打开链接实时查看。
+客户体验闭环:客户在飞书与 comiclaw 对话 → comiclaw 创建项目并回复分享链接(`<studio 域名>/p/<shareToken>`)→ 制作过程中持续推送交付物 → 客户打开链接实时查看 → 发行上架后作品自动发布到平台前台。
 
-第二期计划将上表 API 封装为 OpenClaw 技能包(`SKILL.md` + 脚本),约定:
+现成的 OpenClaw 技能包在 [`skills/comiclaw-studio/`](skills/comiclaw-studio/):
 
-- 每个阶段产出后立即推送对应交付物,并 `PATCH currentStage` 推进流水线;
-- 返工时推送新版本(版本号自动递增),不覆盖历史。
+- `SKILL.md`:工作流规范(开工建项目并发链接、每阶段产出立即推送、返工推新版本、阶段推进、发行登记);
+- `scripts/studio.sh`:API 命令行封装,`studio.sh help` 查看全部命令。
+
+接入步骤:把 `skills/comiclaw-studio/` 放入 OpenClaw 实例的 skills 目录,并在技能环境中配置 `STUDIO_BASE_URL`(Studio 部署地址)与 `STUDIO_API_KEY`。
 
 ## 目录结构
 
