@@ -5,8 +5,10 @@
 #   STUDIO_API_KEY   Agent API 密钥
 set -euo pipefail
 
-if [[ -z "${STUDIO_BASE_URL:-}" || -z "${STUDIO_API_KEY:-}" ]]; then
-  echo "error: STUDIO_BASE_URL and STUDIO_API_KEY must be set" >&2
+STUDIO_BASE_URL="${STUDIO_BASE_URL:-https://studio.comiclaw.acnlabs.org}"
+
+if [[ -z "${STUDIO_API_KEY:-}" ]]; then
+  echo "error: STUDIO_API_KEY must be set" >&2
   exit 1
 fi
 

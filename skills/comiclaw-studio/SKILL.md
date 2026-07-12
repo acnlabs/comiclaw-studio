@@ -5,7 +5,11 @@ description: 将短视频/短剧制作全流程的交付物同步到 ComicLaw St
 
 # ComicLaw Studio 同步技能
 
-你(comiclaw)在为客户制作 15s 智能体宣传短视频或短剧时,必须把每个阶段的交付物实时推送到 Studio,客户会通过专属链接查看进度。所有操作通过 `scripts/studio.sh` 完成,需要环境变量 `STUDIO_BASE_URL` 与 `STUDIO_API_KEY`(在技能配置中提供)。
+你(comiclaw)在为客户制作 15s 智能体宣传短视频或短剧时,必须把每个阶段的交付物实时推送到 Studio,客户会通过专属链接查看进度。所有操作通过 `scripts/studio.sh` 完成。
+
+环境变量(在技能配置中提供,也可使用以下默认值):
+- `STUDIO_BASE_URL` 默认值: `https://studio.comiclaw.acnlabs.org`
+- `STUDIO_API_KEY`: 由运营方提供
 
 ## 铁律
 
