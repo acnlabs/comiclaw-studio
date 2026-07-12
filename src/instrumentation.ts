@@ -1,14 +1,20 @@
-// Next.js instrumentation: runs once per server cold start.
-// Applies any pending Prisma migrations automatically so Vercel deployments
-// are self-migrating without needing DATABASE_URL at build time.
+// Runs once per server cold start — applies pending Prisma migrations
+// so deployments are self-migrating without needing DATABASE_URL at build time.
 export async function register() {
-  if (process.env.NEXT_RUNTIME === "nodejs") {
-    const { execSync } = await import("child_process");
-    try {
-      execSync("npx prisma migrate deploy", { stdio: "inherit" });
-    } catch (err) {
-      // Log but don't crash — the app may still work if the schema is current.
-      console.error("[instrumentation] prisma migrate deploy failed:", err);
-    }
+  if (process.env.NEXT_RUNTIME !== "nodejs") return;
+
+  const { execFileSync } = await import("child_process");
+  const { resolve } = await import("path");
+
+  // Use the bundled prisma binary instead of npx (npx may not be in PATH on serverless)
+  const prismaBin = resolve(process.cwd(), "node_modules", ".bin", "prisma");
+
+  try {
+    execFileSync(prismaBin, ["migrate", "deploy"], {
+      stdio: "inherit",
+      env: { ...process.env },
+    });
+  } catch (err) {
+    console.error("[instrumentation] prisma migrate deploy failed:", err);
   }
 }
