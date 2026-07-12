@@ -17,7 +17,7 @@ export default function SiteNav() {
 
   return (
     <div className="sticky top-0 z-20 border-b border-zinc-800/80 bg-[#0b0b10]/90 backdrop-blur">
-      <div className="mx-auto flex h-12 w-full max-w-6xl items-center gap-6 px-4 sm:px-6">
+      <div className="flex h-12 w-full items-center gap-6 px-4 sm:px-6">
         <Link href="/" className="text-sm font-bold tracking-widest text-accent">
           COMICLAW
         </Link>
