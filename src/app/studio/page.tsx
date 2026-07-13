@@ -6,7 +6,7 @@ import { getLocale } from "@/lib/locale";
 import { translate, type MessageKey } from "@/lib/i18n";
 import { checkAdminKey } from "@/lib/auth";
 import { ADMIN_COOKIE } from "@/app/api/admin/login/route";
-import AdminLogin from "@/components/AdminLogin";
+import StudioHome from "@/components/StudioHome";
 
 export const dynamic = "force-dynamic";
 
@@ -43,14 +43,7 @@ export default async function StudioPage() {
       <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-400">{t("studio.intro")}</p>
 
       {!isAdmin ? (
-        <>
-          <div className="mt-12 rounded-2xl border border-zinc-800 bg-zinc-900/50 px-6 py-8">
-            <p className="text-sm text-zinc-300">{t("studio.useLink")}</p>
-            <p className="mt-2 font-mono text-sm text-accent">{t("studio.linkExample")}</p>
-            <p className="mt-4 text-xs text-zinc-500">{t("studio.linkPrivacy")}</p>
-          </div>
-          <AdminLogin />
-        </>
+        <StudioHome />
       ) : (
         <>
           <h2 className="mt-12 mb-4 text-sm font-medium text-zinc-500">{t("studio.allProjects")}</h2>

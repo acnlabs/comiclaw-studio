@@ -52,6 +52,7 @@ const zh = {
   "studio.linkPrivacy": "链接与项目一一对应,请勿转发给项目无关人员。",
   "studio.allProjects": "全部项目(管理视图)",
   "studio.noProjects": "还没有项目。comiclaw 通过 API 创建项目后会显示在这里。",
+  "studio.operatorEntry": "运营方入口",
 
   // 阶段
   "stage.SCRIPT": "剧本",
@@ -161,6 +162,7 @@ const en: Record<MessageKey, string> = {
   "studio.linkPrivacy": "Each link maps to one project. Please do not share it with others.",
   "studio.allProjects": "All projects (admin view)",
   "studio.noProjects": "No projects yet. Projects created by comiclaw via API will show up here.",
+  "studio.operatorEntry": "Operator sign-in",
 
   "stage.SCRIPT": "Script",
   "stage.ASSETS": "Assets",

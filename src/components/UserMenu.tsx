@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth0 } from "@auth0/auth0-react";
 import { useT } from "@/components/LocaleProvider";
@@ -27,14 +26,6 @@ export default function UserMenu() {
 
   return (
     <div className="flex items-center gap-3">
-      <Link
-        href="/my"
-        className={`text-sm font-medium transition-colors ${
-          pathname === "/my" ? "text-accent" : "text-zinc-400 hover:text-zinc-200"
-        }`}
-      >
-        {t("nav.myProjects")}
-      </Link>
       {user?.picture ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
