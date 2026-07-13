@@ -28,6 +28,16 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   return Response.json({ project });
 }
 
+// 删除项目(级联删除所有关联数据)
+export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  if (!checkApiKey(req)) return unauthorized();
+  const { id } = await ctx.params;
+  const exists = await prisma.project.findUnique({ where: { id }, select: { id: true } });
+  if (!exists) return notFoundJson();
+  await prisma.project.delete({ where: { id } });
+  return Response.json({ deleted: true });
+}
+
 // 更新项目信息 / 推进阶段
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
   if (!checkApiKey(req)) return unauthorized();

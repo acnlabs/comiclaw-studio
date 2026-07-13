@@ -44,6 +44,15 @@ usage() {
   shot-version <shotId> '<json>'        分镜新版画面 {mediaUrl*, mediaType: IMAGE|VIDEO, notes}
   push-film <projectId> '<json>'        推送成片 {videoUrl*, duration, notes}
 
+删除
+  delete-project <projectId>            删除项目(级联删除所有交付物)
+  delete-asset <assetId>               删除资产(含所有版本)
+  delete-shot <shotId>                 删除分镜(含所有版本)
+  delete-script-version <id>           删除单个剧本版本
+  delete-film-version <id>             删除单个成片版本
+  delete-release <releaseId>           删除发行记录
+  delete-work <workId>                 删除平台作品
+
 文件上传
   upload-file <文件路径> [文件名]       上传本地文件到 Studio 存储,返回 {url}
                                         用法:URL=$(studio.sh upload-file /path/to/video.mp4 | python3 -c "import sys,json;print(json.load(sys.stdin)['url'])")
@@ -75,6 +84,13 @@ case "$cmd" in
   add-release)     call POST "/api/agent/projects/$2/releases" "$3" ;;
   update-release)  call PATCH "/api/agent/releases/$2" "$3" ;;
   publish-work)    call POST "/api/agent/works" "$2" ;;
+  delete-project)  call DELETE "/api/agent/projects/$2" ;;
+  delete-asset)    call DELETE "/api/agent/assets/$2" ;;
+  delete-shot)     call DELETE "/api/agent/shots/$2" ;;
+  delete-script-version) call DELETE "/api/agent/script-versions/$2" ;;
+  delete-film-version)   call DELETE "/api/agent/film-versions/$2" ;;
+  delete-release)  call DELETE "/api/agent/releases/$2" ;;
+  delete-work)     call DELETE "/api/agent/works/$2" ;;
   upload-file)
     # 上传本地文件到 Studio Blob 存储,返回公网 URL
     # 用法: studio.sh upload-file <文件路径> [自定义文件名]

@@ -2,7 +2,6 @@ import { prisma } from "@/lib/db";
 import { emitProjectUpdate } from "@/lib/events";
 import { checkApiKey, unauthorized, badRequest, notFoundJson } from "@/lib/auth";
 
-// 更新分镜文字信息 / 资产引用
 export async function PATCH(req: Request, ctx: { params: Promise<{ shotId: string }> }) {
   if (!checkApiKey(req)) return unauthorized();
   const { shotId } = await ctx.params;
@@ -32,4 +31,17 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ shotId: strin
   });
   emitProjectUpdate(shot.projectId, "shot.updated");
   return Response.json({ shot: updated });
+}
+
+export async function DELETE(req: Request, ctx: { params: Promise<{ shotId: string }> }) {
+  if (!checkApiKey(req)) return unauthorized();
+  const { shotId } = await ctx.params;
+  const shot = await prisma.shot.findUnique({
+    where: { id: shotId },
+    select: { id: true, projectId: true },
+  });
+  if (!shot) return notFoundJson();
+  await prisma.shot.delete({ where: { id: shotId } });
+  emitProjectUpdate(shot.projectId, "shot.deleted");
+  return Response.json({ deleted: true });
 }

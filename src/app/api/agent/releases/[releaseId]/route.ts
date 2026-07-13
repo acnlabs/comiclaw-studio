@@ -3,7 +3,6 @@ import { emitProjectUpdate } from "@/lib/events";
 import { syncProjectToWork } from "@/lib/publish";
 import { checkApiKey, unauthorized, badRequest, notFoundJson } from "@/lib/auth";
 
-// 更新发行状态(如上架成功后回填链接)
 export async function PATCH(req: Request, ctx: { params: Promise<{ releaseId: string }> }) {
   if (!checkApiKey(req)) return unauthorized();
   const { releaseId } = await ctx.params;
@@ -30,4 +29,17 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ releaseId: st
   }
   emitProjectUpdate(release.projectId, "release.updated");
   return Response.json({ release: updated });
+}
+
+export async function DELETE(req: Request, ctx: { params: Promise<{ releaseId: string }> }) {
+  if (!checkApiKey(req)) return unauthorized();
+  const { releaseId } = await ctx.params;
+  const release = await prisma.release.findUnique({
+    where: { id: releaseId },
+    select: { id: true, projectId: true },
+  });
+  if (!release) return notFoundJson();
+  await prisma.release.delete({ where: { id: releaseId } });
+  emitProjectUpdate(release.projectId, "release.deleted");
+  return Response.json({ deleted: true });
 }
