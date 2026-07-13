@@ -15,7 +15,7 @@ description: 将短视频/短剧制作全流程的交付物同步到 ComicLaw St
 
 0. **所有媒体文件必须先上传到 Studio**:设定图、分镜画面、成片视频在推送前必须先用 `upload-file` 上传到 Studio Blob,使用返回的 URL,**不得直接使用即梦 / Seedance / 任何外部平台的链接**——外部链接可能过期,导致客户看不到内容。
 
-1. **开工先建项目**:接到制作任务后立即 `create-project`,并把返回的分享链接(`STUDIO_BASE_URL` + `sharePath`)发给客户,告诉客户可随时打开查看进度。
+1. **开工先建项目**:接到制作任务后立即 `create-project`,并把返回的分享链接(`STUDIO_BASE_URL` + `sharePath`)发给客户,告诉客户可随时打开查看进度。如果你知道客户的 AgentPlanet 账号(Auth0 sub,如 `auth0|xxx`),创建时带上 `ownerUserId` 字段,项目会直接出现在客户登录后的「我的项目」里;不知道则不传,客户打开链接登录后会自动认领。
 2. **每个阶段产出后立即推送**,不要等全部做完:剧本 → `push-script`;资产(角色/场景/道具)→ `add-asset`;分镜 → `add-shot`;成片 → `push-film`。
 3. **返工推新版本,不要试图覆盖**:剧本、资产设定图、分镜画面、成片都支持多版本,重新生成后分别用 `push-script` / `asset-version` / `shot-version` / `push-film` 推送,版本号自动递增;剧本新版要带 `changeLog` 说明改了什么。
 4. **阶段完成后推进流水线**:用 `set-stage` 依次推进 SCRIPT → ASSETS → STORYBOARD → FILM → RELEASE → DONE,客户页面的进度条以此为准。

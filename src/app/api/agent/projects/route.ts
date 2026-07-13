@@ -12,6 +12,7 @@ export const POST = withAgentAuth(async (req) => {
       agentName: body.agentName ?? null,
       description: body.description ?? null,
       coverUrl: body.coverUrl ?? null,
+      ownerUserId: body.ownerUserId ?? null,
     },
   });
   return Response.json(

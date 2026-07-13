@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import SiteNav from "@/components/SiteNav";
+import AuthProvider from "@/components/AuthProvider";
 import { LocaleProvider } from "@/components/LocaleProvider";
 import { getLocale } from "@/lib/locale";
 import { translate } from "@/lib/i18n";
@@ -22,10 +23,12 @@ export default async function RootLayout({
   return (
     <html lang={locale === "zh" ? "zh-CN" : "en"} className="h-full antialiased">
       <body className="min-h-full flex flex-col">
-        <LocaleProvider locale={locale}>
-          <SiteNav />
-          {children}
-        </LocaleProvider>
+        <AuthProvider>
+          <LocaleProvider locale={locale}>
+            <SiteNav />
+            {children}
+          </LocaleProvider>
+        </AuthProvider>
       </body>
     </html>
   );

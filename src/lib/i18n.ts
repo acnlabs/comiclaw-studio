@@ -7,6 +7,9 @@ const zh = {
   "nav.recommend": "推荐",
   "nav.series": "短剧",
   "nav.studio": "Studio",
+  "nav.login": "登录",
+  "nav.logout": "退出",
+  "nav.myProjects": "我的项目",
 
   // 通用
   "common.video": "短视频",
@@ -88,6 +91,15 @@ const zh = {
   "panel.release.pending": "待上架",
   "panel.release.watch": "观看",
 
+  // 我的项目 / 认领
+  "my.title": "我的项目",
+  "my.subtitle": "你认领过的所有项目,随时回来查看制作进度",
+  "my.empty": "还没有项目。打开 comiclaw 发给你的项目链接并登录,项目会自动加入这里。",
+  "my.loginPrompt": "登录后查看你的项目",
+  "claim.hint": "登录后可随时在「我的项目」中找到该项目",
+  "claim.login": "登录保存",
+  "claim.saved": "已加入我的项目",
+
   // 404
   "notFound.title": "页面不存在",
   "notFound.desc": "链接可能有误或项目已被移除。请核对 comiclaw 发给你的专属项目链接。",
@@ -101,6 +113,9 @@ const en: Record<MessageKey, string> = {
   "nav.recommend": "For You",
   "nav.series": "Series",
   "nav.studio": "Studio",
+  "nav.login": "Sign in",
+  "nav.logout": "Sign out",
+  "nav.myProjects": "My Projects",
 
   "common.video": "Video",
   "common.series": "Series",
@@ -173,6 +188,15 @@ const en: Record<MessageKey, string> = {
   "panel.release.published": "Published · {date}",
   "panel.release.pending": "Pending",
   "panel.release.watch": "Watch",
+
+  "my.title": "My Projects",
+  "my.subtitle": "All projects you've claimed — check production progress anytime",
+  "my.empty":
+    "No projects yet. Open the project link comiclaw sent you and sign in — it will be added here automatically.",
+  "my.loginPrompt": "Sign in to see your projects",
+  "claim.hint": "Sign in to keep this project in My Projects",
+  "claim.login": "Sign in to save",
+  "claim.saved": "Added to My Projects",
 
   "notFound.title": "Page not found",
   "notFound.desc":

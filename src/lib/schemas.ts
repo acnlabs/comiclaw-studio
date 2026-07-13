@@ -23,6 +23,8 @@ export const createProjectSchema = z.object({
   agentName: optionalStr,
   description: optionalStr,
   coverUrl: optionalStr,
+  // 客户的 AgentPlanet 账号(Auth0 sub);传入后项目直接归属该用户
+  ownerUserId: optionalStr,
 });
 
 export const updateProjectSchema = z.object({

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useT } from "@/components/LocaleProvider";
 import LocaleToggle from "@/components/LocaleToggle";
+import UserMenu from "@/components/UserMenu";
 import type { MessageKey } from "@/lib/i18n";
 
 const MENUS: { href: string; labelKey: MessageKey }[] = [
@@ -41,7 +42,8 @@ export default function SiteNav() {
             </Link>
           ))}
         </nav>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-3">
+          <UserMenu />
           <LocaleToggle />
         </div>
       </div>

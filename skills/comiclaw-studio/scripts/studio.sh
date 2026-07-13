@@ -30,7 +30,8 @@ usage() {
 
 项目
   list-projects                         项目列表
-  create-project '<json>'               创建项目 {name*, clientName, agentName, description, coverUrl}
+  create-project '<json>'               创建项目 {name*, clientName, agentName, description, coverUrl,
+                                        ownerUserId(客户的 AgentPlanet 账号 sub,可选;传入后项目自动归属该客户)}
   get-project <projectId>               项目全量数据(含各阶段交付物与版本)
   update-project <projectId> '<json>'   更新信息 {name, description, coverUrl, ...}
   set-stage <projectId> <STAGE>         推进阶段 SCRIPT|ASSETS|STORYBOARD|FILM|RELEASE|DONE

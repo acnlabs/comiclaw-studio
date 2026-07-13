@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import type { ProjectData } from "@/lib/types";
 import StudioWorkspace from "@/components/StudioWorkspace";
 import LiveRefresh from "@/components/LiveRefresh";
+import AutoClaim from "@/components/AutoClaim";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +41,9 @@ export default async function ProjectPage(props: {
   return (
     <>
       <LiveRefresh token={token} />
+      <div className="px-4 sm:px-6">
+        <AutoClaim shareToken={token} hasOwner={Boolean(project.ownerUserId)} />
+      </div>
       <StudioWorkspace project={data} />
     </>
   );
