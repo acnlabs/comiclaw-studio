@@ -58,9 +58,9 @@ export async function POST(req: Request) {
     return Response.json({ url: result.url }, { status: 201 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes("not configured")) {
+    if (/not configured|credentials|BLOB_READ_WRITE_TOKEN/i.test(msg)) {
       return Response.json(
-        { error: `Storage not configured: ${msg}` },
+        { error: "Storage not configured on server" },
         { status: 503 }
       );
     }

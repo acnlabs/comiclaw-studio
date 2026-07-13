@@ -92,10 +92,11 @@ case "$cmd" in
   delete-release)  call DELETE "/api/agent/releases/$2" ;;
   delete-work)     call DELETE "/api/agent/works/$2" ;;
   upload-file)
-    # 上传本地文件到 Studio Blob 存储,返回公网 URL
+    # 上传本地媒体文件到 Studio 存储,返回公网 URL
     # 用法: studio.sh upload-file <文件路径> [自定义文件名]
-    local filepath="$2"
-    local fname="${3:-$(basename "$filepath")}"
+    # 限制:单文件 ≤ 200MB;仅支持图片(png/jpeg/gif/webp/svg)与视频(mp4/webm/mov)
+    filepath="$2"
+    fname="${3:-$(basename "$filepath")}"
     if [[ ! -f "$filepath" ]]; then
       echo "error: file not found: $filepath" >&2; exit 1
     fi

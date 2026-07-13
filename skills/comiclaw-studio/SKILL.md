@@ -79,6 +79,11 @@ $S set-stage <projectId> DONE
 
 ## 注意事项
 
-- 分镜 `order` 在同一项目内不可重复,重复会返回 409;调整镜头文字信息用 `update-shot`。
-- 阶段值必须是 SCRIPT|ASSETS|STORYBOARD|FILM|RELEASE|DONE 之一,其他值会返回 400。
-- 接口返回 401 时说明 `STUDIO_API_KEY` 配置错误,提醒运营者检查技能配置。
+- **媒体字段必须是完整 URL**:`imageUrl` / `mediaUrl` / `videoUrl` 必须是 `upload-file` 返回的完整 http(s) URL,传相对路径或空值会返回 400。
+- **上传限制**:单文件 ≤ 200MB;仅支持图片(png/jpeg/gif/webp/svg)与视频(mp4/webm/mov),其他类型返回 400。
+- 分镜 `order` 必须是正整数,同一项目内不可重复(重复返回 409);调整镜头文字信息用 `update-shot`。
+- 分镜引用的 `assetIds` 必须属于**当前项目**,否则返回 400(不能跨项目引用资产)。
+- `duration` 必须为正数;`publishedAt` 需为合法日期(如 `2026-07-13T08:00:00Z`)。
+- 枚举值区分大小写:阶段 SCRIPT|ASSETS|STORYBOARD|FILM|RELEASE|DONE;资产 CHARACTER|SCENE|PROP;媒体 IMAGE|VIDEO;发行 PENDING|PUBLISHED;作品 VIDEO|SERIES。传错返回 400。
+- 接口返回:400=输入校验失败(错误信息会指出具体字段);401=`STUDIO_API_KEY` 错误;404=资源不存在;409=唯一约束冲突。
+- 返回 401 时提醒运营者检查技能配置的 `STUDIO_API_KEY`。
