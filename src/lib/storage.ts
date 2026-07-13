@@ -97,10 +97,8 @@ async function uploadS3Compatible(
   });
 
   const key = `studio/${Date.now()}-${filename}`;
-  const buf =
-    body instanceof Blob
-      ? Buffer.from(await body.arrayBuffer())
-      : Buffer.from(body);
+  const arrayBuf = body instanceof Blob ? await body.arrayBuffer() : body;
+  const buf = Buffer.from(new Uint8Array(arrayBuf instanceof ArrayBuffer ? arrayBuf : arrayBuf));
 
   await client.send(
     new PutObjectCommand({
