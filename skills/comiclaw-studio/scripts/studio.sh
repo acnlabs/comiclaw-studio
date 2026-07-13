@@ -44,6 +44,11 @@ usage() {
   shot-version <shotId> '<json>'        分镜新版画面 {mediaUrl*, mediaType: IMAGE|VIDEO, notes}
   push-film <projectId> '<json>'        推送成片 {videoUrl*, duration, notes}
 
+文件上传
+  upload-file <文件路径> [文件名]       上传本地文件到 Studio 存储,返回 {url}
+                                        用法:URL=$(studio.sh upload-file /path/to/video.mp4 | python3 -c "import sys,json;print(json.load(sys.stdin)['url'])")
+                                        然后把 $URL 填入 push-film / shot-version / add-asset 等的 mediaUrl/videoUrl/imageUrl 字段
+
 发行与作品
   add-release <projectId> '<json>'      新增发行记录 {platform*, url, status, notes}
   update-release <releaseId> '<json>'   更新发行状态 {status: PENDING|PUBLISHED, url, publishedAt}
@@ -70,6 +75,19 @@ case "$cmd" in
   add-release)     call POST "/api/agent/projects/$2/releases" "$3" ;;
   update-release)  call PATCH "/api/agent/releases/$2" "$3" ;;
   publish-work)    call POST "/api/agent/works" "$2" ;;
+  upload-file)
+    # 上传本地文件到 Studio Blob 存储,返回公网 URL
+    # 用法: studio.sh upload-file <文件路径> [自定义文件名]
+    local filepath="$2"
+    local fname="${3:-$(basename "$filepath")}"
+    if [[ ! -f "$filepath" ]]; then
+      echo "error: file not found: $filepath" >&2; exit 1
+    fi
+    curl -sS -X POST "$BASE/api/agent/upload" \
+      -H "Authorization: Bearer $STUDIO_API_KEY" \
+      -F "file=@${filepath};filename=${fname}"
+    echo
+    ;;
   ""|-h|--help|help) usage ;;
   *) echo "error: unknown command '$cmd'" >&2; usage >&2; exit 1 ;;
 esac
