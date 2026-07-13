@@ -238,7 +238,10 @@ async function main() {
 
   // ---------- 平台作品(推荐 / 短剧) ----------
 
-  await prisma.work.deleteMany({});
+  // 仅清理演示 seed 生成的作品,避免误删真实数据
+  await prisma.work.deleteMany({
+    where: { title: { in: ["「漫剧大虾」智能体 15s 宣传短视频", "智能体出道记", "大虾闯片场"] } },
+  });
 
   // 已发行的宣传片作品(模拟发行上架后同步发布的结果)
   await prisma.work.create({

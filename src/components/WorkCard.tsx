@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { fmtDate } from "@/lib/format";
 import { useT } from "@/components/LocaleProvider";
 
 export interface WorkCardData {
@@ -16,7 +15,7 @@ export interface WorkCardData {
 }
 
 export default function WorkCard({ work }: { work: WorkCardData }) {
-  const { t, tCategory } = useT();
+  const { t, tCategory, fmtDate } = useT();
 
   return (
     <Link

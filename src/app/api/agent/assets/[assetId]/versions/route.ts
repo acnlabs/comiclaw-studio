@@ -1,13 +1,15 @@
 import { prisma } from "@/lib/db";
 import { emitProjectUpdate } from "@/lib/events";
-import { checkApiKey, unauthorized, badRequest, notFoundJson } from "@/lib/auth";
+import { withAgentAuth, parseBody, withRetry } from "@/lib/api";
+import { notFoundJson } from "@/lib/auth";
+import { assetVersionSchema } from "@/lib/schemas";
 
-// 推送资产新版设定图
-export async function POST(req: Request, ctx: { params: Promise<{ assetId: string }> }) {
-  if (!checkApiKey(req)) return unauthorized();
+type Ctx = { params: Promise<{ assetId: string }> };
+
+// 推送资产新版设定图(版本号自动递增,并发安全)
+export const POST = withAgentAuth(async (req, ctx: Ctx) => {
   const { assetId } = await ctx.params;
-  const body = await req.json().catch(() => null);
-  if (!body?.imageUrl) return badRequest("`imageUrl` is required");
+  const body = await parseBody(req, assetVersionSchema);
 
   const asset = await prisma.asset.findUnique({
     where: { id: assetId },
@@ -15,20 +17,22 @@ export async function POST(req: Request, ctx: { params: Promise<{ assetId: strin
   });
   if (!asset) return notFoundJson();
 
-  const latest = await prisma.assetVersion.findFirst({
-    where: { assetId },
-    orderBy: { version: "desc" },
-    select: { version: true },
+  const created = await withRetry(async () => {
+    const latest = await prisma.assetVersion.findFirst({
+      where: { assetId },
+      orderBy: { version: "desc" },
+      select: { version: true },
+    });
+    return prisma.assetVersion.create({
+      data: {
+        assetId,
+        version: (latest?.version ?? 0) + 1,
+        imageUrl: body.imageUrl,
+        notes: body.notes ?? null,
+      },
+    });
   });
 
-  const created = await prisma.assetVersion.create({
-    data: {
-      assetId,
-      version: (latest?.version ?? 0) + 1,
-      imageUrl: body.imageUrl,
-      notes: body.notes ?? null,
-    },
-  });
   emitProjectUpdate(asset.projectId, "asset.version.created");
   return Response.json({ assetVersion: created }, { status: 201 });
-}
+});

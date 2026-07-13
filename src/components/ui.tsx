@@ -22,6 +22,8 @@ export function VersionPills({
         <button
           key={v}
           onClick={() => onSelect(v)}
+          aria-pressed={v === selected}
+          aria-label={`V${v}`}
           className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
             v === selected
               ? "bg-accent text-zinc-950"

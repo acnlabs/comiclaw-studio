@@ -3,12 +3,11 @@
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import type { ScriptVersionData } from "@/lib/types";
-import { fmtDate } from "@/lib/format";
 import { useT } from "@/components/LocaleProvider";
 import { VersionPills, EmptyState } from "@/components/ui";
 
 export default function ScriptPanel({ versions }: { versions: ScriptVersionData[] }) {
-  const { t } = useT();
+  const { t, fmtDate } = useT();
   const [selected, setSelected] = useState(versions[0]?.version ?? 1);
   const current = versions.find((v) => v.version === selected) ?? versions[0];
 

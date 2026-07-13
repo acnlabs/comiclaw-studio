@@ -1,4 +1,4 @@
-import { checkApiKey, unauthorized } from "@/lib/auth";
+import { checkApiKey, unauthorized, serverError } from "@/lib/auth";
 import { execFileSync } from "child_process";
 import { resolve } from "path";
 
@@ -7,13 +7,13 @@ export async function POST(req: Request) {
   if (!checkApiKey(req)) return unauthorized();
   const prismaBin = resolve(process.cwd(), "node_modules", ".bin", "prisma");
   try {
-    const out = execFileSync(prismaBin, ["migrate", "deploy"], {
+    execFileSync(prismaBin, ["migrate", "deploy"], {
       env: { ...process.env },
-      encoding: "utf8",
+      stdio: "ignore",
     });
-    return Response.json({ ok: true, output: out });
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return Response.json({ ok: false, error: msg }, { status: 500 });
+    return Response.json({ ok: true });
+  } catch (err) {
+    console.error("[migrate] failed:", err);
+    return serverError("Migration failed");
   }
 }

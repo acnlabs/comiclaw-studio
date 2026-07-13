@@ -2,11 +2,10 @@
 
 import type { ReleaseData } from "@/lib/types";
 import { useT } from "@/components/LocaleProvider";
-import { fmtDate } from "@/lib/format";
 import { EmptyState, Badge } from "@/components/ui";
 
 export default function ReleasePanel({ releases }: { releases: ReleaseData[] }) {
-  const { t } = useT();
+  const { t, fmtDate } = useT();
   if (releases.length === 0) return <EmptyState text={t("panel.release.empty")} />;
 
   return (
@@ -33,7 +32,7 @@ export default function ReleasePanel({ releases }: { releases: ReleaseData[] }) 
             <a
               href={r.url}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="shrink-0 rounded-full bg-accent px-4 py-1.5 text-sm font-medium text-zinc-950 transition-opacity hover:opacity-90"
             >
               {t("panel.release.watch")}

@@ -29,7 +29,7 @@ export default async function WorkPage(props: { params: Promise<{ id: string }> 
         </span>
         <span>
           {translate(locale, "series.publishedAt", {
-            date: fmtDate(work.publishedAt.toISOString()),
+            date: fmtDate(work.publishedAt.toISOString(), locale),
           })}
         </span>
       </div>

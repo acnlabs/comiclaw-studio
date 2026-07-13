@@ -5,7 +5,6 @@ import Link from "next/link";
 import type { ProjectData, StageKey } from "@/lib/types";
 import type { MessageKey } from "@/lib/i18n";
 import { useT } from "@/components/LocaleProvider";
-import { fmtDate } from "@/lib/format";
 import PipelineHeader from "@/components/PipelineHeader";
 import ScriptPanel from "@/components/panels/ScriptPanel";
 import AssetsPanel from "@/components/panels/AssetsPanel";
@@ -24,7 +23,7 @@ const TABS: { key: TabKey }[] = [
 ];
 
 export default function StudioWorkspace({ project }: { project: ProjectData }) {
-  const { t } = useT();
+  const { t, fmtDate } = useT();
   const initialTab: TabKey =
     project.currentStage === "DONE" ? "RELEASE" : (project.currentStage as TabKey);
   const [tab, setTab] = useState<TabKey>(

@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/db";
 import { emitProjectUpdate } from "@/lib/events";
-import { checkApiKey, unauthorized, notFoundJson } from "@/lib/auth";
+import { withAgentAuth } from "@/lib/api";
+import { notFoundJson } from "@/lib/auth";
 
-export async function DELETE(req: Request, ctx: { params: Promise<{ assetId: string }> }) {
-  if (!checkApiKey(req)) return unauthorized();
+type Ctx = { params: Promise<{ assetId: string }> };
+
+export const DELETE = withAgentAuth(async (_req, ctx: Ctx) => {
   const { assetId } = await ctx.params;
   const asset = await prisma.asset.findUnique({
     where: { id: assetId },
@@ -13,4 +15,4 @@ export async function DELETE(req: Request, ctx: { params: Promise<{ assetId: str
   await prisma.asset.delete({ where: { id: assetId } });
   emitProjectUpdate(asset.projectId, "asset.deleted");
   return Response.json({ deleted: true });
-}
+});

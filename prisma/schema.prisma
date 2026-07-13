@@ -29,6 +29,7 @@ model Project {
   shots          Shot[]
   filmVersions   FilmVersion[]
   releases       Release[]
+  work           Work?
 }
 
 // ---------- 剧本 ----------
@@ -153,6 +154,7 @@ model Work {
   projectId   String?  @unique // 来源 studio 项目(同步发布时填写)
   publishedAt DateTime @default(now())
 
+  project  Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   episodes Episode[]
 }
 

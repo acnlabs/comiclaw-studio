@@ -4,11 +4,10 @@ import { useState } from "react";
 import { ASSET_TYPE_KEYS, type AssetData } from "@/lib/types";
 import type { MessageKey } from "@/lib/i18n";
 import { useT } from "@/components/LocaleProvider";
-import { fmtDate } from "@/lib/format";
 import { VersionPills, EmptyState } from "@/components/ui";
 
 function AssetCard({ asset }: { asset: AssetData }) {
-  const { t } = useT();
+  const { t, fmtDate } = useT();
   const [selected, setSelected] = useState(asset.versions[0]?.version ?? 1);
   const current = asset.versions.find((v) => v.version === selected) ?? asset.versions[0];
 

@@ -32,6 +32,9 @@ export async function uploadFile(
   if (provider === "oss" || provider === "cos") {
     return uploadS3Compatible(body, filename, contentType, provider);
   }
+  if (provider !== "blob") {
+    throw new Error(`Unknown STORAGE_PROVIDER "${provider}" (expected blob|oss|cos)`);
+  }
 
   return uploadBlob(body, filename, contentType);
 }

@@ -1,12 +1,10 @@
 import { prisma } from "@/lib/db";
-import { checkApiKey, unauthorized, badRequest } from "@/lib/auth";
+import { withAgentAuth, parseBody } from "@/lib/api";
+import { createProjectSchema } from "@/lib/schemas";
 
 // 创建项目
-export async function POST(req: Request) {
-  if (!checkApiKey(req)) return unauthorized();
-  const body = await req.json().catch(() => null);
-  if (!body?.name) return badRequest("`name` is required");
-
+export const POST = withAgentAuth(async (req) => {
+  const body = await parseBody(req, createProjectSchema);
   const project = await prisma.project.create({
     data: {
       name: body.name,
@@ -16,7 +14,6 @@ export async function POST(req: Request) {
       coverUrl: body.coverUrl ?? null,
     },
   });
-
   return Response.json(
     {
       id: project.id,
@@ -25,11 +22,10 @@ export async function POST(req: Request) {
     },
     { status: 201 }
   );
-}
+});
 
-// 项目列表(供 agent 查询自己创建过的项目)
-export async function GET(req: Request) {
-  if (!checkApiKey(req)) return unauthorized();
+// 项目列表
+export const GET = withAgentAuth(async () => {
   const projects = await prisma.project.findMany({
     orderBy: { updatedAt: "desc" },
     select: {
@@ -43,4 +39,4 @@ export async function GET(req: Request) {
     },
   });
   return Response.json({ projects });
-}
+});

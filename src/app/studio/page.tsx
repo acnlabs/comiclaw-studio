@@ -1,23 +1,25 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 import { fmtDate } from "@/lib/format";
 import { getLocale } from "@/lib/locale";
 import { translate, type MessageKey } from "@/lib/i18n";
+import { checkAdminKey } from "@/lib/auth";
+import { ADMIN_COOKIE } from "@/app/api/admin/login/route";
+import AdminLogin from "@/components/AdminLogin";
 
 export const dynamic = "force-dynamic";
 
-// Studio 入口:普通访客看到介绍页;携带管理密钥(?key=<ADMIN_KEY>)显示全部项目。
-// 客户通过 comiclaw 发送的专属链接 /p/<shareToken> 直达自己的项目。
-export default async function StudioPage(props: {
-  searchParams: Promise<{ key?: string }>;
-}) {
+// Studio 入口:普通访客看到介绍页 + 登录框;
+// 已登录管理员(HttpOnly Cookie 校验)显示全部项目。
+// 客户通过专属链接 /p/<shareToken> 直达自己的项目。
+export default async function StudioPage() {
   const locale = await getLocale();
   const t = (key: MessageKey, params?: Record<string, string | number>) =>
     translate(locale, key, params);
 
-  const { key } = await props.searchParams;
-  const adminKey = process.env.ADMIN_KEY;
-  const isAdmin = Boolean(adminKey) && key === adminKey;
+  const cookieStore = await cookies();
+  const isAdmin = checkAdminKey(cookieStore.get(ADMIN_COOKIE)?.value);
 
   const projects = isAdmin
     ? await prisma.project.findMany({
@@ -38,21 +40,20 @@ export default async function StudioPage(props: {
     <div className="mx-auto w-full max-w-4xl flex-1 px-4 py-12 sm:px-6">
       <div className="text-xs tracking-widest text-accent">COMICLAW STUDIO</div>
       <h1 className="mt-2 text-3xl font-bold text-zinc-50">{t("studio.title")}</h1>
-      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-400">
-        {t("studio.intro")}
-      </p>
+      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-400">{t("studio.intro")}</p>
 
       {!isAdmin ? (
-        <div className="mt-12 rounded-2xl border border-zinc-800 bg-zinc-900/50 px-6 py-8">
-          <p className="text-sm text-zinc-300">{t("studio.useLink")}</p>
-          <p className="mt-2 font-mono text-sm text-accent">{t("studio.linkExample")}</p>
-          <p className="mt-4 text-xs text-zinc-500">{t("studio.linkPrivacy")}</p>
-        </div>
+        <>
+          <div className="mt-12 rounded-2xl border border-zinc-800 bg-zinc-900/50 px-6 py-8">
+            <p className="text-sm text-zinc-300">{t("studio.useLink")}</p>
+            <p className="mt-2 font-mono text-sm text-accent">{t("studio.linkExample")}</p>
+            <p className="mt-4 text-xs text-zinc-500">{t("studio.linkPrivacy")}</p>
+          </div>
+          <AdminLogin />
+        </>
       ) : (
         <>
-          <h2 className="mt-12 mb-4 text-sm font-medium text-zinc-500">
-            {t("studio.allProjects")}
-          </h2>
+          <h2 className="mt-12 mb-4 text-sm font-medium text-zinc-500">{t("studio.allProjects")}</h2>
           {projects.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-zinc-800 py-16 text-center text-sm text-zinc-500">
               {t("studio.noProjects")}
@@ -73,7 +74,7 @@ export default async function StudioPage(props: {
                             {t("common.client")}:{p.clientName} ·{" "}
                           </>
                         )}
-                        {t("common.updatedAt", { date: fmtDate(p.updatedAt.toISOString()) })}
+                        {t("common.updatedAt", { date: fmtDate(p.updatedAt.toISOString(), locale) })}
                       </div>
                     </div>
                     <span className="shrink-0 rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">

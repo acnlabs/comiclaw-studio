@@ -130,6 +130,7 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
       <div className="absolute right-3 top-1/2 flex -translate-y-1/2 flex-col gap-2 sm:right-6">
         <button
           onClick={() => setMuted((m) => !m)}
+          aria-label={muted ? t("feed.unmute") : t("feed.mute")}
           title={muted ? t("feed.unmute") : t("feed.mute")}
           className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-700 bg-zinc-900/80 text-base backdrop-blur transition-colors hover:bg-zinc-800"
         >
@@ -137,6 +138,7 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
         </button>
         <button
           onClick={() => scrollByPage(-1)}
+          aria-label={t("feed.prev")}
           title={t("feed.prev")}
           className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-700 bg-zinc-900/80 text-zinc-300 backdrop-blur transition-colors hover:bg-zinc-800"
         >
@@ -144,6 +146,7 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
         </button>
         <button
           onClick={() => scrollByPage(1)}
+          aria-label={t("feed.next")}
           title={t("feed.next")}
           className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-700 bg-zinc-900/80 text-zinc-300 backdrop-blur transition-colors hover:bg-zinc-800"
         >

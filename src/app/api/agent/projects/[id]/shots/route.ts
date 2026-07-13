@@ -1,13 +1,15 @@
 import { prisma } from "@/lib/db";
 import { emitProjectUpdate } from "@/lib/events";
-import { checkApiKey, unauthorized, badRequest, notFoundJson } from "@/lib/auth";
+import { withAgentAuth, parseBody } from "@/lib/api";
+import { notFoundJson, badRequest, conflict } from "@/lib/auth";
+import { createShotSchema } from "@/lib/schemas";
+
+type Ctx = { params: Promise<{ id: string }> };
 
 // 创建分镜(可携带首版画面与资产引用)
-export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  if (!checkApiKey(req)) return unauthorized();
+export const POST = withAgentAuth(async (req, ctx: Ctx) => {
   const { id } = await ctx.params;
-  const body = await req.json().catch(() => null);
-  if (!body || typeof body.order !== "number") return badRequest("`order` (number) is required");
+  const body = await parseBody(req, createShotSchema);
 
   const project = await prisma.project.findUnique({ where: { id }, select: { id: true } });
   if (!project) return notFoundJson();
@@ -16,9 +18,18 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     where: { projectId_order: { projectId: id, order: body.order } },
     select: { id: true },
   });
-  if (dup) return Response.json({ error: `Shot order ${body.order} already exists` }, { status: 409 });
+  if (dup) return conflict(`Shot order ${body.order} already exists`);
 
-  const assetIds: string[] = Array.isArray(body.assetIds) ? body.assetIds : [];
+  const assetIds = body.assetIds ?? [];
+  if (assetIds.length > 0) {
+    // 校验引用的资产都属于当前项目,防止跨项目引用
+    const count = await prisma.asset.count({
+      where: { id: { in: assetIds }, projectId: id },
+    });
+    if (count !== new Set(assetIds).size) {
+      return badRequest("Some assetIds do not belong to this project");
+    }
+  }
 
   const shot = await prisma.shot.create({
     data: {
@@ -34,7 +45,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
               version: 1,
               mediaUrl: body.mediaUrl,
               mediaType: body.mediaType ?? "IMAGE",
-              notes: body.notes ?? null,
+              notes: null,
             },
           }
         : undefined,
@@ -44,4 +55,4 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   });
   emitProjectUpdate(id, "shot.created");
   return Response.json({ shot }, { status: 201 });
-}
+});

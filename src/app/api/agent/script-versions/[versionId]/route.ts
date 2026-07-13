@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/db";
 import { emitProjectUpdate } from "@/lib/events";
-import { checkApiKey, unauthorized, notFoundJson } from "@/lib/auth";
+import { withAgentAuth } from "@/lib/api";
+import { notFoundJson } from "@/lib/auth";
 
-export async function DELETE(req: Request, ctx: { params: Promise<{ versionId: string }> }) {
-  if (!checkApiKey(req)) return unauthorized();
+type Ctx = { params: Promise<{ versionId: string }> };
+
+export const DELETE = withAgentAuth(async (_req, ctx: Ctx) => {
   const { versionId } = await ctx.params;
   const sv = await prisma.scriptVersion.findUnique({
     where: { id: versionId },
@@ -13,4 +15,4 @@ export async function DELETE(req: Request, ctx: { params: Promise<{ versionId: s
   await prisma.scriptVersion.delete({ where: { id: versionId } });
   emitProjectUpdate(sv.projectId, "script.deleted");
   return Response.json({ deleted: true });
-}
+});

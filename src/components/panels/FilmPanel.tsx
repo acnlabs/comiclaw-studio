@@ -3,11 +3,11 @@
 import { useState } from "react";
 import type { FilmVersionData } from "@/lib/types";
 import { useT } from "@/components/LocaleProvider";
-import { fmtDate, fmtDuration } from "@/lib/format";
+import { fmtDuration } from "@/lib/format";
 import { VersionPills, EmptyState } from "@/components/ui";
 
 export default function FilmPanel({ versions }: { versions: FilmVersionData[] }) {
-  const { t } = useT();
+  const { t, fmtDate } = useT();
   const [selected, setSelected] = useState(versions[0]?.version ?? 1);
   const current = versions.find((v) => v.version === selected) ?? versions[0];
 
