@@ -100,6 +100,14 @@ const zh = {
   "claim.login": "登录保存",
   "claim.saved": "已加入我的项目",
 
+  // 私密模式
+  "privacy.locked": "该项目已设为私密",
+  "privacy.lockedDesc": "请使用项目所有者的账号登录后查看",
+  "privacy.denied": "你没有权限查看该项目",
+  "privacy.toggle": "仅自己可见",
+  "privacy.on": "已开启私密:只有你能查看该项目",
+  "privacy.off": "链接可见:知道链接的人都能查看",
+
   // 404
   "notFound.title": "页面不存在",
   "notFound.desc": "链接可能有误或项目已被移除。请核对 comiclaw 发给你的专属项目链接。",
@@ -197,6 +205,13 @@ const en: Record<MessageKey, string> = {
   "claim.hint": "Sign in to keep this project in My Projects",
   "claim.login": "Sign in to save",
   "claim.saved": "Added to My Projects",
+
+  "privacy.locked": "This project is private",
+  "privacy.lockedDesc": "Sign in with the owner account to view it",
+  "privacy.denied": "You don't have access to this project",
+  "privacy.toggle": "Only visible to me",
+  "privacy.on": "Private: only you can view this project",
+  "privacy.off": "Link sharing: anyone with the link can view",
 
   "notFound.title": "Page not found",
   "notFound.desc":

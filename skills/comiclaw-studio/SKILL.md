@@ -71,6 +71,12 @@ $S update-release <releaseId> '{"status":"PUBLISHED","url":"https://douyin.com/.
 $S set-stage <projectId> DONE
 ```
 
+## 隐私说明(客户询问时告知)
+
+- 项目链接默认「知道链接的人可查看」,方便客户转发给同事;
+- 客户登录并认领项目后,可在项目页开启「仅自己可见」,开启后链接对其他人失效;
+- 客户要求保密时,提醒客户:打开项目链接 → 登录 → 打开页面顶部的私密开关。
+
 ## 其他能力
 
 - `get-project <projectId>`:读取项目全量数据(各阶段交付物与版本),恢复上下文或核对进度时使用。

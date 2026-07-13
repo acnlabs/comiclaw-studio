@@ -21,6 +21,7 @@ model Project {
   description String?
   coverUrl    String? // 项目封面图
   ownerUserId String? // 客户的 AgentPlanet 账号(Auth0 sub,如 auth0|xxx);登录自动认领或 agent 创建时传入
+  isPrivate   Boolean @default(false) // 私密模式:开启后仅主人(和管理员)可查看
   currentStage String  @default("SCRIPT") // SCRIPT | ASSETS | STORYBOARD | FILM | RELEASE | DONE
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
