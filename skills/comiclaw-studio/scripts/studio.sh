@@ -76,7 +76,7 @@ case "$cmd" in
   ping)
     # 自检:验证 STUDIO_BASE_URL 与 STUDIO_API_KEY 配置是否正确
     echo "STUDIO_BASE_URL = $BASE"
-    code=$(curl -s -o /dev/null -w "%{http_code}" "$BASE/api/agent/projects" -H "Authorization: Bearer $STUDIO_API_KEY")
+    code=$(curl -s -o /dev/null -w "%{http_code}" "$BASE/api/agent/ping" -H "Authorization: Bearer $STUDIO_API_KEY")
     case "$code" in
       200) echo "OK ($code): 地址与密钥均正确" ;;
       401) echo "FAIL ($code): 地址正确,但 STUDIO_API_KEY 错误" ;;
