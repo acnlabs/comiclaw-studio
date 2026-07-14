@@ -10,7 +10,14 @@ import { AUTH0_AUDIENCE } from "@/lib/auth0";
 import { fmtDuration } from "@/lib/format";
 import { EmptyState, ShotMedia, Modal } from "@/components/ui";
 
-// 渲染生成提示词:@资产名 识别为带头像的内联引用(对齐火山剧创的 @ 引用形态,只读)
+// 分区小标题
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="mb-1.5 text-xs font-medium tracking-wide text-zinc-500">{children}</p>
+  );
+}
+
+// 渲染生成提示词:@资产名 识别为带头像的内联引用(只读)
 function PromptText({
   prompt,
   assetRefs,
@@ -20,14 +27,13 @@ function PromptText({
 }) {
   const parts = prompt.split(/(@[^\s@,,。.;;、()()「」"']+)/g);
   return (
-    <p className="whitespace-pre-wrap rounded-lg bg-zinc-950/60 px-3 py-2 font-mono text-xs leading-relaxed text-zinc-500">
+    <p className="whitespace-pre-wrap rounded-lg bg-zinc-950/60 px-3 py-2 font-mono text-xs leading-relaxed text-zinc-400">
       {parts.map((part, i) => {
         if (!part.startsWith("@")) return <span key={i}>{part}</span>;
         const token = part.slice(1);
         const match = assetRefs.find(
           ({ asset }) =>
-            asset.name.startsWith(token) ||
-            token.startsWith(asset.name.split(/[\s((]/)[0])
+            asset.name.startsWith(token) || token.startsWith(asset.name.split(/[\s((]/)[0])
         );
         const img = match?.asset.versions?.[0]?.imageUrl;
         return (
@@ -47,7 +53,7 @@ function PromptText({
   );
 }
 
-// 分镜 = 输入(描述/台词/提示词/资产/参考帧) + 输出(候选视频,客户选片)
+// 分镜 = 输入(描述/资产) → 提示词 → 输出(候选视频)
 function ShotCard({ shot, shareToken }: { shot: ShotData; shareToken: string }) {
   const { t } = useT();
   const { isAuthenticated, getAccessTokenSilently } = useAuth0();
@@ -65,7 +71,6 @@ function ShotCard({ shot, shareToken }: { shot: ShotData; shareToken: string }) 
   const [detailOpen, setDetailOpen] = useState(false);
 
   const currentTake = takes.find((v) => v.version === selTake) ?? takes[0];
-  // 主画面:输出视频优先;还没有视频时用最新参考图占位(生成中状态)
   const mainMedia = currentTake ?? frames[0];
   const isPicked = shot.selectedVersion != null && currentTake?.version === shot.selectedVersion;
 
@@ -87,79 +92,71 @@ function ShotCard({ shot, shareToken }: { shot: ShotData; shareToken: string }) 
     }
   };
 
-  const infoBlock = (
-    <>
-      {shot.action && <p className="text-sm leading-relaxed text-zinc-400">{shot.action}</p>}
+  // ① 分镜描述 + 台词
+  const descSection = (
+    <div>
+      <SectionLabel>{t("shot.secInput")}</SectionLabel>
+      {shot.action ? (
+        <p className="text-sm leading-relaxed text-zinc-300">{shot.action}</p>
+      ) : (
+        <p className="text-sm text-zinc-600">—</p>
+      )}
       {shot.dialogue && (
-        <p className="rounded-lg bg-zinc-800/60 px-3 py-2 text-sm italic text-zinc-300">
+        <p className="mt-2 rounded-lg bg-zinc-800/60 px-3 py-2 text-sm italic text-zinc-300">
           「{shot.dialogue}」
         </p>
       )}
-      {shot.assetRefs.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {shot.assetRefs.map(({ asset }) => {
-            const img = asset.versions?.[0]?.imageUrl;
-            return (
-              <span
-                key={asset.id}
-                className="inline-flex items-center gap-1.5 rounded-full bg-zinc-800 py-0.5 pl-0.5 pr-2.5 text-xs text-zinc-300"
-              >
-                {img ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={img} alt="" className="h-6 w-6 rounded-full object-cover" />
-                ) : (
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-700 text-[10px] text-zinc-400">
-                    {t(`assetType.${asset.type}` as MessageKey).slice(0, 1)}
-                  </span>
-                )}
-                {asset.name}
-              </span>
-            );
-          })}
-        </div>
-      )}
-      {shot.prompt && (
-        <div>
-          <p className="mb-0.5 text-xs text-zinc-600">{t("shot.promptLabel")}</p>
-          <PromptText prompt={shot.prompt} assetRefs={shot.assetRefs} />
-        </div>
-      )}
-    </>
-  );
-
-  // 候选视频缩略图条(主画面下方,点击切换,选中标星)
-  const takesStrip = takes.length > 1 && (
-    <div className="flex items-center gap-1.5 bg-zinc-950 px-2 pb-2">
-      {takes.map((take) => (
-        <button
-          key={take.id}
-          onClick={() => setSelTake(take.version)}
-          className={`relative h-12 w-20 shrink-0 overflow-hidden rounded border-2 transition-colors ${
-            currentTake?.version === take.version
-              ? "border-accent"
-              : "border-transparent opacity-60 hover:opacity-100"
-          }`}
-          title={`V${take.version}`}
-        >
-          <video src={take.mediaUrl} muted preload="metadata" className="h-full w-full object-cover" />
-          {shot.selectedVersion === take.version && (
-            <span className="absolute right-0.5 top-0.5 rounded bg-accent px-1 text-[10px] font-bold text-zinc-950">
-              ★
-            </span>
-          )}
-        </button>
-      ))}
     </div>
   );
 
-  const outputBlock = (
-    <div className="space-y-1.5 border-t border-zinc-800/60 pt-2.5">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-xs text-zinc-500">
-          {takes.length > 0
-            ? `${t("shot.takes")} · ${t("shot.candidates", { n: takes.length })}`
-            : t("shot.noTakes")}
-        </span>
+  // ② 出镜资产(头像胶囊)
+  const assetsSection = shot.assetRefs.length > 0 && (
+    <div>
+      <SectionLabel>{t("shot.secAssets")}</SectionLabel>
+      <div className="flex flex-wrap gap-2">
+        {shot.assetRefs.map(({ asset }) => {
+          const img = asset.versions?.[0]?.imageUrl;
+          return (
+            <span
+              key={asset.id}
+              className="inline-flex items-center gap-1.5 rounded-full bg-zinc-800 py-0.5 pl-0.5 pr-2.5 text-xs text-zinc-300"
+            >
+              {img ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={img} alt="" className="h-6 w-6 rounded-full object-cover" />
+              ) : (
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-700 text-[10px] text-zinc-400">
+                  {t(`assetType.${asset.type}` as MessageKey).slice(0, 1)}
+                </span>
+              )}
+              {asset.name}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  // ③ 生成提示词
+  const promptSection = shot.prompt && (
+    <div>
+      <SectionLabel>{t("shot.secPrompt")}</SectionLabel>
+      <PromptText prompt={shot.prompt} assetRefs={shot.assetRefs} />
+    </div>
+  );
+
+  // ④ 输出视频(主画面 + 候选缩略图 + 选片)
+  const outputSection = (
+    <div>
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <SectionLabel>
+          {t("shot.secOutput")}
+          {takes.length > 1 && (
+            <span className="ml-1 text-zinc-600">
+              · {t("shot.candidates", { n: takes.length })}
+            </span>
+          )}
+        </SectionLabel>
         {takes.length > 1 && isAuthenticated && currentTake && !isPicked && (
           <button
             onClick={pick}
@@ -170,55 +167,93 @@ function ShotCard({ shot, shareToken }: { shot: ShotData; shareToken: string }) 
           </button>
         )}
       </div>
+
+      <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950">
+        <div className="relative aspect-video">
+          {mainMedia ? (
+            <ShotMedia
+              mediaUrl={mainMedia.mediaUrl}
+              mediaType={mainMedia.mediaType}
+              alt={shot.title ?? `镜头 ${shot.order}`}
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center text-sm text-zinc-600">
+              {t("panel.storyboard.inProgress")}
+            </div>
+          )}
+          {shot.selectedVersion != null && (
+            <span className="absolute right-2 top-2 rounded-md bg-accent px-2 py-0.5 text-xs font-medium text-zinc-950">
+              ★ {t("shot.selectedBadge", { n: shot.selectedVersion })}
+            </span>
+          )}
+          {mainMedia && (
+            <button
+              onClick={() => setDetailOpen(true)}
+              aria-label={t("detail.expand")}
+              title={t("detail.expand")}
+              className="absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-md bg-zinc-950/80 text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-white"
+            >
+              ⤢
+            </button>
+          )}
+        </div>
+
+        {/* 候选视频缩略图条 */}
+        {takes.length > 1 && (
+          <div className="flex items-center gap-1.5 px-2 py-2">
+            {takes.map((take) => (
+              <button
+                key={take.id}
+                onClick={() => setSelTake(take.version)}
+                className={`relative h-11 w-[72px] shrink-0 overflow-hidden rounded border-2 transition-colors ${
+                  currentTake?.version === take.version
+                    ? "border-accent"
+                    : "border-transparent opacity-60 hover:opacity-100"
+                }`}
+                title={`V${take.version}`}
+              >
+                <video src={take.mediaUrl} muted preload="metadata" className="h-full w-full object-cover" />
+                {shot.selectedVersion === take.version && (
+                  <span className="absolute right-0.5 top-0.5 rounded bg-accent px-1 text-[10px] font-bold text-zinc-950">
+                    ★
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {takes.length === 0 && (
+        <p className="mt-1.5 text-xs text-zinc-600">{t("shot.noTakes")}</p>
+      )}
       {currentTake?.notes && (
-        <p className="text-xs text-amber-200/80">V{currentTake.version}:{currentTake.notes}</p>
+        <p className="mt-1.5 text-xs text-amber-200/80">V{currentTake.version}:{currentTake.notes}</p>
       )}
     </div>
   );
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/50 md:flex-row">
-      {/* 输出侧:主画面 + 候选缩略图条 */}
-      <div className="shrink-0 bg-zinc-950 md:w-[400px] lg:w-[460px]">
-      <div className="relative aspect-video">
-        {mainMedia ? (
-          <ShotMedia
-            mediaUrl={mainMedia.mediaUrl}
-            mediaType={mainMedia.mediaType}
-            alt={shot.title ?? `镜头 ${shot.order}`}
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center text-sm text-zinc-600">
-            {t("panel.storyboard.inProgress")}
-          </div>
-        )}
-        <div className="absolute left-2 top-2 flex items-center gap-1.5">
-          <span className="rounded-md bg-zinc-950/80 px-2 py-0.5 text-xs font-bold text-accent">
-            {String(shot.order).padStart(2, "0")}
-          </span>
-          {shot.duration != null && (
-            <span className="rounded-md bg-zinc-950/80 px-2 py-0.5 text-xs text-zinc-300">
-              {fmtDuration(shot.duration)}
-            </span>
-          )}
-        </div>
-        {shot.selectedVersion != null && (
-          <span className="absolute right-2 top-2 rounded-md bg-accent px-2 py-0.5 text-xs font-medium text-zinc-950">
-            ★ {t("shot.selectedBadge", { n: shot.selectedVersion })}
-          </span>
-        )}
-        {mainMedia && (
-          <button
-            onClick={() => setDetailOpen(true)}
-            aria-label={t("detail.expand")}
-            title={t("detail.expand")}
-            className="absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-md bg-zinc-950/80 text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-white"
-          >
-            ⤢
-          </button>
+    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">
+      {/* 镜头标题行 */}
+      <div className="mb-3 flex items-center gap-2 border-b border-zinc-800/60 pb-3">
+        <span className="rounded-md bg-accent/15 px-2 py-0.5 text-xs font-bold text-accent">
+          {String(shot.order).padStart(2, "0")}
+        </span>
+        {shot.title && <h3 className="font-medium text-zinc-100">{shot.title}</h3>}
+        {shot.duration != null && (
+          <span className="text-xs text-zinc-500">{fmtDuration(shot.duration)}</span>
         )}
       </div>
-      {takesStrip}
+
+      {/* 输入(左) → 输出(右);窄屏上下堆叠 */}
+      <div className="grid gap-5 lg:grid-cols-2">
+        <div className="space-y-4">
+          {descSection}
+          {assetsSection}
+          {promptSection}
+        </div>
+        {outputSection}
       </div>
 
       {/* 放大弹层 */}
@@ -243,17 +278,12 @@ function ShotCard({ shot, shareToken }: { shot: ShotData; shareToken: string }) 
                 />
               </div>
             </div>
-            {infoBlock}
-            {outputBlock}
+            {descSection}
+            {assetsSection}
+            {promptSection}
           </div>
         )}
       </Modal>
-
-      <div className="min-w-0 flex-1 space-y-2 px-4 py-3">
-        {shot.title && <h3 className="font-medium text-zinc-100">{shot.title}</h3>}
-        {infoBlock}
-        {outputBlock}
-      </div>
     </div>
   );
 }
@@ -276,7 +306,6 @@ export default function StoryboardPanel({
         {t("panel.storyboard.summary", { n: shots.length })}
         {total > 0 && <> · {t("panel.storyboard.totalDuration", { t: fmtDuration(total) })}</>}
       </p>
-      {/* 纵向单列:每个镜头一行,输入/输出信息全部直接可见 */}
       <div className="space-y-4">
         {shots.map((shot) => (
           <ShotCard key={shot.id} shot={shot} shareToken={shareToken} />
