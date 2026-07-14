@@ -72,6 +72,22 @@ $S update-release <releaseId> '{"status":"PUBLISHED","url":"https://douyin.com/.
 $S set-stage <projectId> DONE
 ```
 
+## 与 OpenMontage 配合(如果你也装了 OpenMontage 技能)
+
+OpenMontage 负责生产,本技能负责把生产过程同步给客户。**跑任何 OpenMontage 管线时,每完成一个阶段,立即按下表推送到 Studio**(媒体文件是本地产物,务必先 `upload-file` 换 URL):
+
+| OpenMontage 阶段 | Studio 动作 |
+|---|---|
+| 接到任务、选定管线 | `create-project`(把管线名写进 description),发分享链接给客户 |
+| concept / script(概念与脚本) | `push-script`,然后 `set-stage <id> ASSETS` |
+| 资产生成(角色/场景图、TTS 配音样品) | 每个资产 `upload-file` + `add-asset`(图);完成后 `set-stage <id> STORYBOARD` |
+| 场景/动态片段生成(Veo/Kling 等出的分段素材) | 每段 `upload-file` + `add-shot`(order=场景序号,duration=片段时长,action=场景描述);完成后 `set-stage <id> FILM` |
+| composition / render(Remotion 合成出片) | `upload-file` 成片 + `push-film`(notes 写清用了哪条管线和主要参数) |
+| 客户反馈返工 | `list-comments` 读时间码批注 → 修改对应场景 → 推新版本 → `resolve-comment` |
+| 定稿发行 | `add-release` + `update-release` 置 PUBLISHED;`set-stage <id> DONE` |
+
+原则:**OpenMontage 的中间产物就是客户想看的过程**——不要等成片才推,每个阶段的产出(哪怕是草稿)都推,客户的批注能帮你在早期纠偏,省掉整片返工。
+
 ## 隐私说明(客户询问时告知)
 
 - 项目链接默认「知道链接的人可查看」,方便客户转发给同事;
