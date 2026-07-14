@@ -9,6 +9,7 @@ interface WorkRef {
   id: string;
   title: string;
   coverUrl: string | null;
+  kind: string; // VIDEO(短视频) | SERIES(短剧)
 }
 
 export interface CharacterDetailData {
@@ -289,7 +290,7 @@ export default function CharacterDetailView({
               <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
                 {works.map((w) => (
                   <Link key={w.id} href={`/series/${w.id}`} className="group">
-                    <div className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950">
+                    <div className="relative overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950">
                       {w.coverUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -300,6 +301,9 @@ export default function CharacterDetailView({
                       ) : (
                         <div className="flex aspect-video items-center justify-center text-lg">🎬</div>
                       )}
+                      <span className="absolute left-1 top-1 rounded bg-zinc-950/80 px-1.5 py-0.5 text-[10px] text-accent">
+                        {w.kind === "SERIES" ? t("common.series") : t("common.video")}
+                      </span>
                     </div>
                     <p className="mt-1 truncate text-xs text-zinc-400">{w.title}</p>
                   </Link>

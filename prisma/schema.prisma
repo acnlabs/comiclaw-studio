@@ -197,8 +197,21 @@ model AgentCharacter {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  castIn WorkCast[]
+
   @@index([isPublic])
   @@index([ownerUserId])
+}
+
+// 参演关系:作品 ↔ 角色(主演/参演)
+model WorkCast {
+  workId      String
+  characterId String
+
+  work      Work           @relation(fields: [workId], references: [id], onDelete: Cascade)
+  character AgentCharacter @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@id([workId, characterId])
 }
 
 // ---------- 平台作品(推荐 / 短剧) ----------
@@ -216,8 +229,9 @@ model Work {
   projectId   String?  @unique // 来源 studio 项目(同步发布时填写)
   publishedAt DateTime @default(now())
 
-  project  Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project  Project?   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   episodes Episode[]
+  cast     WorkCast[]
 }
 
 model Episode {

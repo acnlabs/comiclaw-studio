@@ -16,6 +16,9 @@ export const POST = withAgentAuth(async (req) => {
       coverUrl: body.coverUrl ?? null,
       videoUrl: body.videoUrl ?? null,
       authorName: body.authorName ?? null,
+      cast: body.characterIds
+        ? { create: body.characterIds.map((characterId) => ({ characterId })) }
+        : undefined,
       episodes: {
         create: episodes.map((e) => ({
           order: e.order,

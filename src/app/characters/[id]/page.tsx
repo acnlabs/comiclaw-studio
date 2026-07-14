@@ -12,12 +12,26 @@ export default async function CharacterDetailPage(props: {
   const c = await prisma.agentCharacter.findUnique({ where: { id } });
   if (!c || !c.isPublic) notFound();
 
-  const works = c.sourceProjectId
-    ? await prisma.work.findMany({
-        where: { projectId: c.sourceProjectId },
-        select: { id: true, title: true, coverUrl: true },
-      })
-    : [];
+  // 参演作品 = 显式参演关系(WorkCast)∪ 来源项目发布的作品
+  const [castWorks, sourceWorks] = await Promise.all([
+    prisma.workCast.findMany({
+      where: { characterId: id },
+      include: {
+        work: { select: { id: true, title: true, coverUrl: true, kind: true } },
+      },
+    }),
+    c.sourceProjectId
+      ? prisma.work.findMany({
+          where: { projectId: c.sourceProjectId },
+          select: { id: true, title: true, coverUrl: true, kind: true },
+        })
+      : Promise.resolve([]),
+  ]);
+  const workMap = new Map<string, { id: string; title: string; coverUrl: string | null; kind: string }>();
+  for (const w of [...castWorks.map((cw) => cw.work), ...sourceWorks]) {
+    workMap.set(w.id, w);
+  }
+  const works = Array.from(workMap.values());
 
   // 顶部上/下一个角色导航(按公开列表的排序)
   const siblings = await prisma.agentCharacter.findMany({

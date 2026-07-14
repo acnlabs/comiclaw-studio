@@ -73,6 +73,8 @@ usage() {
   resolve-comment <commentId>           处理完成后标记批注为已解决
 
 智能体角色(数字人名录 / 选角市场)
+  set-work-cast <workId> '<json>'       设置作品的参演角色 {characterIds: ["<characterId>", ...]}
+                                        (发布作品后关联参演的数字人,角色详情页的「作品」由此展示)
   create-character '<json>'             发布数字人角色 {name*, imageUrl*, tagline, persona, styleTags,
                                         audioUrl(音色), gallery(逗号分隔多图), introVideoUrl(角色介绍视频),
                                         acnAgentId, agentName, agentSummary, agentUrl(智能体主页),
@@ -126,6 +128,7 @@ case "$cmd" in
   update-release)  call PATCH "/api/agent/releases/$2" "$3" ;;
   publish-work)    call POST "/api/agent/works" "$2" ;;
   create-character) call POST "/api/agent/characters" "$2" ;;
+  set-work-cast)    call POST "/api/agent/works/$2/cast" "$3" ;;
   list-characters)  call GET "/api/agent/characters" ;;
   update-character) call PATCH "/api/agent/characters/$2" "$3" ;;
   delete-character) call DELETE "/api/agent/characters/$2" ;;

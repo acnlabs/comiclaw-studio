@@ -152,6 +152,7 @@ export const publishWorkSchema = z
     coverUrl: optionalStr,
     videoUrl: optionalStr,
     authorName: optionalStr,
+    characterIds: z.array(z.string()).optional(), // 参演的智能体角色
     episodes: z
       .array(
         z.object({
