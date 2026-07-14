@@ -31,8 +31,8 @@ export interface CharacterDetailData {
 
 type Slide = { type: "image" | "video"; url: string };
 
-// OpenSea 式详情页:顶部缩略图导航条 + 左视觉区固定 / 右信息区滚动。
-// 右栏不做 Tab 切换隐藏内容,而是全部纵向堆叠,顶部锚点导航仅用于跳转定位。
+// OpenSea 式详情页,但左栏(缩略图切换 + 大图 + 音色)在桌面端完全固定,
+// 只有右栏信息区内部滚动;移动端退化为整页正常滚动。
 export default function CharacterDetailView({
   character: c,
   works,
@@ -78,9 +78,9 @@ export default function CharacterDetailView({
   const current = slides[activeSlide];
 
   return (
-    <div className="mx-auto w-full max-w-[1800px] flex-1 px-4 py-6 sm:px-8">
-      {/* 顶部导航条:返回 + 缩略图 + 上/下一个角色 */}
-      <div className="mb-6 flex items-center gap-3 border-b border-zinc-800 pb-4">
+    <div className="mx-auto flex w-full max-w-[1800px] flex-col px-4 py-6 sm:px-8 md:h-[calc(100vh-3rem)] md:overflow-hidden md:py-4">
+      {/* 顶部导航条:返回 + 缩略图切换 + 上/下一个角色(桌面端固定,不随任何内容滚动) */}
+      <div className="mb-4 flex shrink-0 items-center gap-3 border-b border-zinc-800 pb-4">
         <Link
           href="/characters"
           aria-label="back"
@@ -133,10 +133,10 @@ export default function CharacterDetailView({
         </div>
       </div>
 
-      <div className="grid items-start gap-8 md:grid-cols-2">
-        {/* 视觉区:左栏固定,完整展示不裁切(object-contain) */}
-        <div className="md:sticky md:top-20">
-          <div className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-2xl border border-zinc-800 bg-black">
+      <div className="grid flex-1 gap-8 md:min-h-0 md:grid-cols-2">
+        {/* 视觉区(左栏):图片/视频完整展示(object-contain)+ 音色试听。桌面端占满剩余高度,不滚动。 */}
+        <div className="flex flex-col gap-3 md:h-full md:min-h-0">
+          <div className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-2xl border border-zinc-800 bg-black md:aspect-auto md:min-h-0 md:flex-1">
             {current.type === "video" ? (
               <video
                 key={current.url}
@@ -150,10 +150,16 @@ export default function CharacterDetailView({
               <img src={current.url} alt={c.name} className="h-full w-full object-contain" />
             )}
           </div>
+          {c.audioUrl && (
+            <div className="shrink-0">
+              <p className="mb-1 text-xs text-zinc-500">{t("char.voice")}</p>
+              <audio src={c.audioUrl} controls preload="none" className="h-9 w-full" />
+            </div>
+          )}
         </div>
 
-        {/* 信息区:右栏正常滚动,顶部为快捷操作,下方为纵向堆叠的锚点分区 */}
-        <div className="space-y-5">
+        {/* 信息区(右栏):唯一可滚动区域,桌面端内部滚动条,移动端随页面正常滚动 */}
+        <div className="space-y-5 md:h-full md:overflow-y-auto md:pr-1">
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-bold text-zinc-50">{c.name}</h1>
@@ -203,7 +209,7 @@ export default function CharacterDetailView({
 
           {/* 锚点导航:点击跳转到下方对应分区,不隐藏其他内容 */}
           {navItems.length > 1 && (
-            <div className="flex gap-1.5 border-b border-zinc-800 pb-3">
+            <div className="sticky top-0 z-10 -mx-4 flex gap-1.5 bg-[#0b0b10] px-4 py-2 sm:-mx-8 sm:px-8 md:mx-0 md:bg-transparent md:px-0">
               {navItems.map((n) => (
                 <button
                   key={n.id}
@@ -216,19 +222,13 @@ export default function CharacterDetailView({
             </div>
           )}
 
-          {/* ① 数字人:形象已在左侧展示,这里是人设/音色/风格(数字人的可视化交互信息) */}
-          <section id="sec-digital-human" className="space-y-3">
+          {/* ① 数字人:人设/风格(音色已移至左侧视觉区) */}
+          <section id="sec-digital-human" className="space-y-3 border-t border-zinc-800/60 pt-4">
             <h2 className="text-sm font-semibold text-zinc-200">{t("char.navDigitalHuman")}</h2>
             {c.persona ? (
               <CollapsibleText text={c.persona} />
             ) : (
               <p className="text-sm text-zinc-600">{t("char.noExtra")}</p>
-            )}
-            {c.audioUrl && (
-              <div>
-                <p className="mb-1 text-xs text-zinc-500">{t("char.voice")}</p>
-                <audio src={c.audioUrl} controls preload="none" className="h-9 w-full" />
-              </div>
             )}
             {styleTags.length > 0 && (
               <div>
@@ -284,7 +284,7 @@ export default function CharacterDetailView({
 
           {/* ③ 作品 */}
           {works.length > 0 && (
-            <section id="sec-works" className="space-y-2 border-t border-zinc-800/60 pt-5">
+            <section id="sec-works" className="space-y-2 border-t border-zinc-800/60 pt-5 pb-2">
               <h2 className="text-sm font-semibold text-zinc-200">{t("char.navWorks")}</h2>
               <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
                 {works.map((w) => (
