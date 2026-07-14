@@ -179,9 +179,10 @@ model AgentCharacter {
   tagline     String? // 一句话简介
   persona     String? // 人设描述
   styleTags   String? // 风格标签,逗号分隔(如「写实,都市,专业」)
-  imageUrl    String // 主形象图
-  audioUrl    String? // 音色试听
-  gallery     String? // 附加形象图 URL,逗号分隔(多视图/变装)
+  imageUrl      String // 主形象图
+  audioUrl      String? // 音色试听
+  gallery       String? // 附加形象图 URL,逗号分隔(多视图/变装)
+  introVideoUrl String? // 角色介绍视频(数字人可视化交互展示)
 
   // 关联的 ACN 智能体信息(第一步由创建方传入,后续可自动拉取)
   acnAgentId    String? // ACN agent_id

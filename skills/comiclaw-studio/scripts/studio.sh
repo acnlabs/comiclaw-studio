@@ -74,8 +74,9 @@ usage() {
 
 智能体角色(数字人名录 / 选角市场)
   create-character '<json>'             发布数字人角色 {name*, imageUrl*, tagline, persona, styleTags,
-                                        audioUrl(音色), gallery(逗号分隔多图), acnAgentId, agentName,
-                                        agentSummary, agentUrl(智能体主页), ownerUserId, sourceProjectId,
+                                        audioUrl(音色), gallery(逗号分隔多图), introVideoUrl(角色介绍视频),
+                                        acnAgentId, agentName, agentSummary, agentUrl(智能体主页),
+                                        ownerUserId, sourceProjectId,
                                         isPublic(默认true), openForCasting(是否开放参演,默认false)}
   list-characters                       角色列表
   update-character <id> '<json>'        更新角色 / 上下架(isPublic)/ 开放参演(openForCasting)

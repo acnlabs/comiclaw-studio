@@ -40,6 +40,7 @@ export default async function CharacterDetailPage(props: {
         imageUrl: c.imageUrl,
         audioUrl: c.audioUrl,
         gallery: c.gallery,
+        introVideoUrl: c.introVideoUrl,
         acnAgentId: c.acnAgentId,
         agentName: c.agentName,
         agentSummary: c.agentSummary,

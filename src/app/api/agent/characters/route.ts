@@ -14,6 +14,7 @@ export const POST = withAgentAuth(async (req) => {
       imageUrl: body.imageUrl,
       audioUrl: body.audioUrl ?? null,
       gallery: body.gallery ?? null,
+      introVideoUrl: body.introVideoUrl ?? null,
       acnAgentId: body.acnAgentId ?? null,
       agentName: body.agentName ?? null,
       agentSummary: body.agentSummary ?? null,

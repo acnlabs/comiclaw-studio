@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useT } from "@/components/LocaleProvider";
+import { CollapsibleText } from "@/components/ui";
 
 interface WorkRef {
   id: string;
@@ -19,6 +20,7 @@ export interface CharacterDetailData {
   imageUrl: string;
   audioUrl: string | null;
   gallery: string | null;
+  introVideoUrl: string | null;
   acnAgentId: string | null;
   agentName: string | null;
   agentSummary: string | null;
@@ -27,10 +29,10 @@ export interface CharacterDetailData {
   createdAt: string;
 }
 
-type Tab = "persona" | "traits" | "works";
+type Slide = { type: "image" | "video"; url: string };
 
-// OpenSea 式资产详情页布局:顶部缩略图导航条 + 左大图/右信息面板对半分 +
-// 统计栏 + CTA + Tabs + 属性表
+// OpenSea 式详情页:顶部缩略图导航条 + 左视觉区固定 / 右信息区滚动。
+// 右栏不做 Tab 切换隐藏内容,而是全部纵向堆叠,顶部锚点导航仅用于跳转定位。
 export default function CharacterDetailView({
   character: c,
   works,
@@ -44,17 +46,13 @@ export default function CharacterDetailView({
 }) {
   const { t, fmtDate } = useT();
   const gallery = (c.gallery ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-  const images = [c.imageUrl, ...gallery];
-  const [activeImg, setActiveImg] = useState(0);
-  const styleTags = (c.styleTags ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-
-  const tabs: { key: Tab; label: string; show: boolean }[] = [
-    { key: "persona", label: t("char.tabPersona"), show: Boolean(c.persona || c.tagline) },
-    { key: "traits", label: t("char.tabTraits"), show: styleTags.length > 0 },
-    { key: "works", label: t("char.tabWorks"), show: works.length > 0 },
+  const slides: Slide[] = [
+    { type: "image", url: c.imageUrl },
+    ...gallery.map((url): Slide => ({ type: "image", url })),
+    ...(c.introVideoUrl ? [{ type: "video", url: c.introVideoUrl } as Slide] : []),
   ];
-  const availableTabs = tabs.filter((tb) => tb.show);
-  const [tab, setTab] = useState<Tab>(availableTabs[0]?.key ?? "persona");
+  const [activeSlide, setActiveSlide] = useState(0);
+  const styleTags = (c.styleTags ?? "").split(",").map((s) => s.trim()).filter(Boolean);
   const [copied, setCopied] = useState(false);
 
   const copyLink = () => {
@@ -65,6 +63,19 @@ export default function CharacterDetailView({
       });
     }
   };
+
+  const jumpTo = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const hasAgentProfile = Boolean(c.agentName || c.agentSummary || c.agentUrl || c.acnAgentId);
+  const navItems = [
+    { id: "sec-digital-human", label: t("char.navDigitalHuman"), show: true },
+    { id: "sec-agent-profile", label: t("char.navAgentProfile"), show: hasAgentProfile },
+    { id: "sec-works", label: t("char.navWorks"), show: works.length > 0 },
+  ].filter((n) => n.show);
+
+  const current = slides[activeSlide];
 
   return (
     <div className="mx-auto w-full max-w-[1800px] flex-1 px-4 py-6 sm:px-8">
@@ -77,18 +88,27 @@ export default function CharacterDetailView({
         >
           ←
         </Link>
-        {images.length > 1 && (
+        {slides.length > 1 && (
           <div className="flex gap-2 overflow-x-auto">
-            {images.map((img, i) => (
+            {slides.map((s, i) => (
               <button
                 key={i}
-                onClick={() => setActiveImg(i)}
-                className={`h-11 w-11 shrink-0 overflow-hidden rounded-lg border-2 transition-colors ${
-                  activeImg === i ? "border-accent" : "border-transparent opacity-60 hover:opacity-100"
+                onClick={() => setActiveSlide(i)}
+                className={`relative h-11 w-11 shrink-0 overflow-hidden rounded-lg border-2 transition-colors ${
+                  activeSlide === i ? "border-accent" : "border-transparent opacity-60 hover:opacity-100"
                 }`}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={img} alt="" className="h-full w-full object-cover" />
+                {s.type === "video" ? (
+                  <>
+                    <video src={s.url} muted preload="metadata" className="h-full w-full object-cover" />
+                    <span className="absolute inset-0 flex items-center justify-center bg-black/30 text-[10px] text-white">
+                      ▶
+                    </span>
+                  </>
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={s.url} alt="" className="h-full w-full object-cover" />
+                )}
               </button>
             ))}
           </div>
@@ -114,15 +134,25 @@ export default function CharacterDetailView({
       </div>
 
       <div className="grid items-start gap-8 md:grid-cols-2">
-        {/* 大图:左栏固定,随页面滚动保持在视口内 */}
+        {/* 视觉区:左栏固定,完整展示不裁切(object-contain) */}
         <div className="md:sticky md:top-20">
-          <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={images[activeImg]} alt={c.name} className="aspect-square w-full object-cover" />
+          <div className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-2xl border border-zinc-800 bg-black">
+            {current.type === "video" ? (
+              <video
+                key={current.url}
+                src={current.url}
+                controls
+                playsInline
+                className="h-full w-full object-contain"
+              />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={current.url} alt={c.name} className="h-full w-full object-contain" />
+            )}
           </div>
         </div>
 
-        {/* 信息面板:右栏正常滚动 */}
+        {/* 信息区:右栏正常滚动,顶部为快捷操作,下方为纵向堆叠的锚点分区 */}
         <div className="space-y-5">
           <div>
             <div className="flex flex-wrap items-center gap-2">
@@ -133,33 +163,14 @@ export default function CharacterDetailView({
                 </span>
               )}
             </div>
-            {c.agentName && (
-              <div className="mt-1.5 flex items-center gap-1.5 text-sm text-zinc-400">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-zinc-800 text-[10px]">
-                  🤖
-                </span>
-                {t("char.byAgent")}:
-                {c.agentUrl ? (
-                  <a href={c.agentUrl} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
-                    {c.agentName}
-                  </a>
-                ) : (
-                  <span>{c.agentName}</span>
-                )}
-              </div>
-            )}
-            {c.tagline && <p className="mt-2 text-sm text-zinc-400">{c.tagline}</p>}
+            {c.tagline && <p className="mt-1.5 text-sm text-zinc-400">{c.tagline}</p>}
           </div>
 
-          {/* 类型/ACN 徽标条(对齐 OpenSea 的 ERC721 / Chain / Token ID 行) */}
-          <div className="flex flex-wrap gap-2 text-xs text-zinc-500">
-            <span className="rounded-md border border-zinc-800 px-2 py-1">{t("char.digitalHuman")}</span>
-            {c.acnAgentId && (
-              <span className="rounded-md border border-zinc-800 px-2 py-1">ACN · {c.acnAgentId}</span>
-            )}
-          </div>
+          <span className="inline-block rounded-md border border-zinc-800 px-2 py-1 text-xs text-zinc-500">
+            {t("char.digitalHuman")}
+          </span>
 
-          {/* 统计栏(对齐 Top offer / Floor / Rarity / Last sale) */}
+          {/* 统计栏 */}
           <div className="grid grid-cols-2 gap-4 rounded-2xl border border-zinc-800 px-4 py-3 sm:grid-cols-4">
             <Stat label={t("char.statWorks")} value={String(works.length)} />
             <Stat label={t("char.statVoice")} value={c.audioUrl ? t("char.yes") : t("char.no")} />
@@ -170,7 +181,7 @@ export default function CharacterDetailView({
             <Stat label={t("char.statCreated")} value={fmtDate(c.createdAt)} />
           </div>
 
-          {/* CTA(对齐 Buy now / Make offer) */}
+          {/* CTA */}
           <div className="flex gap-3">
             {c.agentUrl && (
               <a
@@ -190,94 +201,111 @@ export default function CharacterDetailView({
             </button>
           </div>
 
-          {/* Tabs(对齐 Details / Orders / Activity) */}
-          {availableTabs.length > 0 && (
-            <div>
-              <div className="flex gap-4 border-b border-zinc-800">
-                {availableTabs.map((tb) => (
-                  <button
-                    key={tb.key}
-                    onClick={() => setTab(tb.key)}
-                    className={`relative pb-2.5 text-sm font-medium transition-colors ${
-                      tab === tb.key ? "text-accent" : "text-zinc-500 hover:text-zinc-300"
-                    }`}
+          {/* 锚点导航:点击跳转到下方对应分区,不隐藏其他内容 */}
+          {navItems.length > 1 && (
+            <div className="flex gap-1.5 border-b border-zinc-800 pb-3">
+              {navItems.map((n) => (
+                <button
+                  key={n.id}
+                  onClick={() => jumpTo(n.id)}
+                  className="rounded-full bg-zinc-800 px-3 py-1 text-xs text-zinc-400 transition-colors hover:bg-zinc-700 hover:text-zinc-200"
+                >
+                  {n.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* ① 数字人:形象已在左侧展示,这里是人设/音色/风格(数字人的可视化交互信息) */}
+          <section id="sec-digital-human" className="space-y-3">
+            <h2 className="text-sm font-semibold text-zinc-200">{t("char.navDigitalHuman")}</h2>
+            {c.persona ? (
+              <CollapsibleText text={c.persona} />
+            ) : (
+              <p className="text-sm text-zinc-600">{t("char.noExtra")}</p>
+            )}
+            {c.audioUrl && (
+              <div>
+                <p className="mb-1 text-xs text-zinc-500">{t("char.voice")}</p>
+                <audio src={c.audioUrl} controls preload="none" className="h-9 w-full" />
+              </div>
+            )}
+            {styleTags.length > 0 && (
+              <div>
+                <p className="mb-1.5 text-xs text-zinc-500">{t("char.style")}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {styleTags.map((tag, i) => (
+                    <span
+                      key={i}
+                      className="rounded-full bg-zinc-800 px-2.5 py-0.5 text-xs text-zinc-300"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* ② 智能体档案:次要信息,这个数字人属于哪个智能体 */}
+          {hasAgentProfile && (
+            <section id="sec-agent-profile" className="space-y-2 border-t border-zinc-800/60 pt-5">
+              <h2 className="text-sm font-semibold text-zinc-200">{t("char.navAgentProfile")}</h2>
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 px-4 py-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-800 text-xs">
+                    🤖
+                  </span>
+                  {c.agentName && <span className="font-medium text-zinc-100">{c.agentName}</span>}
+                  {c.acnAgentId && (
+                    <span className="rounded-md border border-zinc-700 px-1.5 py-0.5 text-xs text-zinc-500">
+                      ACN · {c.acnAgentId}
+                    </span>
+                  )}
+                </div>
+                {c.agentSummary && (
+                  <div className="mt-2">
+                    <CollapsibleText text={c.agentSummary} />
+                  </div>
+                )}
+                {c.agentUrl && (
+                  <a
+                    href={c.agentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-3 inline-block rounded-full border border-accent/40 px-3.5 py-1.5 text-xs font-medium text-accent transition-colors hover:bg-accent/10"
                   >
-                    {tb.label}
-                    {tab === tb.key && (
-                      <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-accent" />
-                    )}
-                  </button>
+                    {t("char.viewAgent")} →
+                  </a>
+                )}
+              </div>
+            </section>
+          )}
+
+          {/* ③ 作品 */}
+          {works.length > 0 && (
+            <section id="sec-works" className="space-y-2 border-t border-zinc-800/60 pt-5">
+              <h2 className="text-sm font-semibold text-zinc-200">{t("char.navWorks")}</h2>
+              <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+                {works.map((w) => (
+                  <Link key={w.id} href={`/series/${w.id}`} className="group">
+                    <div className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950">
+                      {w.coverUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={w.coverUrl}
+                          alt={w.title}
+                          className="aspect-video w-full object-cover transition-transform group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="flex aspect-video items-center justify-center text-lg">🎬</div>
+                      )}
+                    </div>
+                    <p className="mt-1 truncate text-xs text-zinc-400">{w.title}</p>
+                  </Link>
                 ))}
               </div>
-
-              <div className="pt-4">
-                {tab === "persona" && (
-                  <div className="space-y-3">
-                    {c.persona && (
-                      <p className="text-sm leading-relaxed text-zinc-300">{c.persona}</p>
-                    )}
-                    {c.audioUrl && (
-                      <div>
-                        <p className="mb-1 text-xs text-zinc-500">{t("char.voice")}</p>
-                        <audio src={c.audioUrl} controls preload="none" className="h-9 w-full" />
-                      </div>
-                    )}
-                    {c.agentSummary && (
-                      <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 px-4 py-3">
-                        <p className="mb-1 text-xs font-medium text-zinc-500">{t("char.byAgent")}</p>
-                        <p className="text-sm leading-relaxed text-zinc-400">{c.agentSummary}</p>
-                      </div>
-                    )}
-                    {!c.persona && !c.audioUrl && !c.agentSummary && (
-                      <p className="text-sm text-zinc-600">{t("char.noExtra")}</p>
-                    )}
-                  </div>
-                )}
-
-                {tab === "traits" && (
-                  <div className="overflow-hidden rounded-xl border border-zinc-800">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-zinc-800 bg-zinc-900/50 text-left text-xs text-zinc-500">
-                          <th className="px-3 py-2 font-medium">{t("char.attribute")}</th>
-                          <th className="px-3 py-2 font-medium">{t("char.value")}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {styleTags.map((tag, i) => (
-                          <tr key={i} className="border-b border-zinc-800/60 last:border-0">
-                            <td className="px-3 py-2 text-zinc-500">{t("char.style")}</td>
-                            <td className="px-3 py-2 text-zinc-200">{tag}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
-                {tab === "works" && (
-                  <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-                    {works.map((w) => (
-                      <Link key={w.id} href={`/series/${w.id}`} className="group">
-                        <div className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950">
-                          {w.coverUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={w.coverUrl}
-                              alt={w.title}
-                              className="aspect-video w-full object-cover transition-transform group-hover:scale-105"
-                            />
-                          ) : (
-                            <div className="flex aspect-video items-center justify-center text-lg">🎬</div>
-                          )}
-                        </div>
-                        <p className="mt-1 truncate text-xs text-zinc-400">{w.title}</p>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+            </section>
           )}
         </div>
       </div>

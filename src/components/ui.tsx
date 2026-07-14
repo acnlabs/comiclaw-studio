@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useT } from "@/components/LocaleProvider";
 
 // 通用小组件:版本切换、空状态、徽章、详情弹层
@@ -114,6 +114,33 @@ export function Badge({
     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${tones[tone]}`}>
       {children}
     </span>
+  );
+}
+
+// 长文本折叠(人设/简介等),默认收起,点击展开全文
+export function CollapsibleText({ text }: { text: string }) {
+  const { t } = useT();
+  const [expanded, setExpanded] = useState(false);
+  const isLong = text.length > 160 || text.split("\n").length > 4;
+
+  return (
+    <div>
+      <p
+        className={`whitespace-pre-wrap text-sm leading-relaxed text-zinc-300 ${
+          isLong && !expanded ? "line-clamp-4" : ""
+        }`}
+      >
+        {text}
+      </p>
+      {isLong && (
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="mt-1 text-xs font-medium text-accent transition-opacity hover:opacity-80"
+        >
+          {expanded ? t("shot.collapse") : t("shot.expand")}
+        </button>
+      )}
+    </div>
   );
 }
 

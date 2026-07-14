@@ -24,6 +24,7 @@ export const PATCH = withAgentAuth(async (req, ctx: Ctx) => {
       imageUrl: body.imageUrl ?? undefined,
       audioUrl: body.audioUrl === undefined ? undefined : body.audioUrl,
       gallery: body.gallery === undefined ? undefined : body.gallery,
+      introVideoUrl: body.introVideoUrl === undefined ? undefined : body.introVideoUrl,
       acnAgentId: body.acnAgentId === undefined ? undefined : body.acnAgentId,
       agentName: body.agentName === undefined ? undefined : body.agentName,
       agentSummary: body.agentSummary === undefined ? undefined : body.agentSummary,
