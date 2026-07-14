@@ -67,7 +67,14 @@ export interface ShotData {
   prompt: string | null;
   selectedVersion: number | null;
   versions: ShotVersionData[]; // 按 version 倒序
-  assetRefs: { asset: { id: string; name: string; type: string } }[];
+  assetRefs: {
+    asset: {
+      id: string;
+      name: string;
+      type: string;
+      versions?: { imageUrl: string }[]; // 最新设定图(用于头像展示)
+    };
+  }[];
 }
 
 export interface CommentData {

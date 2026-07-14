@@ -8,7 +8,7 @@ import type { MessageKey } from "@/lib/i18n";
 import { useT } from "@/components/LocaleProvider";
 import { AUTH0_AUDIENCE } from "@/lib/auth0";
 import { fmtDuration } from "@/lib/format";
-import { VersionPills, EmptyState, Badge, ShotMedia, Modal } from "@/components/ui";
+import { EmptyState, ShotMedia, Modal } from "@/components/ui";
 
 // 分镜 = 输入(描述/台词/提示词/资产/参考帧) + 输出(候选视频,客户选片)
 function ShotCard({ shot, shareToken }: { shot: ShotData; shareToken: string }) {
@@ -59,12 +59,26 @@ function ShotCard({ shot, shareToken }: { shot: ShotData; shareToken: string }) 
         </p>
       )}
       {shot.assetRefs.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {shot.assetRefs.map(({ asset }) => (
-            <Badge key={asset.id}>
-              {t(`assetType.${asset.type}` as MessageKey)} · {asset.name}
-            </Badge>
-          ))}
+        <div className="flex flex-wrap gap-2">
+          {shot.assetRefs.map(({ asset }) => {
+            const img = asset.versions?.[0]?.imageUrl;
+            return (
+              <span
+                key={asset.id}
+                className="inline-flex items-center gap-1.5 rounded-full bg-zinc-800 py-0.5 pl-0.5 pr-2.5 text-xs text-zinc-300"
+              >
+                {img ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={img} alt="" className="h-6 w-6 rounded-full object-cover" />
+                ) : (
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-700 text-[10px] text-zinc-400">
+                    {t(`assetType.${asset.type}` as MessageKey).slice(0, 1)}
+                  </span>
+                )}
+                {asset.name}
+              </span>
+            );
+          })}
         </div>
       )}
       {shot.prompt && (
@@ -78,30 +92,46 @@ function ShotCard({ shot, shareToken }: { shot: ShotData; shareToken: string }) 
     </>
   );
 
+  // 候选视频缩略图条(主画面下方,点击切换,选中标星)
+  const takesStrip = takes.length > 1 && (
+    <div className="flex items-center gap-1.5 bg-zinc-950 px-2 pb-2">
+      {takes.map((take) => (
+        <button
+          key={take.id}
+          onClick={() => setSelTake(take.version)}
+          className={`relative h-12 w-20 shrink-0 overflow-hidden rounded border-2 transition-colors ${
+            currentTake?.version === take.version
+              ? "border-accent"
+              : "border-transparent opacity-60 hover:opacity-100"
+          }`}
+          title={`V${take.version}`}
+        >
+          <video src={take.mediaUrl} muted preload="metadata" className="h-full w-full object-cover" />
+          {shot.selectedVersion === take.version && (
+            <span className="absolute right-0.5 top-0.5 rounded bg-accent px-1 text-[10px] font-bold text-zinc-950">
+              ★
+            </span>
+          )}
+        </button>
+      ))}
+    </div>
+  );
+
   const outputBlock = (
     <div className="space-y-1.5 border-t border-zinc-800/60 pt-2.5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-zinc-500">
-            {takes.length > 0
-              ? `${t("shot.takes")} · ${t("shot.candidates", { n: takes.length })}`
-              : t("shot.noTakes")}
-          </span>
-          {takes.length > 1 && (
-            <VersionPills
-              versions={takes.map((v) => v.version)}
-              selected={currentTake?.version ?? 0}
-              onSelect={setSelTake}
-            />
-          )}
-        </div>
+        <span className="text-xs text-zinc-500">
+          {takes.length > 0
+            ? `${t("shot.takes")} · ${t("shot.candidates", { n: takes.length })}`
+            : t("shot.noTakes")}
+        </span>
         {takes.length > 1 && isAuthenticated && currentTake && !isPicked && (
           <button
             onClick={pick}
             disabled={busy}
             className="rounded-full border border-accent/40 px-3 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent/10 disabled:opacity-50"
           >
-            ★ {t("shot.select")}
+            ★ {t("shot.select")} V{currentTake.version}
           </button>
         )}
       </div>
@@ -113,7 +143,9 @@ function ShotCard({ shot, shareToken }: { shot: ShotData; shareToken: string }) 
 
   return (
     <div className="flex flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/50 md:flex-row">
-      <div className="relative aspect-video shrink-0 bg-zinc-950 md:w-[400px] lg:w-[460px]">
+      {/* 输出侧:主画面 + 候选缩略图条 */}
+      <div className="shrink-0 bg-zinc-950 md:w-[400px] lg:w-[460px]">
+      <div className="relative aspect-video">
         {mainMedia ? (
           <ShotMedia
             mediaUrl={mainMedia.mediaUrl}
@@ -150,6 +182,8 @@ function ShotCard({ shot, shareToken }: { shot: ShotData; shareToken: string }) 
             ⤢
           </button>
         )}
+      </div>
+      {takesStrip}
       </div>
 
       {/* 放大弹层 */}

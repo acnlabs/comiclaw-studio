@@ -15,7 +15,20 @@ export function findFullProjectByToken(shareToken: string) {
         include: {
           versions: { orderBy: { version: "desc" } },
           assetRefs: {
-            include: { asset: { select: { id: true, name: true, type: true } } },
+            include: {
+              asset: {
+                select: {
+                  id: true,
+                  name: true,
+                  type: true,
+                  versions: {
+                    orderBy: { version: "desc" },
+                    take: 1,
+                    select: { imageUrl: true },
+                  },
+                },
+              },
+            },
           },
         },
       },
