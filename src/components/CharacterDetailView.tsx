@@ -67,7 +67,7 @@ export default function CharacterDetailView({
   };
 
   return (
-    <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6">
+    <div className="mx-auto w-full max-w-[1800px] flex-1 px-4 py-6 sm:px-8">
       {/* 顶部导航条:返回 + 缩略图 + 上/下一个角色 */}
       <div className="mb-6 flex items-center gap-3 border-b border-zinc-800 pb-4">
         <Link
@@ -113,14 +113,16 @@ export default function CharacterDetailView({
         </div>
       </div>
 
-      <div className="grid gap-8 md:grid-cols-2">
-        {/* 大图 */}
-        <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={images[activeImg]} alt={c.name} className="aspect-square w-full object-cover" />
+      <div className="grid items-start gap-8 md:grid-cols-2">
+        {/* 大图:左栏固定,随页面滚动保持在视口内 */}
+        <div className="md:sticky md:top-20">
+          <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={images[activeImg]} alt={c.name} className="aspect-square w-full object-cover" />
+          </div>
         </div>
 
-        {/* 信息面板 */}
+        {/* 信息面板:右栏正常滚动 */}
         <div className="space-y-5">
           <div>
             <div className="flex flex-wrap items-center gap-2">
