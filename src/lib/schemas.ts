@@ -65,6 +65,7 @@ export const createShotSchema = z.object({
   duration: z.number().positive().optional().nullable(),
   dialogue: optionalStr,
   action: optionalStr,
+  prompt: optionalStr,
   mediaUrl: optionalStr,
   mediaType: MediaTypeEnum.optional(),
   assetIds: z.array(z.string()).optional(),
@@ -75,6 +76,7 @@ export const updateShotSchema = z.object({
   duration: z.number().positive().optional().nullable(),
   dialogue: optionalStr,
   action: optionalStr,
+  prompt: optionalStr,
   assetIds: z.array(z.string()).optional(),
 });
 

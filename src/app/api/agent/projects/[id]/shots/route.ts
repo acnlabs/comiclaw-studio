@@ -39,6 +39,7 @@ export const POST = withAgentAuth(async (req, ctx: Ctx) => {
       duration: body.duration ?? null,
       dialogue: body.dialogue ?? null,
       action: body.action ?? null,
+      prompt: body.prompt ?? null,
       versions: body.mediaUrl
         ? {
             create: {

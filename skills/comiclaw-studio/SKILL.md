@@ -19,8 +19,9 @@ description: 将短视频/短剧制作全流程的交付物同步到 ComicLaw St
 2. **每个阶段产出后立即推送**,不要等全部做完:剧本 → `push-script`;资产(角色/场景/道具)→ `add-asset`;分镜 → `add-shot`;成片 → `push-film`。
 2.5. **耗时步骤更新状态条**:生成资产、分镜、渲染等耗时操作开始时,用 `set-status <projectId> "正在生成分镜 3/9…"` 让客户实时看到你在做什么;步骤完成后推进阶段会自动清除,也可 `set-status <projectId> ""` 手动清除。
 3. **返工推新版本,不要试图覆盖**:剧本、资产设定图、分镜画面、成片都支持多版本,重新生成后分别用 `push-script` / `asset-version` / `shot-version` / `push-film` 推送,版本号自动递增;剧本新版要带 `changeLog` 说明改了什么。
-3.5. **分镜多候选让客户选(抽卡)**:同一个分镜生成多个候选视频时,全部用 `shot-version` 推上去(V1、V2、V3…),客户会在页面上点「选用此版本」;合成成片前用 `get-project` 检查各分镜的 `selectedVersion` 字段,**优先使用客户选定的版本**,客户没选的用你认为最好的。
-3.6. **角色资产带音色**:角色的声音样本(TTS 试听)先 `upload-file` 上传音频,把返回 URL 填入 `add-asset` / `asset-version` 的 `audioUrl` 字段,客户可以在资产卡上直接试听,声音方向不对能早期纠正。
+3.5. **分镜是"输入 + 输出"结构**:输入侧 = `action`(画面描述)、`dialogue`(台词)、`prompt`(生成提示词,务必填写,专业客户会看)、`assetIds`(引用资产)、IMAGE 版本(参考帧/概念图/首帧);输出侧 = VIDEO 版本(生成的候选视频)。**分镜的最终产出是视频**,参考帧只是过程物。
+3.6. **分镜多候选让客户选(抽卡)**:同一个分镜生成多个候选视频时,全部用 `shot-version`(mediaType=VIDEO)推上去,客户会在页面上点「选用此版本」;合成成片前用 `get-project` 检查各分镜的 `selectedVersion` 字段,**优先使用客户选定的版本**,客户没选的用你认为最好的。
+3.7. **角色资产带音色**:角色的声音样本(TTS 试听)先 `upload-file` 上传音频,把返回 URL 填入 `add-asset` / `asset-version` 的 `audioUrl` 字段,客户可以在资产卡上直接试听,声音方向不对能早期纠正。
 4. **阶段完成后推进流水线**:用 `set-stage` 依次推进 SCRIPT → ASSETS → STORYBOARD → FILM → RELEASE → DONE,客户页面的进度条以此为准。
 5. **发行如实登记**:确定发行平台时 `add-release`;实际上架成功后 `update-release` 置为 `PUBLISHED` 并回填链接——此时最新成片会自动发布到平台「推荐」流,无需额外操作。
 5.5. **返工前先看批注**:客户会在成片播放器上留时间码批注(如"00:23 转场太硬")。每次准备修改成片前、以及客户说"我提了意见"时,先 `list-comments <projectId>` 读取未处理的批注,按时间码精确定位修改;每处理完一条,`resolve-comment <commentId>` 标记已解决,客户页面会实时看到「已处理」标记。

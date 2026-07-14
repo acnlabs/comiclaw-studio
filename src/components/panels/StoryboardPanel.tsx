@@ -3,27 +3,38 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth0 } from "@auth0/auth0-react";
-import type { ShotData } from "@/lib/types";
+import type { ShotData, ShotVersionData } from "@/lib/types";
 import type { MessageKey } from "@/lib/i18n";
 import { useT } from "@/components/LocaleProvider";
 import { AUTH0_AUDIENCE } from "@/lib/auth0";
 import { fmtDuration } from "@/lib/format";
 import { VersionPills, EmptyState, Badge, ShotMedia, Modal } from "@/components/ui";
 
+// 分镜 = 输入(描述/台词/提示词/资产/参考帧) + 输出(候选视频,客户选片)
 function ShotCard({ shot, shareToken }: { shot: ShotData; shareToken: string }) {
   const { t } = useT();
   const { isAuthenticated, getAccessTokenSilently } = useAuth0();
   const router = useRouter();
-  const [selected, setSelected] = useState(shot.selectedVersion ?? shot.versions[0]?.version ?? 1);
+
+  const takes = shot.versions.filter((v) => v.mediaType === "VIDEO");
+  const frames = shot.versions.filter((v) => v.mediaType !== "VIDEO");
+
+  const initialTake =
+    shot.selectedVersion != null && takes.some((v) => v.version === shot.selectedVersion)
+      ? shot.selectedVersion
+      : takes[0]?.version;
+  const [selTake, setSelTake] = useState<number | undefined>(initialTake);
+  const [previewFrame, setPreviewFrame] = useState<ShotVersionData | null>(null);
   const [busy, setBusy] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
-  const current = shot.versions.find((v) => v.version === selected) ?? shot.versions[0];
 
-  const hasCandidates = shot.versions.length > 1;
-  const isPicked = shot.selectedVersion != null && current?.version === shot.selectedVersion;
+  const currentTake = takes.find((v) => v.version === selTake) ?? takes[0];
+  // 主画面:参考帧预览 > 当前候选视频 > 最新参考帧
+  const mainMedia = previewFrame ?? currentTake ?? frames[0];
+  const isPicked = shot.selectedVersion != null && currentTake?.version === shot.selectedVersion;
 
   const pick = async () => {
-    if (!current || busy) return;
+    if (!currentTake || busy) return;
     setBusy(true);
     try {
       const token = await getAccessTokenSilently({
@@ -32,7 +43,7 @@ function ShotCard({ shot, shareToken }: { shot: ShotData; shareToken: string }) 
       const res = await fetch(`/api/user/shots/${shot.id}/select`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ shareToken, version: current.version }),
+        body: JSON.stringify({ shareToken, version: currentTake.version }),
       });
       if (res.ok) router.refresh();
     } finally {
@@ -40,13 +51,95 @@ function ShotCard({ shot, shareToken }: { shot: ShotData; shareToken: string }) 
     }
   };
 
+  const infoBlock = (
+    <>
+      {shot.action && <p className="text-sm leading-relaxed text-zinc-400">{shot.action}</p>}
+      {shot.dialogue && (
+        <p className="rounded-lg bg-zinc-800/60 px-3 py-2 text-sm italic text-zinc-300">
+          「{shot.dialogue}」
+        </p>
+      )}
+      {shot.assetRefs.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {shot.assetRefs.map(({ asset }) => (
+            <Badge key={asset.id}>
+              {t(`assetType.${asset.type}` as MessageKey)} · {asset.name}
+            </Badge>
+          ))}
+        </div>
+      )}
+      {shot.prompt && (
+        <div>
+          <p className="mb-0.5 text-xs text-zinc-600">{t("shot.promptLabel")}</p>
+          <p className="rounded-lg bg-zinc-950/60 px-3 py-2 font-mono text-xs leading-relaxed text-zinc-500">
+            {shot.prompt}
+          </p>
+        </div>
+      )}
+    </>
+  );
+
+  const outputBlock = (
+    <div className="space-y-1.5 border-t border-zinc-800/60 pt-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-zinc-500">
+            {takes.length > 0
+              ? `${t("shot.takes")} · ${t("shot.candidates", { n: takes.length })}`
+              : t("shot.noTakes")}
+          </span>
+          {takes.length > 0 && (
+            <VersionPills
+              versions={takes.map((v) => v.version)}
+              selected={currentTake?.version ?? 0}
+              onSelect={(v) => {
+                setSelTake(v);
+                setPreviewFrame(null);
+              }}
+            />
+          )}
+        </div>
+        {takes.length > 1 && isAuthenticated && currentTake && !isPicked && !previewFrame && (
+          <button
+            onClick={pick}
+            disabled={busy}
+            className="rounded-full border border-accent/40 px-3 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent/10 disabled:opacity-50"
+          >
+            ★ {t("shot.select")}
+          </button>
+        )}
+      </div>
+      {currentTake?.notes && !previewFrame && (
+        <p className="text-xs text-amber-200/80">V{currentTake.version}:{currentTake.notes}</p>
+      )}
+      {frames.length > 0 && takes.length > 0 && (
+        <div className="flex items-center gap-1.5 pt-1">
+          <span className="text-xs text-zinc-600">{t("shot.refFrames")}</span>
+          {frames.map((f) => (
+            <button
+              key={f.id}
+              onClick={() => setPreviewFrame(previewFrame?.id === f.id ? null : f)}
+              className={`h-9 w-14 overflow-hidden rounded border transition-colors ${
+                previewFrame?.id === f.id ? "border-accent" : "border-zinc-700 hover:border-zinc-500"
+              }`}
+              title={`V${f.version}`}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={f.mediaUrl} alt={`V${f.version}`} className="h-full w-full object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="flex flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/50 md:flex-row">
       <div className="relative aspect-video shrink-0 bg-zinc-950 md:w-[400px] lg:w-[460px]">
-        {current ? (
+        {mainMedia ? (
           <ShotMedia
-            mediaUrl={current.mediaUrl}
-            mediaType={current.mediaType}
+            mediaUrl={mainMedia.mediaUrl}
+            mediaType={mainMedia.mediaType}
             alt={shot.title ?? `镜头 ${shot.order}`}
           />
         ) : (
@@ -69,7 +162,7 @@ function ShotCard({ shot, shareToken }: { shot: ShotData; shareToken: string }) 
             ★ {t("shot.selectedBadge", { n: shot.selectedVersion })}
           </span>
         )}
-        {current && (
+        {mainMedia && (
           <button
             onClick={() => setDetailOpen(true)}
             aria-label={t("detail.expand")}
@@ -81,9 +174,9 @@ function ShotCard({ shot, shareToken }: { shot: ShotData; shareToken: string }) 
         )}
       </div>
 
-      {/* 详情弹层:大画面 + 完整信息 + 选片 */}
+      {/* 放大弹层 */}
       <Modal open={detailOpen} onClose={() => setDetailOpen(false)}>
-        {current && (
+        {mainMedia && (
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2 pr-10">
               <span className="rounded-md bg-zinc-800 px-2 py-0.5 text-xs font-bold text-accent">
@@ -93,95 +186,26 @@ function ShotCard({ shot, shareToken }: { shot: ShotData; shareToken: string }) 
               {shot.duration != null && (
                 <span className="text-xs text-zinc-500">{fmtDuration(shot.duration)}</span>
               )}
-              {shot.selectedVersion != null && (
-                <span className="rounded-md bg-accent px-2 py-0.5 text-xs font-medium text-zinc-950">
-                  ★ {t("shot.selectedBadge", { n: shot.selectedVersion })}
-                </span>
-              )}
             </div>
             <div className="overflow-hidden rounded-xl bg-zinc-950">
               <div className="aspect-video w-full">
                 <ShotMedia
-                  mediaUrl={current.mediaUrl}
-                  mediaType={current.mediaType}
+                  mediaUrl={mainMedia.mediaUrl}
+                  mediaType={mainMedia.mediaType}
                   alt={shot.title ?? `镜头 ${shot.order}`}
                 />
               </div>
             </div>
-            {shot.action && <p className="text-sm leading-relaxed text-zinc-300">{shot.action}</p>}
-            {shot.dialogue && (
-              <p className="rounded-lg bg-zinc-800/60 px-3 py-2 text-sm italic text-zinc-300">
-                「{shot.dialogue}」
-              </p>
-            )}
-            {shot.assetRefs.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {shot.assetRefs.map(({ asset }) => (
-                  <Badge key={asset.id}>
-                    {t(`assetType.${asset.type}` as MessageKey)} · {asset.name}
-                  </Badge>
-                ))}
-              </div>
-            )}
-            {current.notes && (
-              <p className="text-sm text-amber-200/80">V{current.version}:{current.notes}</p>
-            )}
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <VersionPills
-                versions={shot.versions.map((v) => v.version)}
-                selected={current.version}
-                onSelect={setSelected}
-              />
-              {hasCandidates && isAuthenticated && !isPicked && (
-                <button
-                  onClick={pick}
-                  disabled={busy}
-                  className="rounded-full border border-accent/40 px-3 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent/10 disabled:opacity-50"
-                >
-                  ★ {t("shot.select")}
-                </button>
-              )}
-            </div>
+            {infoBlock}
+            {outputBlock}
           </div>
         )}
       </Modal>
 
       <div className="min-w-0 flex-1 space-y-2 px-4 py-3">
         {shot.title && <h3 className="font-medium text-zinc-100">{shot.title}</h3>}
-        {shot.action && <p className="text-sm leading-relaxed text-zinc-400">{shot.action}</p>}
-        {shot.dialogue && (
-          <p className="rounded-lg bg-zinc-800/60 px-3 py-2 text-sm italic text-zinc-300">
-            「{shot.dialogue}」
-          </p>
-        )}
-        {shot.assetRefs.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {shot.assetRefs.map(({ asset }) => (
-              <Badge key={asset.id}>
-                {t(`assetType.${asset.type}` as MessageKey)} · {asset.name}
-              </Badge>
-            ))}
-          </div>
-        )}
-        {current?.notes && (
-          <p className="text-xs text-amber-200/80">V{current.version}:{current.notes}</p>
-        )}
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <VersionPills
-            versions={shot.versions.map((v) => v.version)}
-            selected={current?.version ?? 1}
-            onSelect={setSelected}
-          />
-          {hasCandidates && isAuthenticated && current && !isPicked && (
-            <button
-              onClick={pick}
-              disabled={busy}
-              className="rounded-full border border-accent/40 px-3 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent/10 disabled:opacity-50"
-            >
-              ★ {t("shot.select")}
-            </button>
-          )}
-        </div>
+        {infoBlock}
+        {outputBlock}
       </div>
     </div>
   );
@@ -205,7 +229,7 @@ export default function StoryboardPanel({
         {t("panel.storyboard.summary", { n: shots.length })}
         {total > 0 && <> · {t("panel.storyboard.totalDuration", { t: fmtDuration(total) })}</>}
       </p>
-      {/* 纵向单列:每个镜头一行,信息全部直接可见,零点击 */}
+      {/* 纵向单列:每个镜头一行,输入/输出信息全部直接可见 */}
       <div className="space-y-4">
         {shots.map((shot) => (
           <ShotCard key={shot.id} shot={shot} shareToken={shareToken} />

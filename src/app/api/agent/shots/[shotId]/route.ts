@@ -33,6 +33,7 @@ export const PATCH = withAgentAuth(async (req, ctx: Ctx) => {
       duration: body.duration === undefined ? undefined : body.duration,
       dialogue: body.dialogue === undefined ? undefined : body.dialogue,
       action: body.action === undefined ? undefined : body.action,
+      prompt: body.prompt === undefined ? undefined : body.prompt,
       assetRefs: body.assetIds
         ? { deleteMany: {}, create: body.assetIds.map((assetId) => ({ assetId })) }
         : undefined,

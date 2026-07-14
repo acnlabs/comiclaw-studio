@@ -95,6 +95,7 @@ model Shot {
   duration        Float? // 时长(秒)
   dialogue        String? // 台词 / 旁白
   action          String? // 画面描述
+  prompt          String? // 生成提示词(输入侧,供专业用户查看与追溯)
   selectedVersion Int? // 客户选定的候选版本(抽卡选片)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

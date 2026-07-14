@@ -64,6 +64,7 @@ export interface ShotData {
   duration: number | null;
   dialogue: string | null;
   action: string | null;
+  prompt: string | null;
   selectedVersion: number | null;
   versions: ShotVersionData[]; // 按 version 倒序
   assetRefs: { asset: { id: string; name: string; type: string } }[];
