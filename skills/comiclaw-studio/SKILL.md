@@ -83,6 +83,16 @@ $S set-stage <projectId> DONE
 - `list-projects`:列出全部项目。
 - `publish-work '<json>'`:不经项目流程直接发布平台作品,用于整部短剧上架(kind=SERIES 时必须携带 `episodes` 分集数组,`category` 默认「漫剧」)。
 
+## 故障排查(遇到问题先做这两步)
+
+1. **先跑 `studio.sh ping` 自检**,它会告诉你问题在哪:
+   - `404` → `STUDIO_BASE_URL` 指向了旧部署快照或错误地址。正确地址是 `https://studio.comiclaw.acnlabs.org`,不要使用形如 `comiclaw-studio-xxxxx-*.vercel.app` 的部署快照 URL(那是冻结的历史版本,缺少新接口);
+   - `401` → `STUDIO_API_KEY` 配置错误,提醒运营者核对;
+   - 网络不可达 → 沙箱出站白名单未放行该域名,提醒运营者处理。
+2. **文档里列出的命令就是全部能力**。如果某个文档中存在的接口返回 404,那一定是第 1 条的地址问题,不要自行猜测其他端点路径。
+
+另外:你只通过 API 操作 Studio,不需要也不应索取 `ADMIN_KEY` 或管理后台链接——那是运营者的人类入口,与你无关。
+
 ## 注意事项
 
 - **媒体字段必须是完整 URL**:`imageUrl` / `mediaUrl` / `videoUrl` 必须是 `upload-file` 返回的完整 http(s) URL,传相对路径或空值会返回 400。

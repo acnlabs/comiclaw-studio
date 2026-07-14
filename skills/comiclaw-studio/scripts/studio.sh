@@ -28,6 +28,9 @@ usage() {
   cat <<'EOF'
 用法: studio.sh <command> [args]
 
+自检
+  ping                                  验证地址与密钥配置(遇到 404/401 先跑这个)
+
 项目
   list-projects                         项目列表
   create-project '<json>'               创建项目 {name*, clientName, agentName, description, coverUrl,
@@ -70,6 +73,18 @@ EOF
 
 cmd="${1:-}"
 case "$cmd" in
+  ping)
+    # 自检:验证 STUDIO_BASE_URL 与 STUDIO_API_KEY 配置是否正确
+    echo "STUDIO_BASE_URL = $BASE"
+    code=$(curl -s -o /dev/null -w "%{http_code}" "$BASE/api/agent/projects" -H "Authorization: Bearer $STUDIO_API_KEY")
+    case "$code" in
+      200) echo "OK ($code): 地址与密钥均正确" ;;
+      401) echo "FAIL ($code): 地址正确,但 STUDIO_API_KEY 错误" ;;
+      404) echo "FAIL ($code): STUDIO_BASE_URL 指向了旧部署或错误地址,应为 https://studio.comiclaw.acnlabs.org" ;;
+      000) echo "FAIL: 网络不可达(出站白名单未放行该域名?)" ;;
+      *)   echo "FAIL ($code)" ;;
+    esac
+    ;;
   list-projects)   call GET "/api/agent/projects" ;;
   create-project)  call POST "/api/agent/projects" "$2" ;;
   get-project)     call GET "/api/agent/projects/$2" ;;
