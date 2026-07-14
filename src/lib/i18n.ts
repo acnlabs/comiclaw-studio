@@ -112,6 +112,10 @@ const zh = {
   // 剧本章节
   "script.toc": "章节",
 
+  // 详情弹层
+  "detail.expand": "查看详情",
+  "detail.close": "关闭",
+
   // 分镜选片 / 音色 / 对比
   "shot.select": "选用此版本",
   "shot.selectedBadge": "已选 V{n}",
@@ -238,6 +242,9 @@ const en: Record<MessageKey, string> = {
   "privacy.off": "Link sharing: anyone with the link can view",
 
   "script.toc": "Sections",
+
+  "detail.expand": "View details",
+  "detail.close": "Close",
 
   "shot.select": "Use this take",
   "shot.selectedBadge": "Picked V{n}",
