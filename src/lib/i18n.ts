@@ -109,6 +109,16 @@ const zh = {
   "privacy.on": "已开启私密:只有你能查看该项目",
   "privacy.off": "链接可见:知道链接的人都能查看",
 
+  // 时间码批注
+  "comments.title": "批注",
+  "comments.empty": "还没有批注。播放到需要修改的位置,点「在当前时间批注」告诉 comiclaw 改哪里。",
+  "comments.placeholder": "写下你的修改意见…",
+  "comments.atCurrent": "在 {t} 批注",
+  "comments.general": "整体意见",
+  "comments.submit": "发表",
+  "comments.loginToComment": "登录后可发表批注",
+  "comments.resolved": "已处理",
+
   // 404
   "notFound.title": "页面不存在",
   "notFound.desc": "链接可能有误或项目已被移除。请核对 comiclaw 发给你的专属项目链接。",
@@ -214,6 +224,16 @@ const en: Record<MessageKey, string> = {
   "privacy.toggle": "Only visible to me",
   "privacy.on": "Private: only you can view this project",
   "privacy.off": "Link sharing: anyone with the link can view",
+
+  "comments.title": "Comments",
+  "comments.empty":
+    "No comments yet. Play to the moment you want changed and click \u201cComment at current time\u201d to tell comiclaw exactly where.",
+  "comments.placeholder": "Write your feedback…",
+  "comments.atCurrent": "Comment at {t}",
+  "comments.general": "General note",
+  "comments.submit": "Post",
+  "comments.loginToComment": "Sign in to comment",
+  "comments.resolved": "Resolved",
 
   "notFound.title": "Page not found",
   "notFound.desc":

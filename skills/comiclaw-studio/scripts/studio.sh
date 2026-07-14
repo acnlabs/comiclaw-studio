@@ -62,6 +62,11 @@ usage() {
                                         用法:URL=$(studio.sh upload-file /path/to/video.mp4 | python3 -c "import sys,json;print(json.load(sys.stdin)['url'])")
                                         然后把 $URL 填入 push-film / shot-version / add-asset 等的 mediaUrl/videoUrl/imageUrl 字段
 
+客户批注(时间码反馈)
+  list-comments <projectId> [all]       读取客户对成片的批注,默认只列未处理(OPEN);加 all 看全部
+                                        返回 {filmVersion, timecode(秒), content, authorName, status}
+  resolve-comment <commentId>           处理完成后标记批注为已解决
+
 发行与作品
   add-release <projectId> '<json>'      新增发行记录 {platform*, url, status, notes}
   update-release <releaseId> '<json>'   更新发行状态 {status: PENDING|PUBLISHED, url, publishedAt}
@@ -100,6 +105,8 @@ case "$cmd" in
   add-release)     call POST "/api/agent/projects/$2/releases" "$3" ;;
   update-release)  call PATCH "/api/agent/releases/$2" "$3" ;;
   publish-work)    call POST "/api/agent/works" "$2" ;;
+  list-comments)   call GET "/api/agent/projects/$2/comments${3:+?status=$3}" ;;
+  resolve-comment) call PATCH "/api/agent/comments/$2" '{"status":"RESOLVED"}' ;;
   delete-project)  call DELETE "/api/agent/projects/$2" ;;
   delete-asset)    call DELETE "/api/agent/assets/$2" ;;
   delete-shot)     call DELETE "/api/agent/shots/$2" ;;

@@ -1,14 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { FilmVersionData } from "@/lib/types";
 import { useT } from "@/components/LocaleProvider";
 import { fmtDuration } from "@/lib/format";
 import { VersionPills, EmptyState } from "@/components/ui";
+import CommentSection from "@/components/panels/CommentSection";
 
-export default function FilmPanel({ versions }: { versions: FilmVersionData[] }) {
+export default function FilmPanel({
+  versions,
+  shareToken,
+}: {
+  versions: FilmVersionData[];
+  shareToken: string;
+}) {
   const { t, fmtDate } = useT();
   const [selected, setSelected] = useState(versions[0]?.version ?? 1);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const current = versions.find((v) => v.version === selected) ?? versions[0];
 
   if (!current) return <EmptyState text={t("panel.film.empty")} />;
@@ -33,6 +41,7 @@ export default function FilmPanel({ versions }: { versions: FilmVersionData[] })
       <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950">
         <video
           key={current.id}
+          ref={videoRef}
           src={current.videoUrl}
           controls
           playsInline
@@ -45,6 +54,13 @@ export default function FilmPanel({ versions }: { versions: FilmVersionData[] })
           {t("panel.film.notes", { text: current.notes })}
         </div>
       )}
+
+      <CommentSection
+        shareToken={shareToken}
+        filmVersionId={current.id}
+        comments={current.comments ?? []}
+        videoRef={videoRef}
+      />
     </div>
   );
 }

@@ -19,7 +19,12 @@ export function findFullProjectByToken(shareToken: string) {
           },
         },
       },
-      filmVersions: { orderBy: { version: "desc" } },
+      filmVersions: {
+        orderBy: { version: "desc" },
+        include: {
+          comments: { orderBy: [{ timecode: "asc" }, { createdAt: "asc" }] },
+        },
+      },
       releases: { orderBy: { createdAt: "asc" } },
     },
   });

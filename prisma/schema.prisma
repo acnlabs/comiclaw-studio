@@ -32,6 +32,7 @@ model Project {
   filmVersions   FilmVersion[]
   releases       Release[]
   work           Work?
+  comments       Comment[]
 
   @@index([ownerUserId])
 }
@@ -138,9 +139,30 @@ model FilmVersion {
   notes     String? // 本版剪辑说明
   createdAt DateTime @default(now())
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  comments Comment[]
 
   @@unique([projectId, version])
+}
+
+// ---------- 时间码批注 ----------
+
+// 客户对成片版本的时间码反馈(Frame.io 式);agent 拉取后精确返工
+model Comment {
+  id            String   @id @default(cuid())
+  projectId     String
+  filmVersionId String
+  timecode      Float? // 秒;空表示针对整版的整体意见
+  content       String
+  authorSub     String // 发表者的 AgentPlanet 账号(Auth0 sub)
+  authorName    String? // 展示名
+  status        String   @default("OPEN") // OPEN | RESOLVED
+  createdAt     DateTime @default(now())
+
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  filmVersion FilmVersion @relation(fields: [filmVersionId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, status])
 }
 
 // ---------- 平台作品(推荐 / 短剧) ----------

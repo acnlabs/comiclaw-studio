@@ -67,6 +67,15 @@ export interface ShotData {
   assetRefs: { asset: { id: string; name: string; type: string } }[];
 }
 
+export interface CommentData {
+  id: string;
+  timecode: number | null;
+  content: string;
+  authorName: string | null;
+  status: string;
+  createdAt: string;
+}
+
 export interface FilmVersionData {
   id: string;
   version: number;
@@ -74,6 +83,7 @@ export interface FilmVersionData {
   duration: number | null;
   notes: string | null;
   createdAt: string;
+  comments: CommentData[];
 }
 
 export interface ReleaseData {
