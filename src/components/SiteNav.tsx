@@ -10,6 +10,7 @@ import type { MessageKey } from "@/lib/i18n";
 const MENUS: { href: string; labelKey: MessageKey }[] = [
   { href: "/", labelKey: "nav.recommend" },
   { href: "/series", labelKey: "nav.series" },
+  { href: "/characters", labelKey: "nav.characters" },
   { href: "/studio", labelKey: "nav.studio" },
 ];
 

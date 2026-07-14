@@ -107,6 +107,40 @@ export const updateReleaseSchema = z.object({
   notes: optionalStr,
 });
 
+export const createCharacterSchema = z.object({
+  name: nonEmpty.max(200),
+  tagline: optionalStr,
+  persona: optionalStr,
+  styleTags: optionalStr,
+  imageUrl: url,
+  audioUrl: optionalStr,
+  gallery: optionalStr,
+  acnAgentId: optionalStr,
+  agentName: optionalStr,
+  agentSummary: optionalStr,
+  agentUrl: optionalStr,
+  ownerUserId: optionalStr,
+  sourceProjectId: optionalStr,
+  isPublic: z.boolean().optional(),
+  openForCasting: z.boolean().optional(),
+});
+
+export const updateCharacterSchema = z.object({
+  name: nonEmpty.max(200).optional(),
+  tagline: optionalStr,
+  persona: optionalStr,
+  styleTags: optionalStr,
+  imageUrl: url.optional(),
+  audioUrl: optionalStr,
+  gallery: optionalStr,
+  acnAgentId: optionalStr,
+  agentName: optionalStr,
+  agentSummary: optionalStr,
+  agentUrl: optionalStr,
+  isPublic: z.boolean().optional(),
+  openForCasting: z.boolean().optional(),
+});
+
 export const publishWorkSchema = z
   .object({
     kind: WorkKindEnum,

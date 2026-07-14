@@ -72,6 +72,15 @@ usage() {
                                         返回 {filmVersion, timecode(秒), content, authorName, status}
   resolve-comment <commentId>           处理完成后标记批注为已解决
 
+智能体角色(数字人名录 / 选角市场)
+  create-character '<json>'             发布数字人角色 {name*, imageUrl*, tagline, persona, styleTags,
+                                        audioUrl(音色), gallery(逗号分隔多图), acnAgentId, agentName,
+                                        agentSummary, agentUrl(智能体主页), ownerUserId, sourceProjectId,
+                                        isPublic(默认true), openForCasting(是否开放参演,默认false)}
+  list-characters                       角色列表
+  update-character <id> '<json>'        更新角色 / 上下架(isPublic)/ 开放参演(openForCasting)
+  delete-character <id>                 删除角色
+
 发行与作品
   add-release <projectId> '<json>'      新增发行记录 {platform*, url, status, notes}
   update-release <releaseId> '<json>'   更新发行状态 {status: PENDING|PUBLISHED, url, publishedAt}
@@ -115,6 +124,10 @@ case "$cmd" in
   add-release)     call POST "/api/agent/projects/$2/releases" "$3" ;;
   update-release)  call PATCH "/api/agent/releases/$2" "$3" ;;
   publish-work)    call POST "/api/agent/works" "$2" ;;
+  create-character) call POST "/api/agent/characters" "$2" ;;
+  list-characters)  call GET "/api/agent/characters" ;;
+  update-character) call PATCH "/api/agent/characters/$2" "$3" ;;
+  delete-character) call DELETE "/api/agent/characters/$2" ;;
   list-comments)   call GET "/api/agent/projects/$2/comments${3:+?status=$3}" ;;
   resolve-comment) call PATCH "/api/agent/comments/$2" '{"status":"RESOLVED"}' ;;
   delete-project)  call DELETE "/api/agent/projects/$2" ;;

@@ -6,6 +6,7 @@ const zh = {
   // 导航
   "nav.recommend": "推荐",
   "nav.series": "短剧",
+  "nav.characters": "角色",
   "nav.studio": "Studio",
   "nav.login": "登录",
   "nav.logout": "退出",
@@ -146,6 +147,20 @@ const zh = {
   "comments.loginToComment": "登录后可发表批注",
   "comments.resolved": "已处理",
 
+  // 智能体角色 / 选角市场
+  "char.title": "智能体角色",
+  "char.subtitle": "注册到 ACN 的智能体拥有的数字人,可来 comiclaw 主演或参演短视频与短剧",
+  "char.empty": "还没有公开的角色。comiclaw 为智能体创建数字人后会出现在这里。",
+  "char.openForCasting": "开放参演",
+  "char.byAgent": "所属智能体",
+  "char.persona": "人设",
+  "char.style": "风格",
+  "char.gallery": "更多形象",
+  "char.voice": "音色试听",
+  "char.works": "参演作品",
+  "char.viewAgent": "查看智能体",
+  "char.castingBadge": "可参演",
+
   // 404
   "notFound.title": "页面不存在",
   "notFound.desc": "链接可能有误或项目已被移除。请核对 comiclaw 发给你的专属项目链接。",
@@ -158,6 +173,7 @@ const zh = {
 const en: Record<MessageKey, string> = {
   "nav.recommend": "For You",
   "nav.series": "Series",
+  "nav.characters": "Cast",
   "nav.studio": "Studio",
   "nav.login": "Sign in",
   "nav.logout": "Sign out",
@@ -285,6 +301,20 @@ const en: Record<MessageKey, string> = {
   "comments.submit": "Post",
   "comments.loginToComment": "Sign in to comment",
   "comments.resolved": "Resolved",
+
+  "char.title": "Agent Cast",
+  "char.subtitle":
+    "Digital humans owned by ACN-registered agents — available to star in or join short videos and dramas on comiclaw",
+  "char.empty": "No public characters yet. Digital humans created by comiclaw will appear here.",
+  "char.openForCasting": "Open for casting",
+  "char.byAgent": "Agent",
+  "char.persona": "Persona",
+  "char.style": "Style",
+  "char.gallery": "More looks",
+  "char.voice": "Voice sample",
+  "char.works": "Appears in",
+  "char.viewAgent": "View agent",
+  "char.castingBadge": "Castable",
 
   "notFound.title": "Page not found",
   "notFound.desc":

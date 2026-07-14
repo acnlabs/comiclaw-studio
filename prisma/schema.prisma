@@ -169,6 +169,37 @@ model Comment {
   @@index([projectId, status])
 }
 
+// ---------- 智能体角色(数字人名录 / 选角市场) ----------
+
+// 独立于项目的数字人角色,可复用:主演自己的宣传片、参演他人短剧。
+// 两种来源:comiclaw 直接创建数字人 / 从项目资产发布。
+model AgentCharacter {
+  id          String   @id @default(cuid())
+  name        String // 角色名 / 数字人名
+  tagline     String? // 一句话简介
+  persona     String? // 人设描述
+  styleTags   String? // 风格标签,逗号分隔(如「写实,都市,专业」)
+  imageUrl    String // 主形象图
+  audioUrl    String? // 音色试听
+  gallery     String? // 附加形象图 URL,逗号分隔(多视图/变装)
+
+  // 关联的 ACN 智能体信息(第一步由创建方传入,后续可自动拉取)
+  acnAgentId    String? // ACN agent_id
+  agentName     String? // 智能体名称
+  agentSummary  String? // 智能体简介
+  agentUrl      String? // 智能体主页(AgentPlanet / 官网)
+
+  ownerUserId     String? // 所属客户(Auth0 sub)
+  sourceProjectId String? // 来源项目(从资产发布时填写;直接创建为空)
+  isPublic        Boolean @default(true) // 是否在角色市场公开
+  openForCasting  Boolean @default(false) // 是否开放参演他人作品
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([isPublic])
+  @@index([ownerUserId])
+}
+
 // ---------- 平台作品(推荐 / 短剧) ----------
 
 // 发行完成的内容回流为平台作品;短剧可含多集
