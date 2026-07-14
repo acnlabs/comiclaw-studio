@@ -10,6 +10,43 @@ import { AUTH0_AUDIENCE } from "@/lib/auth0";
 import { fmtDuration } from "@/lib/format";
 import { EmptyState, ShotMedia, Modal } from "@/components/ui";
 
+// 渲染生成提示词:@资产名 识别为带头像的内联引用(对齐火山剧创的 @ 引用形态,只读)
+function PromptText({
+  prompt,
+  assetRefs,
+}: {
+  prompt: string;
+  assetRefs: ShotData["assetRefs"];
+}) {
+  const parts = prompt.split(/(@[^\s@,,。.;;、()()「」"']+)/g);
+  return (
+    <p className="whitespace-pre-wrap rounded-lg bg-zinc-950/60 px-3 py-2 font-mono text-xs leading-relaxed text-zinc-500">
+      {parts.map((part, i) => {
+        if (!part.startsWith("@")) return <span key={i}>{part}</span>;
+        const token = part.slice(1);
+        const match = assetRefs.find(
+          ({ asset }) =>
+            asset.name.startsWith(token) ||
+            token.startsWith(asset.name.split(/[\s((]/)[0])
+        );
+        const img = match?.asset.versions?.[0]?.imageUrl;
+        return (
+          <span
+            key={i}
+            className="mx-0.5 inline-flex items-center gap-1 rounded bg-accent/10 px-1 align-middle font-sans text-accent"
+          >
+            {img && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={img} alt="" className="h-3.5 w-3.5 rounded-full object-cover" />
+            )}
+            @{token}
+          </span>
+        );
+      })}
+    </p>
+  );
+}
+
 // 分镜 = 输入(描述/台词/提示词/资产/参考帧) + 输出(候选视频,客户选片)
 function ShotCard({ shot, shareToken }: { shot: ShotData; shareToken: string }) {
   const { t } = useT();
@@ -84,9 +121,7 @@ function ShotCard({ shot, shareToken }: { shot: ShotData; shareToken: string }) 
       {shot.prompt && (
         <div>
           <p className="mb-0.5 text-xs text-zinc-600">{t("shot.promptLabel")}</p>
-          <p className="rounded-lg bg-zinc-950/60 px-3 py-2 font-mono text-xs leading-relaxed text-zinc-500">
-            {shot.prompt}
-          </p>
+          <PromptText prompt={shot.prompt} assetRefs={shot.assetRefs} />
         </div>
       )}
     </>
