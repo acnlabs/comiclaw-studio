@@ -17,6 +17,7 @@ description: 将短视频/短剧制作全流程的交付物同步到 ComicLaw St
 
 1. **开工先建项目**:接到制作任务后立即 `create-project`,并把返回的分享链接(`STUDIO_BASE_URL` + `sharePath`)发给客户,告诉客户可随时打开查看进度。如果你知道客户的 AgentPlanet 账号(Auth0 sub,如 `auth0|xxx`),创建时带上 `ownerUserId` 字段,项目会直接出现在客户登录后的「我的项目」里;不知道则不传,客户打开链接登录后会自动认领。
 2. **每个阶段产出后立即推送**,不要等全部做完:剧本 → `push-script`;资产(角色/场景/道具)→ `add-asset`;分镜 → `add-shot`;成片 → `push-film`。
+2.5. **耗时步骤更新状态条**:生成资产、分镜、渲染等耗时操作开始时,用 `set-status <projectId> "正在生成分镜 3/9…"` 让客户实时看到你在做什么;步骤完成后推进阶段会自动清除,也可 `set-status <projectId> ""` 手动清除。
 3. **返工推新版本,不要试图覆盖**:剧本、资产设定图、分镜画面、成片都支持多版本,重新生成后分别用 `push-script` / `asset-version` / `shot-version` / `push-film` 推送,版本号自动递增;剧本新版要带 `changeLog` 说明改了什么。
 3.5. **分镜多候选让客户选(抽卡)**:同一个分镜生成多个候选视频时,全部用 `shot-version` 推上去(V1、V2、V3…),客户会在页面上点「选用此版本」;合成成片前用 `get-project` 检查各分镜的 `selectedVersion` 字段,**优先使用客户选定的版本**,客户没选的用你认为最好的。
 3.6. **角色资产带音色**:角色的声音样本(TTS 试听)先 `upload-file` 上传音频,把返回 URL 填入 `add-asset` / `asset-version` 的 `audioUrl` 字段,客户可以在资产卡上直接试听,声音方向不对能早期纠正。

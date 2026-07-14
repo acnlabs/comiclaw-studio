@@ -106,6 +106,7 @@ export interface ProjectData {
   description: string | null;
   coverUrl: string | null;
   currentStage: string;
+  statusNote: string | null;
   updatedAt: string;
   scriptVersions: ScriptVersionData[];
   assets: AssetData[];

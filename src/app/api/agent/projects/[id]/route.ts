@@ -55,6 +55,12 @@ export const PATCH = withAgentAuth(async (req, ctx: Ctx) => {
       description: body.description === undefined ? undefined : body.description,
       coverUrl: body.coverUrl === undefined ? undefined : body.coverUrl,
       currentStage: body.currentStage ?? undefined,
+      statusNote:
+        body.statusNote === undefined
+          ? body.currentStage // 推进阶段时自动清空上一阶段的状态
+            ? null
+            : undefined
+          : body.statusNote?.trim() || null,
     },
   });
   emitProjectUpdate(id, "project.updated");

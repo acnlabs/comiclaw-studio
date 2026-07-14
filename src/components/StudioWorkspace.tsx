@@ -72,6 +72,15 @@ export default function StudioWorkspace({ project }: { project: ProjectData }) {
         <div className="mt-4">
           <PipelineHeader currentStage={project.currentStage} />
         </div>
+        {project.statusNote && (
+          <div className="mt-2 flex items-center gap-2 text-sm text-accent">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
+            </span>
+            {project.statusNote}
+          </div>
+        )}
       </header>
 
       {/* Tab 导航 */}

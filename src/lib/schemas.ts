@@ -34,6 +34,7 @@ export const updateProjectSchema = z.object({
   description: optionalStr,
   coverUrl: optionalStr,
   currentStage: StageEnum.optional(),
+  statusNote: z.string().max(200).optional().nullable(), // 实时状态,空字符串表示清除
 });
 
 export const scriptVersionSchema = z.object({

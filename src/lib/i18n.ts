@@ -109,6 +109,9 @@ const zh = {
   "privacy.on": "已开启私密:只有你能查看该项目",
   "privacy.off": "链接可见:知道链接的人都能查看",
 
+  // 剧本章节
+  "script.toc": "章节",
+
   // 分镜选片 / 音色 / 对比
   "shot.select": "选用此版本",
   "shot.selectedBadge": "已选 V{n}",
@@ -233,6 +236,8 @@ const en: Record<MessageKey, string> = {
   "privacy.toggle": "Only visible to me",
   "privacy.on": "Private: only you can view this project",
   "privacy.off": "Link sharing: anyone with the link can view",
+
+  "script.toc": "Sections",
 
   "shot.select": "Use this take",
   "shot.selectedBadge": "Picked V{n}",

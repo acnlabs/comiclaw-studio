@@ -37,7 +37,8 @@ usage() {
                                         ownerUserId(客户的 AgentPlanet 账号 sub,可选;传入后项目自动归属该客户)}
   get-project <projectId>               项目全量数据(含各阶段交付物与版本)
   update-project <projectId> '<json>'   更新信息 {name, description, coverUrl, ...}
-  set-stage <projectId> <STAGE>         推进阶段 SCRIPT|ASSETS|STORYBOARD|FILM|RELEASE|DONE
+  set-stage <projectId> <STAGE>         推进阶段 SCRIPT|ASSETS|STORYBOARD|FILM|RELEASE|DONE(自动清除状态条)
+  set-status <projectId> '<文本>'       更新实时状态条,如 "正在生成分镜 3/9…";传空字符串清除
 
 交付物(版本号自动递增)
   push-script <projectId> '<json>'      推送剧本 {content*, title, logline, changeLog}
@@ -97,6 +98,11 @@ case "$cmd" in
   get-project)     call GET "/api/agent/projects/$2" ;;
   update-project)  call PATCH "/api/agent/projects/$2" "$3" ;;
   set-stage)       call PATCH "/api/agent/projects/$2" "{\"currentStage\":\"$3\"}" ;;
+  set-status)
+    # 更新实时状态条(客户页面顶部实时显示);传空字符串清除
+    note="${3:-}"
+    call PATCH "/api/agent/projects/$2" "{\"statusNote\":$(python3 -c "import json,sys;print(json.dumps(sys.argv[1]))" "$note")}"
+    ;;
   push-script)     call POST "/api/agent/projects/$2/script-versions" "$3" ;;
   add-asset)       call POST "/api/agent/projects/$2/assets" "$3" ;;
   asset-version)   call POST "/api/agent/assets/$2/versions" "$3" ;;
