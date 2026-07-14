@@ -17,7 +17,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-// 渲染生成提示词:@资产名 识别为带头像的内联引用(只读)
+// 渲染生成提示词:@资产名 识别为带头像的内联引用(只读);过长时可折叠
 function PromptText({
   prompt,
   assetRefs,
@@ -25,31 +25,51 @@ function PromptText({
   prompt: string;
   assetRefs: ShotData["assetRefs"];
 }) {
+  const { t } = useT();
+  const [expanded, setExpanded] = useState(false);
+  const isLong = prompt.length > 140 || prompt.split("\n").length > 4;
+
   const parts = prompt.split(/(@[^\s@,,。.;;、()()「」"']+)/g);
+  const rendered = parts.map((part, i) => {
+    if (!part.startsWith("@")) return <span key={i}>{part}</span>;
+    const token = part.slice(1);
+    const match = assetRefs.find(
+      ({ asset }) =>
+        asset.name.startsWith(token) || token.startsWith(asset.name.split(/[\s((]/)[0])
+    );
+    const img = match?.asset.versions?.[0]?.imageUrl;
+    return (
+      <span
+        key={i}
+        className="mx-0.5 inline-flex items-center gap-1 rounded bg-accent/10 px-1 align-middle font-sans text-accent"
+      >
+        {img && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={img} alt="" className="h-3.5 w-3.5 rounded-full object-cover" />
+        )}
+        @{token}
+      </span>
+    );
+  });
+
   return (
-    <p className="whitespace-pre-wrap rounded-lg bg-zinc-950/60 px-3 py-2 font-mono text-xs leading-relaxed text-zinc-400">
-      {parts.map((part, i) => {
-        if (!part.startsWith("@")) return <span key={i}>{part}</span>;
-        const token = part.slice(1);
-        const match = assetRefs.find(
-          ({ asset }) =>
-            asset.name.startsWith(token) || token.startsWith(asset.name.split(/[\s((]/)[0])
-        );
-        const img = match?.asset.versions?.[0]?.imageUrl;
-        return (
-          <span
-            key={i}
-            className="mx-0.5 inline-flex items-center gap-1 rounded bg-accent/10 px-1 align-middle font-sans text-accent"
-          >
-            {img && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={img} alt="" className="h-3.5 w-3.5 rounded-full object-cover" />
-            )}
-            @{token}
-          </span>
-        );
-      })}
-    </p>
+    <div className="rounded-lg bg-zinc-950/60 px-3 py-2">
+      <p
+        className={`whitespace-pre-wrap font-mono text-xs leading-relaxed text-zinc-400 ${
+          isLong && !expanded ? "line-clamp-3" : ""
+        }`}
+      >
+        {rendered}
+      </p>
+      {isLong && (
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="mt-1 text-xs font-medium text-accent transition-opacity hover:opacity-80"
+        >
+          {expanded ? t("shot.collapse") : t("shot.expand")}
+        </button>
+      )}
+    </div>
   );
 }
 
