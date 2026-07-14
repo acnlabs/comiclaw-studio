@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth0 } from "@auth0/auth0-react";
-import type { ShotData, ShotVersionData } from "@/lib/types";
+import type { ShotData } from "@/lib/types";
 import type { MessageKey } from "@/lib/i18n";
 import { useT } from "@/components/LocaleProvider";
 import { AUTH0_AUDIENCE } from "@/lib/auth0";
@@ -24,13 +24,12 @@ function ShotCard({ shot, shareToken }: { shot: ShotData; shareToken: string }) 
       ? shot.selectedVersion
       : takes[0]?.version;
   const [selTake, setSelTake] = useState<number | undefined>(initialTake);
-  const [previewFrame, setPreviewFrame] = useState<ShotVersionData | null>(null);
   const [busy, setBusy] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
 
   const currentTake = takes.find((v) => v.version === selTake) ?? takes[0];
-  // 主画面:参考帧预览 > 当前候选视频 > 最新参考帧
-  const mainMedia = previewFrame ?? currentTake ?? frames[0];
+  // 主画面:输出视频优先;还没有视频时用最新参考图占位(生成中状态)
+  const mainMedia = currentTake ?? frames[0];
   const isPicked = shot.selectedVersion != null && currentTake?.version === shot.selectedVersion;
 
   const pick = async () => {
@@ -88,18 +87,15 @@ function ShotCard({ shot, shareToken }: { shot: ShotData; shareToken: string }) 
               ? `${t("shot.takes")} · ${t("shot.candidates", { n: takes.length })}`
               : t("shot.noTakes")}
           </span>
-          {takes.length > 0 && (
+          {takes.length > 1 && (
             <VersionPills
               versions={takes.map((v) => v.version)}
               selected={currentTake?.version ?? 0}
-              onSelect={(v) => {
-                setSelTake(v);
-                setPreviewFrame(null);
-              }}
+              onSelect={setSelTake}
             />
           )}
         </div>
-        {takes.length > 1 && isAuthenticated && currentTake && !isPicked && !previewFrame && (
+        {takes.length > 1 && isAuthenticated && currentTake && !isPicked && (
           <button
             onClick={pick}
             disabled={busy}
@@ -109,26 +105,8 @@ function ShotCard({ shot, shareToken }: { shot: ShotData; shareToken: string }) 
           </button>
         )}
       </div>
-      {currentTake?.notes && !previewFrame && (
+      {currentTake?.notes && (
         <p className="text-xs text-amber-200/80">V{currentTake.version}:{currentTake.notes}</p>
-      )}
-      {frames.length > 0 && takes.length > 0 && (
-        <div className="flex items-center gap-1.5 pt-1">
-          <span className="text-xs text-zinc-600">{t("shot.refFrames")}</span>
-          {frames.map((f) => (
-            <button
-              key={f.id}
-              onClick={() => setPreviewFrame(previewFrame?.id === f.id ? null : f)}
-              className={`h-9 w-14 overflow-hidden rounded border transition-colors ${
-                previewFrame?.id === f.id ? "border-accent" : "border-zinc-700 hover:border-zinc-500"
-              }`}
-              title={`V${f.version}`}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={f.mediaUrl} alt={`V${f.version}`} className="h-full w-full object-cover" />
-            </button>
-          ))}
-        </div>
       )}
     </div>
   );
