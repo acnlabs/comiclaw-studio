@@ -23,6 +23,7 @@ export const POST = withAgentAuth(async (req) => {
       sourceProjectId: body.sourceProjectId ?? null,
       isPublic: body.isPublic ?? true,
       openForCasting: body.openForCasting ?? false,
+      licensePoints: body.licensePoints ?? 0,
     },
   });
   return Response.json({ character }, { status: 201 });

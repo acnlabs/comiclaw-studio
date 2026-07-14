@@ -1,0 +1,159 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+import { useAuth0 } from "@auth0/auth0-react";
+import { useT } from "@/components/LocaleProvider";
+import { AUTH0_AUDIENCE } from "@/lib/auth0";
+import { Modal } from "@/components/ui";
+
+interface MyProject {
+  id: string;
+  name: string;
+  shareToken: string;
+}
+
+// 「添加到我的项目」:选角授权的入口。
+// 免费角色即时授予并物化进项目角色库;付费角色走积分支付(通道接入前提示)。
+export default function CastingButton({
+  characterId,
+  licensePoints,
+  openForCasting,
+}: {
+  characterId: string;
+  licensePoints: number;
+  openForCasting: boolean;
+}) {
+  const { isAuthenticated, isLoading, getAccessTokenSilently, loginWithRedirect } = useAuth0();
+  const pathname = usePathname();
+  const { t } = useT();
+  const [open, setOpen] = useState(false);
+  const [projects, setProjects] = useState<MyProject[] | null>(null);
+  const [licensed, setLicensed] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [successId, setSuccessId] = useState<string | null>(null);
+
+  const authHeader = async () => ({
+    Authorization: `Bearer ${await getAccessTokenSilently({
+      authorizationParams: { audience: AUTH0_AUDIENCE },
+    })}`,
+  });
+
+  // 打开弹窗时拉取我的项目 + 已授权状态
+  useEffect(() => {
+    if (!open || !isAuthenticated) return;
+    (async () => {
+      try {
+        const h = await authHeader();
+        const [pRes, lRes] = await Promise.all([
+          fetch("/api/user/projects", { headers: h }),
+          fetch(`/api/user/casting?characterId=${characterId}`, { headers: h }),
+        ]);
+        const pData = await pRes.json();
+        const lData = await lRes.json();
+        setProjects(pData.projects ?? []);
+        setLicensed(new Set(lData.projectIds ?? []));
+      } catch {
+        setProjects([]);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, isAuthenticated, characterId]);
+
+  const addTo = async (projectId: string) => {
+    if (busy) return;
+    setBusy(projectId);
+    setError(null);
+    try {
+      const h = await authHeader();
+      const res = await fetch("/api/user/casting", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...h },
+        body: JSON.stringify({ characterId, projectId }),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok) {
+        setLicensed((prev) => new Set(prev).add(projectId));
+        setSuccessId(projectId);
+        setTimeout(() => setSuccessId(null), 3000);
+      } else if (res.status === 402) {
+        setError(t("casting.paymentUnavailable"));
+      } else {
+        setError(data?.error ?? "Failed");
+      }
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const priceLabel =
+    licensePoints > 0 ? t("char.pointsPerProject", { n: licensePoints }) : t("char.free");
+
+  if (isLoading) return null;
+
+  return (
+    <>
+      <button
+        onClick={() =>
+          isAuthenticated
+            ? setOpen(true)
+            : loginWithRedirect({ appState: { returnTo: pathname || "/" } })
+        }
+        disabled={!openForCasting}
+        title={!openForCasting ? t("casting.notOpen") : undefined}
+        className="flex-1 rounded-full bg-accent py-2.5 text-center text-sm font-medium text-zinc-950 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        {t("casting.addToProject")} · {priceLabel}
+      </button>
+
+      <Modal open={open} onClose={() => setOpen(false)}>
+        <div className="space-y-4 pr-8">
+          <div>
+            <h3 className="text-lg font-semibold text-zinc-100">{t("casting.pickProject")}</h3>
+            <p className="mt-1 text-xs text-zinc-500">{t("casting.priceNote")}</p>
+          </div>
+
+          {error && (
+            <p className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400">{error}</p>
+          )}
+
+          {projects === null ? (
+            <p className="py-8 text-center text-sm text-zinc-600">…</p>
+          ) : projects.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-zinc-800 px-4 py-8 text-center text-sm text-zinc-500">
+              {t("casting.noProjects")}
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {projects.map((p) => {
+                const isLicensed = licensed.has(p.id);
+                return (
+                  <li
+                    key={p.id}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900/50 px-4 py-3"
+                  >
+                    <span className="min-w-0 truncate text-sm text-zinc-200">{p.name}</span>
+                    {isLicensed ? (
+                      <span className="shrink-0 text-xs font-medium text-emerald-400">
+                        ✓ {successId === p.id ? t("casting.success") : t("casting.already")}
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => addTo(p.id)}
+                        disabled={busy !== null}
+                        className="shrink-0 rounded-full bg-accent px-3.5 py-1 text-xs font-medium text-zinc-950 transition-opacity hover:opacity-90 disabled:opacity-50"
+                      >
+                        {busy === p.id ? "…" : `${t("casting.confirm")} · ${priceLabel}`}
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </Modal>
+    </>
+  );
+}

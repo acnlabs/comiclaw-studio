@@ -60,6 +60,7 @@ export default async function CharacterDetailPage(props: {
         agentSummary: c.agentSummary,
         agentUrl: c.agentUrl,
         openForCasting: c.openForCasting,
+        licensePoints: c.licensePoints,
         createdAt: c.createdAt.toISOString(),
       }}
       works={works}

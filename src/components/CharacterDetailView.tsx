@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useT } from "@/components/LocaleProvider";
 import { CollapsibleText } from "@/components/ui";
+import CastingButton from "@/components/CastingButton";
 
 interface WorkRef {
   id: string;
@@ -27,6 +28,7 @@ export interface CharacterDetailData {
   agentSummary: string | null;
   agentUrl: string | null;
   openForCasting: boolean;
+  licensePoints: number;
   createdAt: string;
 }
 
@@ -70,11 +72,12 @@ export default function CharacterDetailView({
   };
 
   const hasAgentProfile = Boolean(c.agentName || c.agentSummary || c.agentUrl || c.acnAgentId);
+  // 三个分区始终显示(空内容显示占位提示),导航不隐藏
   const navItems = [
-    { id: "sec-digital-human", label: t("char.navDigitalHuman"), show: true },
-    { id: "sec-agent-profile", label: t("char.navAgentProfile"), show: hasAgentProfile },
-    { id: "sec-works", label: t("char.navWorks"), show: works.length > 0 },
-  ].filter((n) => n.show);
+    { id: "sec-digital-human", label: t("char.navDigitalHuman") },
+    { id: "sec-agent-profile", label: t("char.navAgentProfile") },
+    { id: "sec-works", label: t("char.navWorks") },
+  ];
 
   const current = slides[activeSlide];
 
@@ -182,24 +185,23 @@ export default function CharacterDetailView({
             <Stat label={t("char.statWorks")} value={String(works.length)} />
             <Stat label={t("char.statVoice")} value={c.audioUrl ? t("char.yes") : t("char.no")} />
             <Stat
-              label={t("char.statCasting")}
-              value={c.openForCasting ? t("char.castingOpen") : t("char.castingClosed")}
+              label={t("char.statPrice")}
+              value={
+                c.licensePoints > 0
+                  ? t("char.pointsPerProject", { n: c.licensePoints })
+                  : t("char.free")
+              }
             />
             <Stat label={t("char.statCreated")} value={fmtDate(c.createdAt)} />
           </div>
 
-          {/* CTA */}
+          {/* CTA:主按钮 = 添加到我的项目(选角授权),次按钮 = 复制链接 */}
           <div className="flex gap-3">
-            {c.agentUrl && (
-              <a
-                href={c.agentUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 rounded-full bg-accent py-2.5 text-center text-sm font-medium text-zinc-950 transition-opacity hover:opacity-90"
-              >
-                {t("char.viewAgent")}
-              </a>
-            )}
+            <CastingButton
+              characterId={c.id}
+              licensePoints={c.licensePoints}
+              openForCasting={c.openForCasting}
+            />
             <button
               onClick={copyLink}
               className="flex-1 rounded-full border border-zinc-700 py-2.5 text-sm font-medium text-zinc-300 transition-colors hover:border-zinc-500"
@@ -248,10 +250,12 @@ export default function CharacterDetailView({
             )}
           </section>
 
-          {/* ② 智能体档案:次要信息,这个数字人属于哪个智能体 */}
-          {hasAgentProfile && (
-            <section id="sec-agent-profile" className="space-y-2 border-t border-zinc-800/60 pt-5">
-              <h2 className="text-sm font-semibold text-zinc-200">{t("char.navAgentProfile")}</h2>
+          {/* ② 智能体档案:次要信息,这个数字人属于哪个智能体(无内容也显示占位) */}
+          <section id="sec-agent-profile" className="space-y-2 border-t border-zinc-800/60 pt-5">
+            <h2 className="text-sm font-semibold text-zinc-200">{t("char.navAgentProfile")}</h2>
+            {!hasAgentProfile ? (
+              <p className="text-sm text-zinc-600">{t("char.noAgentProfile")}</p>
+            ) : (
               <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 px-4 py-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-800 text-xs">
@@ -280,13 +284,15 @@ export default function CharacterDetailView({
                   </a>
                 )}
               </div>
-            </section>
-          )}
+            )}
+          </section>
 
-          {/* ③ 作品 */}
-          {works.length > 0 && (
-            <section id="sec-works" className="space-y-2 border-t border-zinc-800/60 pt-5 pb-2">
-              <h2 className="text-sm font-semibold text-zinc-200">{t("char.navWorks")}</h2>
+          {/* ③ 作品(无作品也显示占位) */}
+          <section id="sec-works" className="space-y-2 border-t border-zinc-800/60 pt-5 pb-2">
+            <h2 className="text-sm font-semibold text-zinc-200">{t("char.navWorks")}</h2>
+            {works.length === 0 ? (
+              <p className="text-sm text-zinc-600">{t("char.noWorks")}</p>
+            ) : (
               <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
                 {works.map((w) => (
                   <Link key={w.id} href={`/series/${w.id}`} className="group">
@@ -309,8 +315,8 @@ export default function CharacterDetailView({
                   </Link>
                 ))}
               </div>
-            </section>
-          )}
+            )}
+          </section>
         </div>
       </div>
     </div>

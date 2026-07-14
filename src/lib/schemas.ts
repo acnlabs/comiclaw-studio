@@ -124,6 +124,7 @@ export const createCharacterSchema = z.object({
   sourceProjectId: optionalStr,
   isPublic: z.boolean().optional(),
   openForCasting: z.boolean().optional(),
+  licensePoints: z.number().int().min(0).optional(),
 });
 
 export const updateCharacterSchema = z.object({
@@ -141,6 +142,7 @@ export const updateCharacterSchema = z.object({
   agentUrl: optionalStr,
   isPublic: z.boolean().optional(),
   openForCasting: z.boolean().optional(),
+  licensePoints: z.number().int().min(0).optional(),
 });
 
 export const publishWorkSchema = z

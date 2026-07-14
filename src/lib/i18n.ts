@@ -178,6 +178,23 @@ const zh = {
   "char.castingOpen": "开放",
   "char.castingClosed": "未开放",
   "char.noExtra": "暂无更多信息",
+  "char.noWorks": "该角色还没有公开作品",
+  "char.noAgentProfile": "暂未关联智能体信息",
+  "char.statPrice": "授权",
+  "char.free": "免费",
+  "char.pointsPerProject": "{n} 积分 / 项目",
+
+  // 选角授权
+  "casting.addToProject": "添加到我的项目",
+  "casting.pickProject": "选择要添加到的项目",
+  "casting.confirm": "确认添加",
+  "casting.success": "已添加到项目角色库",
+  "casting.already": "已添加",
+  "casting.needLogin": "登录后可将该角色添加到你的项目",
+  "casting.noProjects": "你还没有项目。打开 comiclaw 发给你的项目链接并登录认领后,即可添加角色。",
+  "casting.paymentUnavailable": "积分支付通道接入中,付费角色暂不可添加",
+  "casting.notOpen": "该角色未开放参演",
+  "casting.priceNote": "授权后本角色(形象+音色)将加入所选项目的角色库",
 
   // 404
   "notFound.title": "页面不存在",
@@ -351,6 +368,23 @@ const en: Record<MessageKey, string> = {
   "char.castingOpen": "Open",
   "char.castingClosed": "Closed",
   "char.noExtra": "No additional info yet",
+  "char.noWorks": "No public works yet",
+  "char.noAgentProfile": "No linked agent info yet",
+  "char.statPrice": "License",
+  "char.free": "Free",
+  "char.pointsPerProject": "{n} pts / project",
+
+  "casting.addToProject": "Add to my project",
+  "casting.pickProject": "Choose a project",
+  "casting.confirm": "Confirm",
+  "casting.success": "Added to project asset library",
+  "casting.already": "Added",
+  "casting.needLogin": "Sign in to add this character to your projects",
+  "casting.noProjects":
+    "No projects yet. Open the project link comiclaw sent you and sign in to claim it first.",
+  "casting.paymentUnavailable": "Points payment is coming soon — paid characters can't be added yet",
+  "casting.notOpen": "This character is not open for casting",
+  "casting.priceNote": "The character (image + voice) will be added to the chosen project's asset library",
 
   "notFound.title": "Page not found",
   "notFound.desc":

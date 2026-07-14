@@ -31,6 +31,7 @@ export const PATCH = withAgentAuth(async (req, ctx: Ctx) => {
       agentUrl: body.agentUrl === undefined ? undefined : body.agentUrl,
       isPublic: body.isPublic ?? undefined,
       openForCasting: body.openForCasting ?? undefined,
+      licensePoints: body.licensePoints ?? undefined,
     },
   });
   return Response.json({ character });
