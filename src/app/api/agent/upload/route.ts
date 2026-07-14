@@ -4,7 +4,8 @@ import { checkApiKey, unauthorized, badRequest, serverError } from "@/lib/auth";
 export const runtime = "nodejs";
 
 const MAX_BYTES = 200 * 1024 * 1024; // 200MB
-const ALLOWED_MIME = /^(image\/(png|jpeg|jpg|gif|webp|svg\+xml)|video\/(mp4|webm|quicktime))$/;
+const ALLOWED_MIME =
+  /^(image\/(png|jpeg|jpg|gif|webp|svg\+xml)|video\/(mp4|webm|quicktime)|audio\/(mpeg|mp3|wav|x-wav|ogg|aac|mp4|x-m4a|webm))$/;
 
 // 消毒文件名:仅保留基础名,过滤危险字符,限制长度
 function sanitizeFilename(name: string): string {
@@ -50,7 +51,7 @@ export async function POST(req: Request) {
     return badRequest(`File exceeds ${MAX_BYTES} bytes limit`);
   }
   if (!ALLOWED_MIME.test(fileMime)) {
-    return badRequest(`Unsupported file type: ${fileMime}. Only images and videos are allowed.`);
+    return badRequest(`Unsupported file type: ${fileMime}. Only images, videos and audio are allowed.`);
   }
 
   try {

@@ -125,7 +125,7 @@ case "$cmd" in
   upload-file)
     # 上传本地媒体文件到 Studio 存储,返回公网 URL
     # 用法: studio.sh upload-file <文件路径> [自定义文件名]
-    # 限制:单文件 ≤ 200MB;仅支持图片(png/jpeg/gif/webp/svg)与视频(mp4/webm/mov)
+    # 限制:单文件 ≤ 200MB;支持图片(png/jpeg/gif/webp/svg)、视频(mp4/webm/mov)、音频(mp3/wav/ogg/aac/m4a)
     filepath="$2"
     fname="${3:-$(basename "$filepath")}"
     if [[ ! -f "$filepath" ]]; then
