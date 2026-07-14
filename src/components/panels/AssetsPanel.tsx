@@ -21,8 +21,9 @@ function AssetCard({ asset }: { asset: AssetData }) {
             className="h-full w-full cursor-zoom-in"
             title={t("detail.expand")}
           >
+            {/* object-contain 完整显示设定图,不裁切 */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={current.imageUrl} alt={asset.name} className="h-full w-full object-cover" />
+            <img src={current.imageUrl} alt={asset.name} className="h-full w-full object-contain" />
           </button>
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-zinc-600">
@@ -136,7 +137,7 @@ export default function AssetsPanel({ assets }: { assets: AssetData[] }) {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {filtered.map((asset) => (
           <AssetCard key={asset.id} asset={asset} />
         ))}

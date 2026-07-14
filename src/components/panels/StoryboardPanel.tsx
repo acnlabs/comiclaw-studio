@@ -41,8 +41,8 @@ function ShotCard({ shot, shareToken }: { shot: ShotData; shareToken: string }) 
   };
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/50">
-      <div className="relative aspect-video bg-zinc-950">
+    <div className="flex flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/50 md:flex-row">
+      <div className="relative aspect-video shrink-0 bg-zinc-950 md:w-[400px] lg:w-[460px]">
         {current ? (
           <ShotMedia
             mediaUrl={current.mediaUrl}
@@ -146,11 +146,11 @@ function ShotCard({ shot, shareToken }: { shot: ShotData; shareToken: string }) 
         )}
       </Modal>
 
-      <div className="space-y-2 px-4 py-3">
+      <div className="min-w-0 flex-1 space-y-2 px-4 py-3">
         {shot.title && <h3 className="font-medium text-zinc-100">{shot.title}</h3>}
-        {shot.action && <p className="text-xs leading-relaxed text-zinc-400">{shot.action}</p>}
+        {shot.action && <p className="text-sm leading-relaxed text-zinc-400">{shot.action}</p>}
         {shot.dialogue && (
-          <p className="rounded-lg bg-zinc-800/60 px-3 py-2 text-xs italic text-zinc-300">
+          <p className="rounded-lg bg-zinc-800/60 px-3 py-2 text-sm italic text-zinc-300">
             「{shot.dialogue}」
           </p>
         )}
@@ -205,7 +205,8 @@ export default function StoryboardPanel({
         {t("panel.storyboard.summary", { n: shots.length })}
         {total > 0 && <> · {t("panel.storyboard.totalDuration", { t: fmtDuration(total) })}</>}
       </p>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {/* 纵向单列:每个镜头一行,信息全部直接可见,零点击 */}
+      <div className="space-y-4">
         {shots.map((shot) => (
           <ShotCard key={shot.id} shot={shot} shareToken={shareToken} />
         ))}
