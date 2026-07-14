@@ -75,6 +75,7 @@ model AssetVersion {
   assetId   String
   version   Int
   imageUrl  String // 设定图
+  audioUrl  String? // 音色试听(角色资产的声音样本)
   notes     String? // 本版设计说明
   createdAt DateTime @default(now())
 
@@ -86,15 +87,16 @@ model AssetVersion {
 // ---------- 分镜 ----------
 
 model Shot {
-  id        String   @id @default(cuid())
-  projectId String
-  order     Int // 镜头序号,从 1 开始
-  title     String? // 镜头名,如「开场:LOGO 浮现」
-  duration  Float? // 时长(秒)
-  dialogue  String? // 台词 / 旁白
-  action    String? // 画面描述
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(cuid())
+  projectId       String
+  order           Int // 镜头序号,从 1 开始
+  title           String? // 镜头名,如「开场:LOGO 浮现」
+  duration        Float? // 时长(秒)
+  dialogue        String? // 台词 / 旁白
+  action          String? // 画面描述
+  selectedVersion Int? // 客户选定的候选版本(抽卡选片)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   project   Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   versions  ShotVersion[]

@@ -1,16 +1,43 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth0 } from "@auth0/auth0-react";
 import type { ShotData } from "@/lib/types";
 import type { MessageKey } from "@/lib/i18n";
 import { useT } from "@/components/LocaleProvider";
+import { AUTH0_AUDIENCE } from "@/lib/auth0";
 import { fmtDuration } from "@/lib/format";
 import { VersionPills, EmptyState, Badge, ShotMedia } from "@/components/ui";
 
-function ShotCard({ shot }: { shot: ShotData }) {
+function ShotCard({ shot, shareToken }: { shot: ShotData; shareToken: string }) {
   const { t } = useT();
-  const [selected, setSelected] = useState(shot.versions[0]?.version ?? 1);
+  const { isAuthenticated, getAccessTokenSilently } = useAuth0();
+  const router = useRouter();
+  const [selected, setSelected] = useState(shot.selectedVersion ?? shot.versions[0]?.version ?? 1);
+  const [busy, setBusy] = useState(false);
   const current = shot.versions.find((v) => v.version === selected) ?? shot.versions[0];
+
+  const hasCandidates = shot.versions.length > 1;
+  const isPicked = shot.selectedVersion != null && current?.version === shot.selectedVersion;
+
+  const pick = async () => {
+    if (!current || busy) return;
+    setBusy(true);
+    try {
+      const token = await getAccessTokenSilently({
+        authorizationParams: { audience: AUTH0_AUDIENCE },
+      });
+      const res = await fetch(`/api/user/shots/${shot.id}/select`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ shareToken, version: current.version }),
+      });
+      if (res.ok) router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/50">
@@ -36,6 +63,11 @@ function ShotCard({ shot }: { shot: ShotData }) {
             </span>
           )}
         </div>
+        {shot.selectedVersion != null && (
+          <span className="absolute right-2 top-2 rounded-md bg-accent px-2 py-0.5 text-xs font-medium text-zinc-950">
+            ★ {t("shot.selectedBadge", { n: shot.selectedVersion })}
+          </span>
+        )}
       </div>
 
       <div className="space-y-2 px-4 py-3">
@@ -58,17 +90,34 @@ function ShotCard({ shot }: { shot: ShotData }) {
         {current?.notes && (
           <p className="text-xs text-amber-200/80">V{current.version}:{current.notes}</p>
         )}
-        <VersionPills
-          versions={shot.versions.map((v) => v.version)}
-          selected={current?.version ?? 1}
-          onSelect={setSelected}
-        />
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <VersionPills
+            versions={shot.versions.map((v) => v.version)}
+            selected={current?.version ?? 1}
+            onSelect={setSelected}
+          />
+          {hasCandidates && isAuthenticated && current && !isPicked && (
+            <button
+              onClick={pick}
+              disabled={busy}
+              className="rounded-full border border-accent/40 px-3 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent/10 disabled:opacity-50"
+            >
+              ★ {t("shot.select")}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-export default function StoryboardPanel({ shots }: { shots: ShotData[] }) {
+export default function StoryboardPanel({
+  shots,
+  shareToken,
+}: {
+  shots: ShotData[];
+  shareToken: string;
+}) {
   const { t } = useT();
   if (shots.length === 0) return <EmptyState text={t("panel.storyboard.empty")} />;
 
@@ -82,7 +131,7 @@ export default function StoryboardPanel({ shots }: { shots: ShotData[] }) {
       </p>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {shots.map((shot) => (
-          <ShotCard key={shot.id} shot={shot} />
+          <ShotCard key={shot.id} shot={shot} shareToken={shareToken} />
         ))}
       </div>
     </div>

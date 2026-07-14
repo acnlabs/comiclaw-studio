@@ -109,6 +109,15 @@ const zh = {
   "privacy.on": "已开启私密:只有你能查看该项目",
   "privacy.off": "链接可见:知道链接的人都能查看",
 
+  // 分镜选片 / 音色 / 对比
+  "shot.select": "选用此版本",
+  "shot.selectedBadge": "已选 V{n}",
+  "shot.candidates": "{n} 个候选",
+  "asset.voice": "音色试听",
+  "film.compare": "对比版本",
+  "film.compareOff": "退出对比",
+  "film.playBoth": "同步播放",
+
   // 时间码批注
   "comments.title": "批注",
   "comments.empty": "还没有批注。播放到需要修改的位置,点「在当前时间批注」告诉 comiclaw 改哪里。",
@@ -224,6 +233,14 @@ const en: Record<MessageKey, string> = {
   "privacy.toggle": "Only visible to me",
   "privacy.on": "Private: only you can view this project",
   "privacy.off": "Link sharing: anyone with the link can view",
+
+  "shot.select": "Use this take",
+  "shot.selectedBadge": "Picked V{n}",
+  "shot.candidates": "{n} takes",
+  "asset.voice": "Voice sample",
+  "film.compare": "Compare versions",
+  "film.compareOff": "Exit compare",
+  "film.playBoth": "Play both",
 
   "comments.title": "Comments",
   "comments.empty":

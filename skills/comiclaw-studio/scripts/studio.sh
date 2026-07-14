@@ -41,11 +41,13 @@ usage() {
 
 交付物(版本号自动递增)
   push-script <projectId> '<json>'      推送剧本 {content*, title, logline, changeLog}
-  add-asset <projectId> '<json>'        创建资产 {type*: CHARACTER|SCENE|PROP, name*, description, imageUrl, notes}
-  asset-version <assetId> '<json>'      资产新版设定图 {imageUrl*, notes}
+  add-asset <projectId> '<json>'        创建资产 {type*: CHARACTER|SCENE|PROP, name*, description, imageUrl, audioUrl(音色试听), notes}
+  asset-version <assetId> '<json>'      资产新版设定图 {imageUrl*, audioUrl, notes}
   add-shot <projectId> '<json>'         创建分镜 {order*, title, duration, dialogue, action, mediaUrl, mediaType, assetIds}
   update-shot <shotId> '<json>'         更新分镜文字/资产引用
-  shot-version <shotId> '<json>'        分镜新版画面 {mediaUrl*, mediaType: IMAGE|VIDEO, notes}
+  shot-version <shotId> '<json>'        分镜新版画面/候选 {mediaUrl*, mediaType: IMAGE|VIDEO, notes}
+                                        抽卡:同一分镜推多个候选,客户页面选定后,
+                                        get-project 里该分镜的 selectedVersion 即客户选择
   push-film <projectId> '<json>'        推送成片 {videoUrl*, duration, notes}
 
 删除

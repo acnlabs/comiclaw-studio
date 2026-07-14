@@ -36,6 +36,12 @@ function AssetCard({ asset }: { asset: AssetData }) {
         {current?.notes && (
           <p className="text-xs text-amber-200/80">V{current.version}:{current.notes}</p>
         )}
+        {current?.audioUrl && (
+          <div>
+            <p className="mb-1 text-xs text-zinc-500">{t("asset.voice")}</p>
+            <audio src={current.audioUrl} controls preload="none" className="h-8 w-full" />
+          </div>
+        )}
         <VersionPills
           versions={asset.versions.map((v) => v.version)}
           selected={current?.version ?? 1}

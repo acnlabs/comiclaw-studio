@@ -21,7 +21,14 @@ export const POST = withAgentAuth(async (req, ctx: Ctx) => {
       name: body.name,
       description: body.description ?? null,
       versions: body.imageUrl
-        ? { create: { version: 1, imageUrl: body.imageUrl, notes: body.notes ?? null } }
+        ? {
+            create: {
+              version: 1,
+              imageUrl: body.imageUrl,
+              audioUrl: body.audioUrl ?? null,
+              notes: body.notes ?? null,
+            },
+          }
         : undefined,
     },
     include: { versions: true },

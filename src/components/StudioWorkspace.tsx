@@ -101,7 +101,9 @@ export default function StudioWorkspace({ project }: { project: ProjectData }) {
       <main className="pt-6">
         {tab === "SCRIPT" && <ScriptPanel versions={project.scriptVersions} />}
         {tab === "ASSETS" && <AssetsPanel assets={project.assets} />}
-        {tab === "STORYBOARD" && <StoryboardPanel shots={project.shots} />}
+        {tab === "STORYBOARD" && (
+          <StoryboardPanel shots={project.shots} shareToken={project.shareToken} />
+        )}
         {tab === "FILM" && (
           <FilmPanel versions={project.filmVersions} shareToken={project.shareToken} />
         )}

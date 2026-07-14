@@ -48,11 +48,13 @@ export const createAssetSchema = z.object({
   name: nonEmpty.max(200),
   description: optionalStr,
   imageUrl: optionalStr,
+  audioUrl: optionalStr, // 角色音色试听(声音样本)
   notes: optionalStr,
 });
 
 export const assetVersionSchema = z.object({
   imageUrl: url,
+  audioUrl: optionalStr,
   notes: optionalStr,
 });
 

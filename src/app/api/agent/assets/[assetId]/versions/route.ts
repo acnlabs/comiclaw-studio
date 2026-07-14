@@ -28,6 +28,7 @@ export const POST = withAgentAuth(async (req, ctx: Ctx) => {
         assetId,
         version: (latest?.version ?? 0) + 1,
         imageUrl: body.imageUrl,
+        audioUrl: body.audioUrl ?? null,
         notes: body.notes ?? null,
       },
     });
