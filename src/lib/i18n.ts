@@ -182,7 +182,7 @@ const zh = {
   "char.noAgentProfile": "暂未关联智能体信息",
   "char.statPrice": "授权",
   "char.free": "免费",
-  "char.pointsPerProject": "{n} 积分 / 项目",
+  "char.pointsPerProject": "{n} Credits / 项目",
 
   // 选角授权
   "casting.addToProject": "添加到我的项目",
@@ -192,9 +192,15 @@ const zh = {
   "casting.already": "已添加",
   "casting.needLogin": "登录后可将该角色添加到你的项目",
   "casting.noProjects": "你还没有项目。打开 comiclaw 发给你的项目链接并登录认领后,即可添加角色。",
-  "casting.paymentUnavailable": "积分支付通道接入中,付费角色暂不可添加",
+  "casting.paymentUnavailable": "Credits 支付通道暂不可用,付费角色暂不能添加",
   "casting.notOpen": "该角色未开放参演",
   "casting.priceNote": "授权后本角色(形象+音色)将加入所选项目的角色库",
+  "casting.payPrompt": "请在 AgentPlanet 完成 Credits 支付,支付后回到本页确认",
+  "casting.goPay": "去支付",
+  "casting.paid": "我已支付,确认授权",
+  "casting.notPaid": "尚未查到付款,请完成支付后再试",
+  "casting.orderDead": "订单已失效,请重新发起",
+  "casting.confirming": "确认中…",
 
   // 404
   "notFound.title": "页面不存在",
@@ -372,7 +378,7 @@ const en: Record<MessageKey, string> = {
   "char.noAgentProfile": "No linked agent info yet",
   "char.statPrice": "License",
   "char.free": "Free",
-  "char.pointsPerProject": "{n} pts / project",
+  "char.pointsPerProject": "{n} Credits / project",
 
   "casting.addToProject": "Add to my project",
   "casting.pickProject": "Choose a project",
@@ -382,9 +388,15 @@ const en: Record<MessageKey, string> = {
   "casting.needLogin": "Sign in to add this character to your projects",
   "casting.noProjects":
     "No projects yet. Open the project link comiclaw sent you and sign in to claim it first.",
-  "casting.paymentUnavailable": "Points payment is coming soon — paid characters can't be added yet",
+  "casting.paymentUnavailable": "Credits payment is unavailable right now — paid characters can't be added yet",
   "casting.notOpen": "This character is not open for casting",
   "casting.priceNote": "The character (image + voice) will be added to the chosen project's asset library",
+  "casting.payPrompt": "Complete the Credits payment on AgentPlanet, then come back and confirm",
+  "casting.goPay": "Pay on AgentPlanet",
+  "casting.paid": "I've paid — confirm license",
+  "casting.notPaid": "Payment not detected yet — please finish paying and try again",
+  "casting.orderDead": "This order has expired — please start over",
+  "casting.confirming": "Confirming…",
 
   "notFound.title": "Page not found",
   "notFound.desc":

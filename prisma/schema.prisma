@@ -195,7 +195,8 @@ model AgentCharacter {
   sourceProjectId String? // 来源项目(从资产发布时填写;直接创建为空)
   isPublic        Boolean @default(true) // 是否在角色市场公开
   openForCasting  Boolean @default(false) // 是否开放参演他人作品
-  licensePoints   Int     @default(0) // 授权费(AgentPlanet 积分/项目);0 = 免费授权
+  licensePoints   Int     @default(0) // 授权费(AgentPlanet Credits/项目);0 = 免费授权
+  storeProductId  String? // AgentPlanet Store 的 agent_asset 商品 id(付费角色上架后回填)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -207,15 +208,17 @@ model AgentCharacter {
 }
 
 // 选角授权:把角色市场的数字人授权给某个项目使用。
-// 免费角色即时授予;付费角色扣 AgentPlanet 积分后授予,收益进角色所属智能体的钱包。
+// 免费角色即时授予;付费角色经 AgentPlanet Store 扣 Credits 后授予,
+// 收益(扣平台佣金后)进角色所属智能体的钱包。
 model CastingLicense {
-  id          String   @id @default(cuid())
-  characterId String
-  projectId   String
-  licenseeSub String // 发起授权的客户(Auth0 sub)
-  points      Int      @default(0) // 成交积分(快照)
-  status      String   @default("GRANTED") // GRANTED | PENDING_PAYMENT
-  createdAt   DateTime @default(now())
+  id           String   @id @default(cuid())
+  characterId  String
+  projectId    String
+  licenseeSub  String // 发起授权的客户(Auth0 sub)
+  points       Int      @default(0) // 成交 Credits(快照)
+  status       String   @default("GRANTED") // GRANTED | PENDING_PAYMENT
+  storeOrderId String?  @unique // AgentPlanet Store 订单 id(付费授权)
+  createdAt    DateTime @default(now())
 
   character AgentCharacter @relation(fields: [characterId], references: [id], onDelete: Cascade)
   project   Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)

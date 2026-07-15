@@ -13,8 +13,14 @@ interface MyProject {
   shareToken: string;
 }
 
+interface PendingPayment {
+  projectId: string;
+  checkoutUrl: string;
+}
+
 // 「添加到我的项目」:选角授权的入口。
-// 免费角色即时授予并物化进项目角色库;付费角色走积分支付(通道接入前提示)。
+// 免费角色即时授予并物化进项目角色库;付费角色经 AgentPlanet Store 用 Credits
+// 支付(去 checkout 付款 → 回来确认授权)。
 export default function CastingButton({
   characterId,
   licensePoints,
@@ -33,6 +39,7 @@ export default function CastingButton({
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successId, setSuccessId] = useState<string | null>(null);
+  const [pending, setPending] = useState<PendingPayment | null>(null);
 
   const authHeader = async () => ({
     Authorization: `Bearer ${await getAccessTokenSilently({
@@ -77,8 +84,43 @@ export default function CastingButton({
         setLicensed((prev) => new Set(prev).add(projectId));
         setSuccessId(projectId);
         setTimeout(() => setSuccessId(null), 3000);
+      } else if (res.status === 402 && data?.checkoutUrl) {
+        // 付费授权:去 AgentPlanet checkout 用 Credits 支付,回来确认
+        setPending({ projectId, checkoutUrl: data.checkoutUrl });
+        window.open(data.checkoutUrl, "_blank", "noopener");
       } else if (res.status === 402) {
         setError(t("casting.paymentUnavailable"));
+      } else {
+        setError(data?.error ?? "Failed");
+      }
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  // 支付完成后确认授权(Studio 向 Store 核实订单已支付)
+  const confirmPaid = async () => {
+    if (!pending || busy) return;
+    setBusy(pending.projectId);
+    setError(null);
+    try {
+      const h = await authHeader();
+      const res = await fetch("/api/user/casting/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...h },
+        body: JSON.stringify({ characterId, projectId: pending.projectId }),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok) {
+        setLicensed((prev) => new Set(prev).add(pending.projectId));
+        setSuccessId(pending.projectId);
+        setPending(null);
+        setTimeout(() => setSuccessId(null), 3000);
+      } else if (res.status === 402) {
+        setError(t("casting.notPaid"));
+      } else if (res.status === 409) {
+        setError(t("casting.orderDead"));
+        setPending(null);
       } else {
         setError(data?.error ?? "Failed");
       }
@@ -116,6 +158,29 @@ export default function CastingButton({
 
           {error && (
             <p className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400">{error}</p>
+          )}
+
+          {pending && (
+            <div className="space-y-2 rounded-xl border border-accent/40 bg-accent/5 px-4 py-3">
+              <p className="text-sm text-zinc-300">{t("casting.payPrompt")}</p>
+              <div className="flex gap-2">
+                <a
+                  href={pending.checkoutUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-full border border-zinc-700 px-3.5 py-1.5 text-xs font-medium text-zinc-200 transition-colors hover:bg-zinc-800"
+                >
+                  {t("casting.goPay")}
+                </a>
+                <button
+                  onClick={confirmPaid}
+                  disabled={busy !== null}
+                  className="rounded-full bg-accent px-3.5 py-1.5 text-xs font-medium text-zinc-950 transition-opacity hover:opacity-90 disabled:opacity-50"
+                >
+                  {busy === pending.projectId ? t("casting.confirming") : t("casting.paid")}
+                </button>
+              </div>
+            </div>
           )}
 
           {projects === null ? (

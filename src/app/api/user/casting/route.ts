@@ -1,11 +1,17 @@
 import { prisma } from "@/lib/db";
 import { verifyUserToken } from "@/lib/userAuth";
-import { emitProjectUpdate } from "@/lib/events";
-import { chargePointsForCasting } from "@/lib/agentplanet";
+import {
+  storeConfigured,
+  createCastingOrder,
+  upsertCharacterListing,
+} from "@/lib/agentplanet";
+import { grantLicense } from "@/lib/casting";
 import { unauthorized, badRequest, notFoundJson } from "@/lib/auth";
+import type { AgentCharacter } from "@prisma/client";
 
 // 授权:把角色市场的数字人添加到自己的项目角色库。
-// 免费即时授予;付费需扣 AgentPlanet 积分(支付通道接入前返回 402)。
+// 免费即时授予;付费经 AgentPlanet Store 下单,客户用 Credits 支付后
+// 调 /api/user/casting/confirm 落授权。
 export async function POST(req: Request) {
   const sub = await verifyUserToken(req);
   if (!sub) return unauthorized();
@@ -37,57 +43,61 @@ export async function POST(req: Request) {
   const existing = await prisma.castingLicense.findUnique({
     where: { characterId_projectId: { characterId, projectId } },
   });
-  if (existing) {
+  if (existing?.status === "GRANTED") {
     return Response.json({ license: existing, alreadyLicensed: true });
   }
 
   const points = isOwnCharacter ? 0 : character.licensePoints;
+
+  // ---- 付费授权:经 AgentPlanet Store 下单,客户去 checkout 用 Credits 支付 ----
   if (points > 0) {
-    const charge = await chargePointsForCasting({
-      payerSub: sub,
-      payeeAcnAgentId: character.acnAgentId,
-      points,
-      memo: `Casting license: ${character.name} -> project ${projectId}`,
-    });
-    if (!charge.ok) {
+    if (!storeConfigured()) {
       return Response.json(
-        {
-          error:
-            charge.reason === "INSUFFICIENT"
-              ? "Insufficient points"
-              : "Points payment channel not available yet",
-          code: charge.reason,
-        },
+        { error: "Credits payment channel not available yet", code: "NOT_CONFIGURED" },
         { status: 402 }
       );
     }
+    const productId = await ensureListing(character);
+    if (!productId) {
+      return Response.json(
+        { error: "Character is not listed on the store yet", code: "NOT_LISTED" },
+        { status: 402 }
+      );
+    }
+    const order = await createCastingOrder({ storeProductId: productId, projectId });
+    if (!order) {
+      return Response.json(
+        { error: "Failed to create store order", code: "ORDER_FAILED" },
+        { status: 502 }
+      );
+    }
+    // 占位授权记录(PENDING_PAYMENT);重复点击会开新单并覆盖旧单(旧单自然过期)
+    const license = await prisma.castingLicense.upsert({
+      where: { characterId_projectId: { characterId, projectId } },
+      create: {
+        characterId,
+        projectId,
+        licenseeSub: sub,
+        points,
+        status: "PENDING_PAYMENT",
+        storeOrderId: order.order_id,
+      },
+      update: { licenseeSub: sub, points, storeOrderId: order.order_id },
+    });
+    return Response.json(
+      {
+        license,
+        pendingPayment: true,
+        orderId: order.order_id,
+        checkoutUrl: order.url,
+        credits: order.amount_credits,
+      },
+      { status: 402 }
+    );
   }
 
-  // 授予 + 物化到项目资产库(角色资产,含形象与音色)
-  const [license] = await prisma.$transaction([
-    prisma.castingLicense.create({
-      data: { characterId, projectId, licenseeSub: sub, points, status: "GRANTED" },
-    }),
-    prisma.asset.create({
-      data: {
-        projectId,
-        type: "CHARACTER",
-        name: character.name,
-        description:
-          character.tagline ??
-          (character.persona ? character.persona.slice(0, 200) : null),
-        versions: {
-          create: {
-            version: 1,
-            imageUrl: character.imageUrl,
-            audioUrl: character.audioUrl,
-            notes: "来自角色市场授权 / Licensed from Cast",
-          },
-        },
-      },
-    }),
-  ]);
-  emitProjectUpdate(projectId, "asset.created");
+  // ---- 免费授权:即时授予 + 物化到项目资产库 ----
+  const license = await grantLicense({ character, projectId, sub, points: 0, orderId: null });
   return Response.json({ license }, { status: 201 });
 }
 
@@ -100,8 +110,30 @@ export async function GET(req: Request) {
   if (!characterId) return badRequest("`characterId` is required");
 
   const licenses = await prisma.castingLicense.findMany({
-    where: { characterId, licenseeSub: sub },
+    where: { characterId, licenseeSub: sub, status: "GRANTED" },
     select: { projectId: true },
   });
   return Response.json({ projectIds: licenses.map((l) => l.projectId) });
+}
+
+// 角色尚未上架时兜底上架(如角色在 Store 接入前就已设置付费)
+async function ensureListing(character: AgentCharacter): Promise<string | null> {
+  if (character.storeProductId) return character.storeProductId;
+  if (!character.acnAgentId) return null; // 无收款方,无法上架
+  const productId = await upsertCharacterListing({
+    storeProductId: null,
+    characterId: character.id,
+    name: character.name,
+    tagline: character.tagline,
+    imageUrl: character.imageUrl,
+    sellerAgentId: character.acnAgentId,
+    credits: character.licensePoints,
+  });
+  if (productId) {
+    await prisma.agentCharacter.update({
+      where: { id: character.id },
+      data: { storeProductId: productId },
+    });
+  }
+  return productId;
 }
