@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { withAgentAuth, parseBody } from "@/lib/api";
 import { createCharacterSchema } from "@/lib/schemas";
+import { syncCharacterListing } from "@/lib/characterListing";
 
 // 创建智能体角色(数字人):comiclaw 直接创建,或从项目资产发布
 export const POST = withAgentAuth(async (req) => {
@@ -26,7 +27,9 @@ export const POST = withAgentAuth(async (req) => {
       licensePoints: body.licensePoints ?? 0,
     },
   });
-  return Response.json({ character }, { status: 201 });
+  // 付费角色同步上架到 AgentPlanet Store(best effort;失败时授权前会兜底上架)
+  const synced = await syncCharacterListing(character);
+  return Response.json({ character: synced ?? character }, { status: 201 });
 });
 
 // 角色列表(agent 查询)
