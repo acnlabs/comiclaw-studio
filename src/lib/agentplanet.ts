@@ -18,6 +18,65 @@ export function storeConfigured(): boolean {
   return Boolean(BASE() && TOKEN());
 }
 
+// 诊断:检查配置 + 做一次真实的鉴权调用,返回可安全展示的结果(不回显 token 明文)。
+export async function diagnoseStoreConnection(): Promise<{
+  configured: boolean;
+  baseUrlHost: string | null;
+  tokenLength: number;
+  publicOk: boolean | null;
+  authedStatus: number | null;
+  authedBody: string | null;
+  error: string | null;
+}> {
+  const base = BASE();
+  const token = TOKEN();
+  let baseUrlHost: string | null = null;
+  try {
+    baseUrlHost = base ? new URL(base).host : null;
+  } catch {
+    baseUrlHost = null;
+  }
+  const result = {
+    configured: storeConfigured(),
+    baseUrlHost,
+    tokenLength: token.length,
+    publicOk: null as boolean | null,
+    authedStatus: null as number | null,
+    authedBody: null as string | null,
+    error: null as string | null,
+  };
+  if (!base) {
+    result.error = "AGENTPLANET_API_URL not set";
+    return result;
+  }
+  try {
+    const pub = await fetch(`${base}/api/store/products`, { cache: "no-store" });
+    result.publicOk = pub.ok;
+  } catch (e) {
+    result.error = `public call failed: ${e instanceof Error ? e.message : String(e)}`;
+    return result;
+  }
+  if (!token) {
+    result.error = "AGENTPLANET_INTERNAL_TOKEN not set";
+    return result;
+  }
+  try {
+    // 用一个必然会走鉴权分支的内部端点探测:products 上架校验会先过 token 关,
+    // 再因缺 seller_id/元数据报 400——用状态码区分「token 错」(401/403)vs「token 对但入参不全」(400/422)。
+    const authed = await fetch(`${base}/api/store/agent-assets/products`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Internal-Token": token },
+      body: JSON.stringify({}),
+      cache: "no-store",
+    });
+    result.authedStatus = authed.status;
+    result.authedBody = (await authed.text()).slice(0, 300);
+  } catch (e) {
+    result.error = `authed call failed: ${e instanceof Error ? e.message : String(e)}`;
+  }
+  return result;
+}
+
 async function storeFetch(path: string, init?: RequestInit): Promise<Response> {
   return fetch(`${BASE()}${path}`, {
     ...init,
