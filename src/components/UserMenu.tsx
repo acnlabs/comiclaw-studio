@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useAuth0 } from "@auth0/auth0-react";
 import { useT } from "@/components/LocaleProvider";
+import CreditsBadge from "@/components/CreditsBadge";
 
 export default function UserMenu() {
   const { isAuthenticated, isLoading, user, loginWithRedirect, logout } = useAuth0();
@@ -26,6 +27,7 @@ export default function UserMenu() {
 
   return (
     <div className="flex items-center gap-3">
+      <CreditsBadge />
       {user?.picture ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
