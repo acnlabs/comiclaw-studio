@@ -1,12 +1,9 @@
 import { after } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyUserToken } from "@/lib/userAuth";
-import {
-  storeConfigured,
-  createCastingOrder,
-  upsertCharacterListing,
-} from "@/lib/agentplanet";
+import { storeConfigured, createCastingOrder } from "@/lib/agentplanet";
 import { grantLicense, reconcilePendingLicenses } from "@/lib/casting";
+import { syncCharacterListing } from "@/lib/characterListing";
 import { unauthorized, badRequest, notFoundJson } from "@/lib/auth";
 import type { AgentCharacter } from "@prisma/client";
 
@@ -124,24 +121,12 @@ export async function GET(req: Request) {
   return Response.json({ projectIds: licenses.map((l) => l.projectId) });
 }
 
-// 角色尚未上架时兜底上架(如角色在 Store 接入前就已设置付费)
+// 角色尚未上架时兜底上架(如角色在 Store 接入前就已设置付费)。
+// 复用 syncCharacterListing:与主路径一致地先登记产权再上架,避免兜底
+// 路径产生未登记的商品。
 async function ensureListing(character: AgentCharacter): Promise<string | null> {
   if (character.storeProductId) return character.storeProductId;
   if (!character.acnAgentId) return null; // 无收款方,无法上架
-  const productId = await upsertCharacterListing({
-    storeProductId: null,
-    characterId: character.id,
-    name: character.name,
-    tagline: character.tagline,
-    imageUrl: character.imageUrl,
-    sellerAgentId: character.acnAgentId,
-    credits: character.licensePoints,
-  });
-  if (productId) {
-    await prisma.agentCharacter.update({
-      where: { id: character.id },
-      data: { storeProductId: productId },
-    });
-  }
-  return productId;
+  const synced = await syncCharacterListing(character);
+  return synced?.storeProductId ?? null;
 }

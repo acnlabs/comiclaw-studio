@@ -101,6 +101,102 @@ export async function upsertCharacterListing(args: {
   }
 }
 
+// 校验 agent 是否真实存在于 AgentPlanet(公开端点,无需令牌)。
+// 返回 true/false;网络失败返回 null(调用方决定阻塞还是放行)。
+export async function verifyAgentExists(agentId: string): Promise<boolean | null> {
+  try {
+    const res = await fetch(`${BASE()}/api/agents/${encodeURIComponent(agentId)}`, {
+      cache: "no-store",
+    });
+    if (res.ok) return true;
+    if (res.status === 404 || res.status === 400) return false;
+    return null; // 5xx 等非预期状态:视为暂不可验证
+  } catch {
+    return null;
+  }
+}
+
+// ---- 资产登记表(平台级产权账本;ap-backend /api/store/asset-registry)----
+// 登记的是产权与指针;付费角色上架前登记,产权人 = 收款智能体。
+
+const assetRef = (characterId: string) => `comiclaw:character:${characterId}`;
+
+// 登记角色产权。"exists"(409)表示此前已登记——产权人可能是旧收款方,
+// 调用方须随后 change-owner 对齐,否则上架会被登记表的 seller 校验挡住。
+export async function registerCharacterAsset(args: {
+  characterId: string;
+  ownerAgentId: string;
+  displayName: string;
+}): Promise<"registered" | "exists" | "failed"> {
+  try {
+    const res = await storeFetch(`/api/store/asset-registry`, {
+      method: "POST",
+      body: JSON.stringify({
+        asset_ref: assetRef(args.characterId),
+        source: "comiclaw-studio",
+        asset_kind: "character",
+        owner_type: "agent",
+        owner_id: args.ownerAgentId,
+        display_name: args.displayName,
+        bound_agent_id: args.ownerAgentId,
+      }),
+    });
+    if (res.ok) return "registered";
+    if (res.status === 409) return "exists";
+    return "failed";
+  } catch {
+    return "failed";
+  }
+}
+
+// 产权变更(客户改绑收款智能体)。404 = 从未登记过,调用方随后走 register 即可。
+export async function changeCharacterAssetOwner(
+  characterId: string,
+  newAgentId: string
+): Promise<void> {
+  try {
+    await storeFetch(`/api/store/asset-registry/${encodeURIComponent(assetRef(characterId))}/change-owner`, {
+      method: "POST",
+      body: JSON.stringify({ owner_type: "agent", owner_id: newAgentId, reason: "rebind" }),
+    });
+  } catch {
+    // best effort:失败时新商品上架会被登记表挡住,不会造成错误收款
+  }
+}
+
+// 注销登记(角色删除时)。best effort、幂等。
+export async function revokeCharacterAsset(characterId: string): Promise<void> {
+  try {
+    await storeFetch(`/api/store/asset-registry/${encodeURIComponent(assetRef(characterId))}/revoke`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+  } catch {
+    // 忽略:注销失败只影响登记表整洁度;死资产的新订单会被下单时点核对挡住
+  }
+}
+
+export interface StoreListingStatus {
+  product_id: string;
+  credits_price: number;
+  is_active: boolean;
+  review_status: string | null; // pending | approved | rejected
+  review_reason: string | null; // 被拒原因(机器可读,供卖家 agent 修改后重新上架)
+}
+
+// 查询商品的审核/上架状态(公开目录不回显审核字段,须经内部端点)。
+export async function getCharacterListing(
+  storeProductId: string
+): Promise<StoreListingStatus | null> {
+  try {
+    const res = await storeFetch(`/api/store/agent-assets/products/${storeProductId}`);
+    if (!res.ok) return null;
+    return (await res.json()) as StoreListingStatus;
+  } catch {
+    return null;
+  }
+}
+
 // 下架商品(角色关闭付费/删除时)。best effort。
 export async function unlistCharacterListing(
   storeProductId: string,

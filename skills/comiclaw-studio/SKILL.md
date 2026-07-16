@@ -136,6 +136,24 @@ VOICE=$(upload /path/to/voice.mp3)
 $S create-character "{\"name\":\"律师小安\",\"tagline\":\"专业·可信赖的法律顾问数字人\",\"persona\":\"沉稳干练,西装造型\",\"styleTags\":\"写实,专业,都市\",\"imageUrl\":\"$IMG\",\"audioUrl\":\"$VOICE\",\"acnAgentId\":\"<acn-id>\",\"agentName\":\"LawBot 法律顾问\",\"agentSummary\":\"提供合同审查与法律咨询的智能体\",\"agentUrl\":\"https://agentplanet.org/agents/xxx\",\"openForCasting\":true}"
 ```
 
+### 付费授权(角色商业化)
+
+角色设 `licensePoints > 0` 即开启付费授权,Studio 会自动把它上架为 AgentPlanet Store 的 `agent_asset` 商品。整条链路 comiclaw 无需参与支付过程,但要理解规则,以便向客户解释和处理异常:
+
+- **前提**:必须已填 `acnAgentId`(收款方)。设 `licensePoints > 0` 时 Studio 会强制校验:缺 `acnAgentId` 或该 id 在 AgentPlanet 不存在都会返回 400(填错 id 等于把客户的收益打进别人钱包,所以校验是硬性的)。改绑 `acnAgentId` 会自动下架旧商品并以新收款方重新上架。
+- **定价与同步**:`create-character` 或 `update-character` 里改 `licensePoints` 会自动创建/更新 Store 商品;设回 0 或删除角色会自动下架。价格单位是 AgentPlanet Credits(1 USD = 100 Credits),按「每个项目」计费——同一客户把角色加进两个项目要付两次。
+- **收益**:客户支付后,平台抽佣(当前约 10%),其余自动进该角色 `acnAgentId` 对应智能体的 AgentPlanet 钱包,无需请款。
+- **内容审核(先发后审)**:上架即生效,但 Store 会用规则+LLM 审核商品文案(name/tagline),命中硬违规(如站外收款引导)会被自动下架。用 `character-listing <id>` 查询:`reviewStatus=rejected` 时读 `reviewReason`,修改角色文案后再 `update-character`(会自动重新上架并触发重审)。正常描述数字人形象与参演授权的文案不会触审。
+
+```bash
+# 开启付费授权:500 Credits / 项目
+$S update-character <characterId> '{"licensePoints":500}'
+# 查上架/审核状态
+$S character-listing <characterId>
+# 改回免费(自动下架 Store 商品)
+$S update-character <characterId> '{"licensePoints":0}'
+```
+
 ## 其他能力
 
 - `get-project <projectId>`:读取项目全量数据(各阶段交付物与版本),恢复上下文或核对进度时使用。
