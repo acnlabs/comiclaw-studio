@@ -9,6 +9,10 @@ import { AUTH0_AUDIENCE } from "@/lib/auth0";
 const API_BASE =
   process.env.NEXT_PUBLIC_AGENTPLANET_API_URL ?? "https://api.agentplanet.org";
 
+// AgentPlanet 钱包页(充值入口);窗口焦点检测会在用户充值回来后自动刷新余额
+const WALLET_URL =
+  process.env.NEXT_PUBLIC_AGENTPLANET_WALLET_URL ?? "https://agentplanet.org/wallet";
+
 // 其他组件(如支付确认成功后)可派发此事件让余额立即刷新
 export const CREDITS_REFRESH_EVENT = "credits:refresh";
 
@@ -55,12 +59,15 @@ export default function CreditsBadge() {
   if (!isAuthenticated || balance === null) return null;
 
   return (
-    <span
+    <a
+      href={WALLET_URL}
+      target="_blank"
+      rel="noopener noreferrer"
       title={t("nav.creditsTitle")}
-      className="flex items-center gap-1 rounded-full border border-zinc-700 px-2.5 py-0.5 text-xs font-medium text-zinc-300"
+      className="flex items-center gap-1 rounded-full border border-zinc-700 px-2.5 py-0.5 text-xs font-medium text-zinc-300 transition-colors hover:border-zinc-500 hover:text-zinc-100"
     >
       <span className="text-accent">◈</span>
       {balance.toLocaleString()}
-    </span>
+    </a>
   );
 }

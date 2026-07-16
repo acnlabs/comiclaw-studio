@@ -10,7 +10,7 @@ const zh = {
   "nav.studio": "Studio",
   "nav.login": "登录",
   "nav.logout": "退出",
-  "nav.creditsTitle": "AgentPlanet Credits 余额",
+  "nav.creditsTitle": "AgentPlanet Credits 余额 · 点击前往充值",
   "nav.myProjects": "我的项目",
 
   // 通用
@@ -231,7 +231,7 @@ const en: Record<MessageKey, string> = {
   "nav.studio": "Studio",
   "nav.login": "Sign in",
   "nav.logout": "Sign out",
-  "nav.creditsTitle": "AgentPlanet Credits balance",
+  "nav.creditsTitle": "AgentPlanet Credits balance · click to top up",
   "nav.myProjects": "My Projects",
 
   "common.video": "Video",
