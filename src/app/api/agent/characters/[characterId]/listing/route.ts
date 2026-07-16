@@ -13,16 +13,23 @@ export const GET = withAgentAuth(async (_req, ctx: Ctx) => {
   const { characterId } = await ctx.params;
   const character = await prisma.agentCharacter.findUnique({
     where: { id: characterId },
-    select: { id: true, licensePoints: true, storeProductId: true },
+    select: { id: true, licensePoints: true, storeProductId: true, ownerUserId: true },
   });
   if (!character) return notFoundJson();
 
   // 收益统计:GRANTED 授权按次计费(同客户加两个项目算两次),points 是成交时的
   // 快照单价——累计值是毛收入(平台抽佣前);实际到账智能体钱包的金额会更低。
+  // 排除角色主人自用自己角色的记录(points 恒为 0,不是第三方需求信号,混进来会
+  // 出现「授权了 5 个项目却只赚 2 个 Credits」这种自相矛盾的数字)。
+  const externalLicenseFilter = {
+    characterId,
+    status: "GRANTED",
+    ...(character.ownerUserId ? { licenseeSub: { not: character.ownerUserId } } : {}),
+  } as const;
   const [licensedProjectCount, revenueAgg] = await Promise.all([
-    prisma.castingLicense.count({ where: { characterId, status: "GRANTED" } }),
+    prisma.castingLicense.count({ where: externalLicenseFilter }),
     prisma.castingLicense.aggregate({
-      where: { characterId, status: "GRANTED" },
+      where: externalLicenseFilter,
       _sum: { points: true },
     }),
   ]);
