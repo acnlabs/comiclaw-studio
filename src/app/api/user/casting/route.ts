@@ -65,9 +65,11 @@ export async function POST(req: Request) {
         { status: 402 }
       );
     }
-    const returnUrl = `${new URL(req.url).origin}/casting/return?characterId=${encodeURIComponent(
-      characterId
-    )}&projectId=${encodeURIComponent(projectId)}`;
+    // Store 侧只接受 https 的 return_url;本地开发(http)不传,不影响下单
+    const origin = new URL(req.url).origin;
+    const returnUrl = origin.startsWith("https://")
+      ? `${origin}/casting/return?characterId=${encodeURIComponent(characterId)}&projectId=${encodeURIComponent(projectId)}`
+      : undefined;
     const order = await createCastingOrder({ storeProductId: productId, projectId, returnUrl });
     if (!order) {
       return Response.json(

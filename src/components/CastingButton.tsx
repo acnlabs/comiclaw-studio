@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useAuth0 } from "@auth0/auth0-react";
 import { useT } from "@/components/LocaleProvider";
@@ -40,6 +40,9 @@ export default function CastingButton({
   const [error, setError] = useState<string | null>(null);
   const [successId, setSuccessId] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingPayment | null>(null);
+  // 确认请求的 in-flight 防抖:轮询/焦点/手动点击可能同时触发,且 interval 闭包里的
+  // state 是过期值挡不住并发,用 ref 保证同一时刻只有一个确认请求在飞
+  const confirmInFlight = useRef(false);
 
   const authHeader = async () => ({
     Authorization: `Bearer ${await getAccessTokenSilently({
@@ -103,7 +106,8 @@ export default function CastingButton({
   // 手动点击(silent=false)时才提示「还没查到付款」;终态失败(409)始终提示。
   const confirmPaid = async (opts?: { silent?: boolean }) => {
     const silent = opts?.silent ?? false;
-    if (!pending || busy) return;
+    if (!pending || confirmInFlight.current) return;
+    confirmInFlight.current = true;
     if (!silent) setBusy(pending.projectId);
     if (!silent) setError(null);
     try {
@@ -129,6 +133,7 @@ export default function CastingButton({
         setError(data?.error ?? "Failed");
       }
     } finally {
+      confirmInFlight.current = false;
       if (!silent) setBusy(null);
     }
   };
