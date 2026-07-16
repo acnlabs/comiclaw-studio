@@ -101,6 +101,21 @@ export async function upsertCharacterListing(args: {
   }
 }
 
+// 校验 agent 是否真实存在于 AgentPlanet(公开端点,无需令牌)。
+// 返回 true/false;网络失败返回 null(调用方决定阻塞还是放行)。
+export async function verifyAgentExists(agentId: string): Promise<boolean | null> {
+  try {
+    const res = await fetch(`${BASE()}/api/agents/${encodeURIComponent(agentId)}`, {
+      cache: "no-store",
+    });
+    if (res.ok) return true;
+    if (res.status === 404 || res.status === 400) return false;
+    return null; // 5xx 等非预期状态:视为暂不可验证
+  } catch {
+    return null;
+  }
+}
+
 export interface StoreListingStatus {
   product_id: string;
   credits_price: number;
