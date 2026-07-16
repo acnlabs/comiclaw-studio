@@ -29,6 +29,7 @@ export interface CharacterDetailData {
   agentUrl: string | null;
   openForCasting: boolean;
   licensePoints: number;
+  licensedProjectCount: number;
   createdAt: string;
 }
 
@@ -193,6 +194,9 @@ export default function CharacterDetailView({
               }
             />
             <Stat label={t("char.statCreated")} value={fmtDate(c.createdAt)} />
+            {c.licensedProjectCount > 0 && (
+              <Stat label={t("char.statLicensed")} value={String(c.licensedProjectCount)} />
+            )}
           </div>
 
           {/* CTA:主按钮 = 添加到我的项目(选角授权),次按钮 = 复制链接 */}
