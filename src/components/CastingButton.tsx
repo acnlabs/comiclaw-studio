@@ -6,6 +6,7 @@ import { useAuth0 } from "@auth0/auth0-react";
 import { useT } from "@/components/LocaleProvider";
 import { AUTH0_AUDIENCE } from "@/lib/auth0";
 import { Modal } from "@/components/ui";
+import { requestCreditsRefresh } from "@/components/CreditsBadge";
 
 interface MyProject {
   id: string;
@@ -124,6 +125,7 @@ export default function CastingButton({
         setPending(null);
         setError(null);
         setTimeout(() => setSuccessId(null), 3000);
+        requestCreditsRefresh(); // 刚扣了 Credits,顶栏余额立即刷新
       } else if (res.status === 402) {
         if (!silent) setError(t("casting.notPaid"));
       } else if (res.status === 409) {

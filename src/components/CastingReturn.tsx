@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth0 } from "@auth0/auth0-react";
 import { useT } from "@/components/LocaleProvider";
 import { AUTH0_AUDIENCE } from "@/lib/auth0";
+import { requestCreditsRefresh } from "@/components/CreditsBadge";
 
 type ConfirmState = "checking" | "success" | "notPaid" | "dead" | "error";
 
@@ -34,8 +35,10 @@ export default function CastingReturn({
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ characterId, projectId }),
       });
-      if (res.ok) setConfirmState("success");
-      else if (res.status === 402) setConfirmState("notPaid");
+      if (res.ok) {
+        setConfirmState("success");
+        requestCreditsRefresh(); // 刚扣了 Credits,顶栏余额立即刷新
+      } else if (res.status === 402) setConfirmState("notPaid");
       else if (res.status === 409) setConfirmState("dead");
       else setConfirmState("error");
     } catch {
