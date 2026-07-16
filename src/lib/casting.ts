@@ -1,9 +1,16 @@
 import { prisma } from "@/lib/db";
 import { emitProjectUpdate } from "@/lib/events";
 import { getCheckout, acceptCastingOrder } from "@/lib/agentplanet";
-import type { AgentCharacter } from "@prisma/client";
+import { Prisma, type AgentCharacter } from "@prisma/client";
 
-// 授予选角授权 + 物化角色到项目资产库(免费授予与付费确认共用)
+// 授予选角授权 + 物化角色到项目资产库(免费授予与付费确认共用)。
+//
+// 并发安全:确认授权的触发源有多个(客户端轮询/焦点检测/手动点击/服务端自愈),
+// 完全可能同时到达。资产物化必须恰好一次,靠「原子抢占转移」保证:
+// - 已有 PENDING 行 → updateMany 条件转移(行锁串行化),只有真正把状态翻到
+//   GRANTED 的调用者才物化资产,输家看到 count=0 直接返回既有记录;
+// - 无行(免费首次授予)→ create 靠 (characterId, projectId) 唯一约束兜底,
+//   撞约束(P2002)说明另一并发调用已授予并物化,返回既有记录即可。
 export async function grantLicense(args: {
   character: AgentCharacter;
   projectId: string;
@@ -12,20 +19,12 @@ export async function grantLicense(args: {
   orderId: string | null;
 }) {
   const { character, projectId, sub, points, orderId } = args;
-  const [license] = await prisma.$transaction([
-    prisma.castingLicense.upsert({
-      where: { characterId_projectId: { characterId: character.id, projectId } },
-      create: {
-        characterId: character.id,
-        projectId,
-        licenseeSub: sub,
-        points,
-        status: "GRANTED",
-        storeOrderId: orderId,
-      },
-      update: { status: "GRANTED", points, storeOrderId: orderId },
-    }),
-    prisma.asset.create({
+  const uniqueWhere = {
+    characterId_projectId: { characterId: character.id, projectId },
+  };
+
+  const materializeAsset = (tx: Prisma.TransactionClient) =>
+    tx.asset.create({
       data: {
         projectId,
         type: "CHARACTER",
@@ -42,10 +41,52 @@ export async function grantLicense(args: {
           },
         },
       },
-    }),
-  ]);
-  emitProjectUpdate(projectId, "asset.created");
-  return license;
+    });
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const flipped = await tx.castingLicense.updateMany({
+        where: {
+          characterId: character.id,
+          projectId,
+          status: { not: "GRANTED" },
+        },
+        data: { status: "GRANTED", licenseeSub: sub, points, storeOrderId: orderId },
+      });
+      if (flipped.count > 0) {
+        await materializeAsset(tx);
+        return {
+          license: await tx.castingLicense.findUniqueOrThrow({ where: uniqueWhere }),
+          created: true,
+        };
+      }
+      const existing = await tx.castingLicense.findUnique({ where: uniqueWhere });
+      if (existing) {
+        // 已是 GRANTED(本次或并发调用已授予),资产已物化,不重复创建
+        return { license: existing, created: false };
+      }
+      const license = await tx.castingLicense.create({
+        data: {
+          characterId: character.id,
+          projectId,
+          licenseeSub: sub,
+          points,
+          status: "GRANTED",
+          storeOrderId: orderId,
+        },
+      });
+      await materializeAsset(tx);
+      return { license, created: true };
+    });
+    if (result.created) emitProjectUpdate(projectId, "asset.created");
+    return result.license;
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      const existing = await prisma.castingLicense.findUnique({ where: uniqueWhere });
+      if (existing) return existing;
+    }
+    throw e;
+  }
 }
 
 // 惰性兜底自愈:客户付款后可能没有回到 Studio 手动确认(关掉标签页/切走没回来)。
