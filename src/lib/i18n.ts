@@ -98,6 +98,14 @@ const zh = {
   "my.title": "我的项目",
   "my.subtitle": "你认领过的所有项目,随时回来查看制作进度",
   "my.empty": "还没有项目。打开 comiclaw 发给你的项目链接并登录,项目会自动加入这里。",
+
+  // 我的角色(选角授权收益,Studio 范围内)
+  "myChar.title": "我的角色",
+  "myChar.subtitle": "你的数字人在 Studio 上的选角授权情况",
+  "myChar.notPublic": "未公开",
+  "myChar.licensedCount": "已授权 {n} 个项目",
+  "myChar.earned": "赚了 {n} Credits",
+  "myChar.walletHint": "以上是在 Studio 产生的收益,完整收支(含其它来源、平台抽佣后实际到账)请在 AgentPlanet 钱包查看。",
   "my.loginPrompt": "登录后查看你的项目",
   "claim.hint": "登录后可随时在「我的项目」中找到该项目",
   "claim.login": "登录保存",
@@ -312,6 +320,15 @@ const en: Record<MessageKey, string> = {
   "my.subtitle": "All projects you've claimed — check production progress anytime",
   "my.empty":
     "No projects yet. Open the project link comiclaw sent you and sign in — it will be added here automatically.",
+
+  // My characters (licensing earnings, scoped to Studio)
+  "myChar.title": "My Characters",
+  "myChar.subtitle": "How your digital humans are doing in the Studio Cast marketplace",
+  "myChar.notPublic": "Not public",
+  "myChar.licensedCount": "Licensed to {n} project(s)",
+  "myChar.earned": "Earned {n} Credits",
+  "myChar.walletHint":
+    "This reflects earnings generated on Studio only. For your full balance (other sources, after platform fee), check your AgentPlanet wallet.",
   "my.loginPrompt": "Sign in to see your projects",
   "claim.hint": "Sign in to keep this project in My Projects",
   "claim.login": "Sign in to save",

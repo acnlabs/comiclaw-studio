@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { useAuth0 } from "@auth0/auth0-react";
 import { useT } from "@/components/LocaleProvider";
 import MyProjects from "@/components/MyProjects";
+import MyCharacters from "@/components/MyCharacters";
 import AdminLogin from "@/components/AdminLogin";
 
 // Studio 首页(非管理员):
@@ -19,7 +20,12 @@ export default function StudioHome() {
   }
 
   if (isAuthenticated) {
-    return <MyProjects />;
+    return (
+      <>
+        <MyProjects />
+        <MyCharacters />
+      </>
+    );
   }
 
   return (
