@@ -50,8 +50,10 @@ export async function POST(req: Request) {
       { status: 409 }
     );
   }
-  // 买家须是本人(在 AgentPlanet 用同一 Auth0 账号支付)
-  if (checkout.buyer_id && checkout.buyer_id !== sub) {
+  // 买家须是本人(在 AgentPlanet 用同一 Auth0 账号支付)。ap-backend 的不变量是
+  // state ∈ {fulfilling, completed} 时 buyer_id 必已回填,但这里按「未回填也不放行」
+  // 处理(而不是 buyer_id 为空就跳过校验),做纵深防御,不依赖对方内部实现细节。
+  if (!checkout.buyer_id || checkout.buyer_id !== sub) {
     return Response.json({ error: "Order was paid by another account" }, { status: 403 });
   }
 

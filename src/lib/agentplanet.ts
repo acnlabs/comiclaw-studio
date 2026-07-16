@@ -239,6 +239,14 @@ export async function createCastingOrder(args: {
   }
 }
 
+// AgentPlanet 前端(checkout 页)的站点地址,用于重建已存在订单的 checkout 链接。
+const APP_ORIGIN = () =>
+  (process.env.NEXT_PUBLIC_AGENTPLANET_APP_URL ?? "https://agentplanet.org").replace(/\/+$/, "");
+
+export function checkoutUrl(orderId: string): string {
+  return `${APP_ORIGIN()}/store/checkout/${orderId}`;
+}
+
 // 查询订单状态(Studio 确认支付后落授权)。
 export async function getCheckout(orderId: string): Promise<StoreCheckout | null> {
   try {

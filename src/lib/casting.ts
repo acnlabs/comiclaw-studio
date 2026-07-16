@@ -107,8 +107,9 @@ export async function reconcilePendingLicenses(sub: string): Promise<void> {
       if (!checkout) continue; // Store 暂时不可达,下次再试
 
       if (checkout.state === "fulfilling" || checkout.state === "completed") {
-        // 买家须与支付时一致,否则跳过(留给下次;不主动清理,避免误删他人凑巧同订单的记录)
-        if (checkout.buyer_id && checkout.buyer_id !== sub) continue;
+        // 买家须与支付时一致,否则跳过(留给下次;不主动清理,避免误删他人凑巧同订单的记录)。
+        // 未回填 buyer_id 也不放行(纵深防御,不依赖对方内部实现细节)。
+        if (!checkout.buyer_id || checkout.buyer_id !== sub) continue;
         await grantLicense({
           character: license.character,
           projectId: license.projectId,

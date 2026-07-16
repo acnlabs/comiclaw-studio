@@ -1,7 +1,13 @@
 import { after } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyUserToken } from "@/lib/userAuth";
-import { storeConfigured, createCastingOrder } from "@/lib/agentplanet";
+import {
+  storeConfigured,
+  createCastingOrder,
+  getCheckout,
+  acceptCastingOrder,
+  checkoutUrl,
+} from "@/lib/agentplanet";
 import { grantLicense, reconcilePendingLicenses } from "@/lib/casting";
 import { syncCharacterListing } from "@/lib/characterListing";
 import { unauthorized, badRequest, notFoundJson } from "@/lib/auth";
@@ -55,6 +61,44 @@ export async function POST(req: Request) {
         { status: 402 }
       );
     }
+
+    // 复用仍然有效的既有订单,不要每次重新打开弹窗/重复点击都在 Store 开一张新单——
+    // 旧单会变成孤立记录:如果买家不小心付了旧单(比如开着两个标签页),货款会正常
+    // 结算给卖家,但买家永远拿不到货(Studio 已经不认那张旧单了)。
+    if (existing?.status === "PENDING_PAYMENT" && existing.storeOrderId) {
+      const checkout = await getCheckout(existing.storeOrderId);
+      if (checkout?.state === "pending") {
+        return Response.json(
+          {
+            license: existing,
+            pendingPayment: true,
+            orderId: existing.storeOrderId,
+            checkoutUrl: checkoutUrl(existing.storeOrderId),
+            credits: checkout.amount_credits,
+          },
+          { status: 402 }
+        );
+      }
+      if (
+        checkout &&
+        (checkout.state === "fulfilling" || checkout.state === "completed") &&
+        (!checkout.buyer_id || checkout.buyer_id === sub)
+      ) {
+        // 旧单其实已经付过款了(比如客户上次付完款没点确认就关掉了弹窗)——
+        // 直接落地,不用再让客户走一遍 checkout。
+        const granted = await grantLicense({
+          character,
+          projectId,
+          sub,
+          points: checkout.amount_credits,
+          orderId: existing.storeOrderId,
+        });
+        await acceptCastingOrder(existing.storeOrderId, sub);
+        return Response.json({ license: granted }, { status: 201 });
+      }
+      // cancelled / expired / refunded,或买家不匹配:旧单已死,往下创建新订单
+    }
+
     const productId = await ensureListing(character);
     if (!productId) {
       return Response.json(
@@ -74,7 +118,8 @@ export async function POST(req: Request) {
         { status: 502 }
       );
     }
-    // 占位授权记录(PENDING_PAYMENT);重复点击会开新单并覆盖旧单(旧单自然过期)
+    // 占位授权记录(PENDING_PAYMENT)。走到这里说明确实没有可复用的旧单
+    // (上面已经处理过 pending/已付的情况),新单覆盖的至多是一张已死的旧单。
     const license = await prisma.castingLicense.upsert({
       where: { characterId_projectId: { characterId, projectId } },
       create: {
