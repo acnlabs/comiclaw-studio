@@ -117,16 +117,23 @@ export async function unlistCharacterListing(
 }
 
 // 为一次付费授权创建待支付订单,license_ref 随单携带便于对账。
+// returnUrl 是可选的支付完成后跳转回调(Store/checkout 前端若支持,会在支付
+// 成功后把浏览器带回这个地址;目前 AgentPlanet 前端尚未实现跳转,传了也无副作用,
+// 是否落地取决于对方——不影响 Studio 侧的轮询/自愈兜底路径)。
 export async function createCastingOrder(args: {
   storeProductId: string;
   projectId: string;
+  returnUrl?: string;
 }): Promise<StoreOrder | null> {
   try {
     const res = await storeFetch(
       `/api/store/agent-assets/products/${args.storeProductId}/order`,
       {
         method: "POST",
-        body: JSON.stringify({ license_ref: `comiclaw:project:${args.projectId}` }),
+        body: JSON.stringify({
+          license_ref: `comiclaw:project:${args.projectId}`,
+          ...(args.returnUrl ? { return_url: args.returnUrl } : {}),
+        }),
       }
     );
     if (!res.ok) return null;

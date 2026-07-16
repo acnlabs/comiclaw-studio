@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyUserToken } from "@/lib/userAuth";
 import {
@@ -5,7 +6,7 @@ import {
   createCastingOrder,
   upsertCharacterListing,
 } from "@/lib/agentplanet";
-import { grantLicense } from "@/lib/casting";
+import { grantLicense, reconcilePendingLicenses } from "@/lib/casting";
 import { unauthorized, badRequest, notFoundJson } from "@/lib/auth";
 import type { AgentCharacter } from "@prisma/client";
 
@@ -64,7 +65,10 @@ export async function POST(req: Request) {
         { status: 402 }
       );
     }
-    const order = await createCastingOrder({ storeProductId: productId, projectId });
+    const returnUrl = `${new URL(req.url).origin}/casting/return?characterId=${encodeURIComponent(
+      characterId
+    )}&projectId=${encodeURIComponent(projectId)}`;
+    const order = await createCastingOrder({ storeProductId: productId, projectId, returnUrl });
     if (!order) {
       return Response.json(
         { error: "Failed to create store order", code: "ORDER_FAILED" },
@@ -113,6 +117,8 @@ export async function GET(req: Request) {
     where: { characterId, licenseeSub: sub, status: "GRANTED" },
     select: { projectId: true },
   });
+  // 惰性自愈:打开选角弹窗时顺手补一遍这个客户卡住的付费授权
+  after(() => reconcilePendingLicenses(sub));
   return Response.json({ projectIds: licenses.map((l) => l.projectId) });
 }
 

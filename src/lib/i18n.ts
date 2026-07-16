@@ -202,6 +202,18 @@ const zh = {
   "casting.orderDead": "订单已失效,请重新发起",
   "casting.confirming": "确认中…",
 
+  "castingReturn.checking": "正在核实支付…",
+  "castingReturn.checkingHint": "请稍候,我们正在向 AgentPlanet 确认你的支付状态",
+  "castingReturn.needLogin": "请先登录",
+  "castingReturn.success": "授权成功",
+  "castingReturn.successHint": "角色已加入你的项目角色库",
+  "castingReturn.goToStudio": "前往 Studio",
+  "castingReturn.notPaid": "还没查到付款",
+  "castingReturn.retry": "重新检查",
+  "castingReturn.failed": "确认失败",
+  "castingReturn.failedHint": "出了点问题,请稍后重试,或回到 Studio 重新发起授权",
+  "castingReturn.backToCast": "返回角色市场",
+
   // 404
   "notFound.title": "页面不存在",
   "notFound.desc": "链接可能有误或项目已被移除。请核对 comiclaw 发给你的专属项目链接。",
@@ -397,6 +409,18 @@ const en: Record<MessageKey, string> = {
   "casting.notPaid": "Payment not detected yet — please finish paying and try again",
   "casting.orderDead": "This order has expired — please start over",
   "casting.confirming": "Confirming…",
+
+  "castingReturn.checking": "Checking your payment…",
+  "castingReturn.checkingHint": "Please wait while we confirm the payment with AgentPlanet",
+  "castingReturn.needLogin": "Please sign in",
+  "castingReturn.success": "License granted",
+  "castingReturn.successHint": "The character has been added to your project's asset library",
+  "castingReturn.goToStudio": "Go to Studio",
+  "castingReturn.notPaid": "Payment not detected yet",
+  "castingReturn.retry": "Check again",
+  "castingReturn.failed": "Confirmation failed",
+  "castingReturn.failedHint": "Something went wrong — please try again later, or go back to Studio and start over",
+  "castingReturn.backToCast": "Back to Cast",
 
   "notFound.title": "Page not found",
   "notFound.desc":

@@ -98,11 +98,14 @@ export default function CastingButton({
     }
   };
 
-  // 支付完成后确认授权(Studio 向 Store 核实订单已支付)
-  const confirmPaid = async () => {
+  // 支付完成后确认授权(Studio 向 Store 核实订单已支付)。
+  // silent=true 用于后台自动轮询/焦点检测:还没付款(402)时不打扰用户,只在
+  // 手动点击(silent=false)时才提示「还没查到付款」;终态失败(409)始终提示。
+  const confirmPaid = async (opts?: { silent?: boolean }) => {
+    const silent = opts?.silent ?? false;
     if (!pending || busy) return;
-    setBusy(pending.projectId);
-    setError(null);
+    if (!silent) setBusy(pending.projectId);
+    if (!silent) setError(null);
     try {
       const h = await authHeader();
       const res = await fetch("/api/user/casting/confirm", {
@@ -115,19 +118,34 @@ export default function CastingButton({
         setLicensed((prev) => new Set(prev).add(pending.projectId));
         setSuccessId(pending.projectId);
         setPending(null);
+        setError(null);
         setTimeout(() => setSuccessId(null), 3000);
       } else if (res.status === 402) {
-        setError(t("casting.notPaid"));
+        if (!silent) setError(t("casting.notPaid"));
       } else if (res.status === 409) {
         setError(t("casting.orderDead"));
         setPending(null);
-      } else {
+      } else if (!silent) {
         setError(data?.error ?? "Failed");
       }
     } finally {
-      setBusy(null);
+      if (!silent) setBusy(null);
     }
   };
+
+  // 后台自愈:打开 checkout 付款后,定时轮询 + 切回本标签页时立即查一次,
+  // 客户不用手动点「我已支付」——付完款切回来基本秒级自动完成。
+  useEffect(() => {
+    if (!pending) return;
+    const interval = setInterval(() => confirmPaid({ silent: true }), 4000);
+    const onFocus = () => confirmPaid({ silent: true });
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pending]);
 
   const priceLabel =
     licensePoints > 0 ? t("char.pointsPerProject", { n: licensePoints }) : t("char.free");
@@ -173,7 +191,7 @@ export default function CastingButton({
                   {t("casting.goPay")}
                 </a>
                 <button
-                  onClick={confirmPaid}
+                  onClick={() => confirmPaid()}
                   disabled={busy !== null}
                   className="rounded-full bg-accent px-3.5 py-1.5 text-xs font-medium text-zinc-950 transition-opacity hover:opacity-90 disabled:opacity-50"
                 >
