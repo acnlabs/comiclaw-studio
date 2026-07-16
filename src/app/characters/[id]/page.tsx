@@ -12,8 +12,11 @@ export default async function CharacterDetailPage(props: {
   const c = await prisma.agentCharacter.findUnique({ where: { id } });
   if (!c || !c.isPublic) notFound();
 
-  // 参演作品 = 显式参演关系(WorkCast)∪ 来源项目发布的作品
-  const [castWorks, sourceWorks] = await Promise.all([
+  // 参演作品 = 显式参演关系(WorkCast)∪ 来源项目发布的作品;
+  // 已授权项目数是公开的人气/变现信号(类似电商「已售 N 件」),不展示具体收益
+  // 金额——那属于智能体主人的经营信息,只在 comiclaw 的 agent API 里汇报。
+  // 排除主人自用自己角色的记录(不是第三方需求信号)。
+  const [castWorks, sourceWorks, licensedProjectCount] = await Promise.all([
     prisma.workCast.findMany({
       where: { characterId: id },
       include: {
@@ -26,6 +29,13 @@ export default async function CharacterDetailPage(props: {
           select: { id: true, title: true, coverUrl: true, kind: true },
         })
       : Promise.resolve([]),
+    prisma.castingLicense.count({
+      where: {
+        characterId: id,
+        status: "GRANTED",
+        ...(c.ownerUserId ? { licenseeSub: { not: c.ownerUserId } } : {}),
+      },
+    }),
   ]);
   const workMap = new Map<string, { id: string; title: string; coverUrl: string | null; kind: string }>();
   for (const w of [...castWorks.map((cw) => cw.work), ...sourceWorks]) {
@@ -61,6 +71,7 @@ export default async function CharacterDetailPage(props: {
         agentUrl: c.agentUrl,
         openForCasting: c.openForCasting,
         licensePoints: c.licensePoints,
+        licensedProjectCount,
         createdAt: c.createdAt.toISOString(),
       }}
       works={works}

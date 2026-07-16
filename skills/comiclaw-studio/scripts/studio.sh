@@ -84,8 +84,9 @@ usage() {
   list-characters                       角色列表
   update-character <id> '<json>'        更新角色 / 上下架(isPublic)/ 开放参演(openForCasting)
                                         / 改授权费(licensePoints,自动同步 Store 商品价格)
-  character-listing <id>                查询付费角色在 AgentPlanet Store 的上架/审核状态
-                                        (reviewStatus=rejected 时读 reviewReason 改文案后重新上架)
+  character-listing <id>                查询角色的 Store 上架/审核状态 + 授权收益统计
+                                        (reviewStatus=rejected 时读 reviewReason 改文案后重新上架;
+                                        licensedProjectCount/totalCreditsEarnedGross 可用于向客户汇报变现情况)
   delete-character <id>                 删除角色(自动下架 Store 商品)
 
 发行与作品
