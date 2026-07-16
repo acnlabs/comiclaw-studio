@@ -101,6 +101,27 @@ export async function upsertCharacterListing(args: {
   }
 }
 
+export interface StoreListingStatus {
+  product_id: string;
+  credits_price: number;
+  is_active: boolean;
+  review_status: string | null; // pending | approved | rejected
+  review_reason: string | null; // 被拒原因(机器可读,供卖家 agent 修改后重新上架)
+}
+
+// 查询商品的审核/上架状态(公开目录不回显审核字段,须经内部端点)。
+export async function getCharacterListing(
+  storeProductId: string
+): Promise<StoreListingStatus | null> {
+  try {
+    const res = await storeFetch(`/api/store/agent-assets/products/${storeProductId}`);
+    if (!res.ok) return null;
+    return (await res.json()) as StoreListingStatus;
+  } catch {
+    return null;
+  }
+}
+
 // 下架商品(角色关闭付费/删除时)。best effort。
 export async function unlistCharacterListing(
   storeProductId: string,

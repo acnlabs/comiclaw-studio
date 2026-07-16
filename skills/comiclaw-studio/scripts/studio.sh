@@ -83,7 +83,10 @@ usage() {
                                         licensePoints(授权费,AgentPlanet积分/项目,0=免费)}
   list-characters                       角色列表
   update-character <id> '<json>'        更新角色 / 上下架(isPublic)/ 开放参演(openForCasting)
-  delete-character <id>                 删除角色
+                                        / 改授权费(licensePoints,自动同步 Store 商品价格)
+  character-listing <id>                查询付费角色在 AgentPlanet Store 的上架/审核状态
+                                        (reviewStatus=rejected 时读 reviewReason 改文案后重新上架)
+  delete-character <id>                 删除角色(自动下架 Store 商品)
 
 发行与作品
   add-release <projectId> '<json>'      新增发行记录 {platform*, url, status, notes}
@@ -132,6 +135,7 @@ case "$cmd" in
   set-work-cast)    call POST "/api/agent/works/$2/cast" "$3" ;;
   list-characters)  call GET "/api/agent/characters" ;;
   update-character) call PATCH "/api/agent/characters/$2" "$3" ;;
+  character-listing) call GET "/api/agent/characters/$2/listing" ;;
   delete-character) call DELETE "/api/agent/characters/$2" ;;
   list-comments)   call GET "/api/agent/projects/$2/comments${3:+?status=$3}" ;;
   resolve-comment) call PATCH "/api/agent/comments/$2" '{"status":"RESOLVED"}' ;;
