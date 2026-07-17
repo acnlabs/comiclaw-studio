@@ -6,6 +6,7 @@ import { useT } from "@/components/LocaleProvider";
 import LocaleToggle from "@/components/LocaleToggle";
 import UserMenu from "@/components/UserMenu";
 import type { MessageKey } from "@/lib/i18n";
+import { COMICLAW_CHAT_URL } from "@/lib/agentLinks";
 
 const MENUS: { href: string; labelKey: MessageKey }[] = [
   { href: "/", labelKey: "nav.recommend" },
@@ -44,6 +45,21 @@ export default function SiteNav() {
           ))}
         </nav>
         <div className="ml-auto flex items-center gap-3">
+          {/* 全站固定入口:不管有没有登录、在哪个页面,都能找到 comiclaw 本人 ——
+              浏览推荐流/角色市场/短剧的冷启动访客,此前完全没有路径能"回到"
+              创作这一切的智能体本身(comiclaw → Studio 单向,反向没有路)。
+              不在小屏幕隐藏:分享链接流量很可能恰恰在移动端,收缩成图标而不是消失。 */}
+          <a
+            href={COMICLAW_CHAT_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={t("nav.chatWithComiclaw")}
+            title={t("nav.chatWithComiclaw")}
+            className="flex shrink-0 items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-xs font-medium text-zinc-950 transition-opacity hover:opacity-90 sm:px-3.5"
+          >
+            <span className="text-sm leading-none">🦞</span>
+            <span className="hidden sm:inline">{t("nav.chatWithComiclaw")}</span>
+          </a>
           <UserMenu />
           <LocaleToggle />
         </div>

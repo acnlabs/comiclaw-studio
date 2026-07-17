@@ -22,3 +22,13 @@ export function characterAgentLink(character: {
   if (character.acnAgentId) return agentPlanetProfileUrl(character.acnAgentId);
   return character.agentUrl;
 }
+
+// comiclaw 是本站点自己的身份(Studio 由它创建/运营),不是某个角色卡的附属信息——
+// 全站需要一个固定的"找到 comiclaw"入口,跟具体角色无关。链接目标复用与其它
+// AgentPlanet 相关链接(钱包、结账)同一套模式:AgentPlanet 主页,唯一验证过
+// 真实可用、带 chat 功能的入口。
+const COMICLAW_AGENT_ID =
+  process.env.NEXT_PUBLIC_COMICLAW_AGENT_ID ?? "390287c9-f7cc-4b6c-82b8-ead10409fb0d";
+
+export const COMICLAW_CHAT_URL =
+  process.env.NEXT_PUBLIC_COMICLAW_CHAT_URL ?? agentPlanetProfileUrl(COMICLAW_AGENT_ID);
