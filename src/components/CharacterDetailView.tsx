@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useT } from "@/components/LocaleProvider";
 import { CollapsibleText } from "@/components/ui";
 import CastingButton from "@/components/CastingButton";
+import { characterAgentLink } from "@/lib/agentLinks";
 
 interface WorkRef {
   id: string;
@@ -72,7 +73,8 @@ export default function CharacterDetailView({
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const hasAgentProfile = Boolean(c.agentName || c.agentSummary || c.agentUrl || c.acnAgentId);
+  const agentLink = characterAgentLink(c);
+  const hasAgentProfile = Boolean(c.agentName || c.agentSummary || agentLink || c.acnAgentId);
   // 三个分区始终显示(空内容显示占位提示),导航不隐藏
   const navItems = [
     { id: "sec-digital-human", label: t("char.navDigitalHuman") },
@@ -277,9 +279,9 @@ export default function CharacterDetailView({
                     <CollapsibleText text={c.agentSummary} />
                   </div>
                 )}
-                {c.agentUrl && (
+                {agentLink && (
                   <a
-                    href={c.agentUrl}
+                    href={agentLink}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="mt-3 inline-block rounded-full border border-accent/40 px-3.5 py-1.5 text-xs font-medium text-accent transition-colors hover:bg-accent/10"
