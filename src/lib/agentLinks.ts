@@ -15,12 +15,17 @@ export function agentPlanetProfileUrl(agentId: string): string {
 }
 
 // 角色卡「查看智能体」链接:acnAgentId 优先(规范、已验证),否则退回自由文本 agentUrl。
+// 渲染端防线:agentUrl 必须是 http(s) 绝对地址才会被用作 <a href> 点击目标——
+// 写入端(schemas)虽有同样校验,但存量数据早于校验存在,渲染不应依赖写入历史。
 export function characterAgentLink(character: {
   acnAgentId: string | null;
   agentUrl: string | null;
 }): string | null {
   if (character.acnAgentId) return agentPlanetProfileUrl(character.acnAgentId);
-  return character.agentUrl;
+  if (character.agentUrl && /^https?:\/\/\S+$/i.test(character.agentUrl)) {
+    return character.agentUrl;
+  }
+  return null;
 }
 
 // comiclaw 是本站点自己的身份(Studio 由它创建/运营),不是某个角色卡的附属信息——

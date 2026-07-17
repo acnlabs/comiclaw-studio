@@ -3,6 +3,19 @@ import { z } from "zod";
 const nonEmpty = z.string().trim().min(1);
 const optionalStr = z.string().trim().optional().nullable();
 const url = z.string().trim().url();
+// 会被渲染成 <a href> 点击目标的外链字段:必须是 http(s) 绝对地址。
+// 拦两类问题:1) 危险 scheme(javascript: 等)注入;2) 相对路径/裸域名这类
+// "看起来像地址但点了就坏"的脏数据(本次角色卡死链事故的同类问题)。
+// 空串视为清空(转为 null),与 optionalStr 的宽松语义兼容。
+const optionalHttpUrl = z
+  .string()
+  .trim()
+  .refine((v) => v === "" || /^https?:\/\/\S+$/i.test(v), {
+    message: "must be an absolute http(s) URL",
+  })
+  .optional()
+  .nullable()
+  .transform((v) => (v === "" ? null : v));
 
 export const StageEnum = z.enum([
   "SCRIPT",
@@ -119,7 +132,7 @@ export const createCharacterSchema = z.object({
   acnAgentId: optionalStr,
   agentName: optionalStr,
   agentSummary: optionalStr,
-  agentUrl: optionalStr,
+  agentUrl: optionalHttpUrl,
   ownerUserId: optionalStr,
   sourceProjectId: optionalStr,
   isPublic: z.boolean().optional(),
@@ -139,7 +152,7 @@ export const updateCharacterSchema = z.object({
   acnAgentId: optionalStr,
   agentName: optionalStr,
   agentSummary: optionalStr,
-  agentUrl: optionalStr,
+  agentUrl: optionalHttpUrl,
   isPublic: z.boolean().optional(),
   openForCasting: z.boolean().optional(),
   licensePoints: z.number().int().min(0).optional(),
