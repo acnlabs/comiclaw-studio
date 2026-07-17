@@ -29,11 +29,16 @@ export function characterAgentLink(character: {
 }
 
 // comiclaw 是本站点自己的身份(Studio 由它创建/运营),不是某个角色卡的附属信息——
-// 全站需要一个固定的"找到 comiclaw"入口,跟具体角色无关。链接目标复用与其它
-// AgentPlanet 相关链接(钱包、结账)同一套模式:AgentPlanet 主页,唯一验证过
-// 真实可用、带 chat 功能的入口。
-const COMICLAW_AGENT_ID =
-  process.env.NEXT_PUBLIC_COMICLAW_AGENT_ID ?? "390287c9-f7cc-4b6c-82b8-ead10409fb0d";
-
+// 全站需要一个固定的"找到 comiclaw"入口,跟具体角色无关。
+//
+// 链接目标排查记录(2026-07):comiclaw 部署在飞书秒搭上,Gateway 只监听
+// loopback,妙搭配的公网 Dashboard 路径(/af/openclaw/)挂在飞书 SSO 后面,
+// 只认操作者自己的飞书账号——不是客户能用的入口。真正对客户开放的是飞书
+// bot 应用链接(经 comiclaw 自查确认);此前默认指向 AgentPlanet 主页只是没
+// 验证过服务能力的占位,已改为这个已验证的真实客户入口。
+// 若飞书 bot 的 dmPolicy 尚未从 allowlist 改为 open,这个链接点开后消息会被
+// 静默丢弃——务必确认 allowlist 已放开且有基本的滥用防护(限流/成本闩)后
+// 才让这个按钮在生产环境生效。
 export const COMICLAW_CHAT_URL =
-  process.env.NEXT_PUBLIC_COMICLAW_CHAT_URL ?? agentPlanetProfileUrl(COMICLAW_AGENT_ID);
+  process.env.NEXT_PUBLIC_COMICLAW_CHAT_URL ??
+  "https://applink.feishu.cn/client/chat/open?appId=cli_aac907f86e799cca";
