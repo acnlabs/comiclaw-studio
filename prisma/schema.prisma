@@ -284,3 +284,17 @@ model Release {
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
+
+// ---------- 站内对话(comiclaw 嵌入式聊天) ----------
+
+// 每人每天的消息计数,用于限额。用 DB 而不是内存计数,因为 Vercel
+// serverless 实例是短生命周期、多实例的,内存计数在实例间不一致。
+model ChatUsage {
+  userSub String
+  day     String // UTC 日期,格式 YYYY-MM-DD
+  count   Int    @default(0)
+
+  updatedAt DateTime @updatedAt
+
+  @@id([userSub, day])
+}

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import SiteNav from "@/components/SiteNav";
+import ChatWidget from "@/components/ChatWidget";
 import AuthProvider from "@/components/AuthProvider";
 import { LocaleProvider } from "@/components/LocaleProvider";
 import { getLocale } from "@/lib/locale";
@@ -27,6 +28,7 @@ export default async function RootLayout({
           <LocaleProvider locale={locale}>
             <SiteNav />
             {children}
+            <ChatWidget />
           </LocaleProvider>
         </AuthProvider>
       </body>
