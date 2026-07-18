@@ -10,7 +10,7 @@ const API_BASE =
   process.env.NEXT_PUBLIC_AGENTPLANET_API_URL ?? "https://api.agentplanet.org";
 
 // AgentPlanet 钱包页(充值入口);窗口焦点检测会在用户充值回来后自动刷新余额
-const WALLET_URL =
+export const WALLET_URL =
   process.env.NEXT_PUBLIC_AGENTPLANET_WALLET_URL ?? "https://agentplanet.org/wallet";
 
 // 其他组件(如支付确认成功后)可派发此事件让余额立即刷新

@@ -18,6 +18,24 @@ export function storeConfigured(): boolean {
   return Boolean(BASE() && TOKEN());
 }
 
+// 查询用户自己的 Credits 余额(用户态接口,转发客户自己的 Auth0 token,
+// 不用内部令牌)。查不到时返回 null,调用方决定如何降级——通常应该按
+// "没有余额"处理,而不是放行,避免把查询失败当成免费通行证。
+export async function getWalletBalance(userBearerToken: string): Promise<number | null> {
+  if (!BASE() || !userBearerToken) return null;
+  try {
+    const res = await fetch(`${BASE()}/api/users/me/wallet`, {
+      headers: { Authorization: `Bearer ${userBearerToken}` },
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return typeof data?.balance === "number" ? data.balance : null;
+  } catch {
+    return null;
+  }
+}
+
 async function storeFetch(path: string, init?: RequestInit): Promise<Response> {
   return fetch(`${BASE()}${path}`, {
     ...init,

@@ -8,7 +8,6 @@ import LocaleToggle from "@/components/LocaleToggle";
 import UserMenu from "@/components/UserMenu";
 import { CHAT_OPEN_EVENT } from "@/components/ChatWidget";
 import type { MessageKey } from "@/lib/i18n";
-import { COMICLAW_CHAT_URL } from "@/lib/agentLinks";
 
 const MENUS: { href: string; labelKey: MessageKey }[] = [
   { href: "/", labelKey: "nav.recommend" },
@@ -19,7 +18,7 @@ const MENUS: { href: string; labelKey: MessageKey }[] = [
 
 export default function SiteNav() {
   const pathname = usePathname();
-  const { isAuthenticated } = useAuth0();
+  const { isAuthenticated, loginWithRedirect } = useAuth0();
   const { t } = useT();
 
   const isActive = (href: string) =>
@@ -48,35 +47,26 @@ export default function SiteNav() {
           ))}
         </nav>
         <div className="ml-auto flex items-center gap-3">
-          {/* 全站固定入口:不管有没有登录、在哪个页面,都能找到 comiclaw 本人 ——
-              浏览推荐流/角色市场/短剧的冷启动访客,此前完全没有路径能"回到"
-              创作这一切的智能体本身(comiclaw → Studio 单向,反向没有路)。
-              不在小屏幕隐藏:分享链接流量很可能恰恰在移动端,收缩成图标而不是消失。
-              登录用户:打开站内嵌入面板(ChatWidget,身份/限流走我们自己的代理)。
-              未登录:退回外部飞书 bot 链接(站内代理需要 Auth0 身份,匿名用户没有)。 */}
-          {isAuthenticated ? (
-            <button
-              onClick={() => window.dispatchEvent(new Event(CHAT_OPEN_EVENT))}
-              aria-label={t("nav.chatWithComiclaw")}
-              title={t("nav.chatWithComiclaw")}
-              className="flex shrink-0 items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-xs font-medium text-zinc-950 transition-opacity hover:opacity-90 sm:px-3.5"
-            >
-              <span className="text-sm leading-none">🦞</span>
-              <span className="hidden sm:inline">{t("nav.chatWithComiclaw")}</span>
-            </button>
-          ) : (
-            <a
-              href={COMICLAW_CHAT_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={t("nav.chatWithComiclaw")}
-              title={t("nav.chatWithComiclaw")}
-              className="flex shrink-0 items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-xs font-medium text-zinc-950 transition-opacity hover:opacity-90 sm:px-3.5"
-            >
-              <span className="text-sm leading-none">🦞</span>
-              <span className="hidden sm:inline">{t("nav.chatWithComiclaw")}</span>
-            </a>
-          )}
+          {/* 全站固定入口:不管在哪个页面,都能找到 comiclaw 本人——浏览推荐流/
+              角色市场/短剧的访客,此前完全没有路径能"回到"创作这一切的智能体
+              本身(comiclaw → Studio 单向,反向没有路)。不在小屏幕隐藏:分享
+              链接流量很可能恰恰在移动端,收缩成图标而不是消失。
+              门槛不是"有没有登录"——跟 comiclaw 对话本身要烧成本,未登录只是
+              先决条件之一。真正的资格判断(有没有 Credits)留给 ChatWidget 内部
+              处理(服务端强制),这里只负责"没登录就先登录"。 */}
+          <button
+            onClick={() =>
+              isAuthenticated
+                ? window.dispatchEvent(new Event(CHAT_OPEN_EVENT))
+                : loginWithRedirect({ appState: { returnTo: pathname || "/" } })
+            }
+            aria-label={t("nav.chatWithComiclaw")}
+            title={t("nav.chatWithComiclaw")}
+            className="flex shrink-0 items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-xs font-medium text-zinc-950 transition-opacity hover:opacity-90 sm:px-3.5"
+          >
+            <span className="text-sm leading-none">🦞</span>
+            <span className="hidden sm:inline">{t("nav.chatWithComiclaw")}</span>
+          </button>
           <UserMenu />
           <LocaleToggle />
         </div>

@@ -2,14 +2,17 @@ import { streamText, convertToModelMessages } from "ai";
 import type { UIMessage } from "ai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { prisma } from "@/lib/db";
-import { verifyUserToken } from "@/lib/userAuth";
+import { verifyUserToken, extractBearerToken } from "@/lib/userAuth";
+import { getWalletBalance } from "@/lib/agentplanet";
 import { unauthorized, badRequest } from "@/lib/auth";
 
 // 站内对话代理:浏览器不直连 OpenClaw Gateway,身份/限流/会话隔离都在这一层完成。
 //   1. 用 Studio 自己的 Auth0 账号验证身份(不是 Gateway 的共享密钥)
-//   2. sub 编码成 sessionKey,发给 Gateway 做会话隔离
-//   3. 按天限额,DB 计数,防止被反复刷导致 comiclaw 侧成本失控
-//   4. 只带最近若干轮上下文 + 限制每条消息长度,控制单次请求的 payload/成本
+//   2. 门槛不是"登不登录",而是"有没有 AgentPlanet Credits"——跟 comiclaw
+//      对话本身要烧 token/算力成本,免费账号不该无限使用
+//   3. sub 编码成 sessionKey,发给 Gateway 做会话隔离
+//   4. 按天限额,DB 计数,防止被反复刷导致 comiclaw 侧成本失控
+//   5. 只带最近若干轮上下文 + 限制每条消息长度,控制单次请求的 payload/成本
 // Gateway 地址/token 尚未确定(comiclaw 迁移到独立实例前),配置为空时直接
 // 返回「暂不可用」,不影响其余功能。
 
@@ -58,6 +61,19 @@ export async function POST(req: Request) {
   const messages = body?.messages;
   if (!Array.isArray(messages) || messages.length === 0) {
     return badRequest("`messages` is required");
+  }
+
+  // 查不到余额(接口失败/未配置)按"没有余额"处理,不能把查询失败当免费通行证
+  const token = extractBearerToken(req);
+  const balance = token ? await getWalletBalance(token) : null;
+  if (!balance || balance <= 0) {
+    return Response.json(
+      {
+        error: "You need AgentPlanet Credits to chat with comiclaw.",
+        code: "NO_CREDITS",
+      },
+      { status: 402 }
+    );
   }
 
   const withinQuota = await checkAndBumpQuota(sub);

@@ -6,25 +6,29 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useT } from "@/components/LocaleProvider";
 import { AUTH0_AUDIENCE } from "@/lib/auth0";
-import { COMICLAW_CHAT_URL } from "@/lib/agentLinks";
+import { WALLET_URL } from "@/components/CreditsBadge";
 import type { MessageKey } from "@/lib/i18n";
 
 // 全站唯一的对话入口事件:SiteNav 的按钮(登录后)派发此事件打开面板,
 // 而不是维护一份跨组件共享的 Context——与 CreditsBadge 的刷新事件同一套模式。
 export const CHAT_OPEN_EVENT = "chat:open";
 
-// 从后端返回的错误 body(JSON 字符串)里取出 code,映射成本地化文案。
+// 从后端返回的错误 body(JSON 字符串)里取出 code,映射成本地化文案 + 兜底链接。
 // useChat 在响应非 2xx 时会把 `await response.text()` 整个塞进 Error.message。
-function errorMessageKey(raw: string | undefined): MessageKey {
-  if (!raw) return "chat.error";
-  try {
-    const parsed = JSON.parse(raw) as { code?: string };
-    if (parsed.code === "NOT_CONFIGURED") return "chat.notConfigured";
-    if (parsed.code === "RATE_LIMITED") return "chat.rateLimited";
-  } catch {
-    // 不是 JSON(比如网络层错误),走默认文案
+function describeError(raw: string | undefined): { messageKey: MessageKey; link?: { href: string; labelKey: MessageKey } } {
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as { code?: string };
+      if (parsed.code === "NOT_CONFIGURED") return { messageKey: "chat.notConfigured" };
+      if (parsed.code === "RATE_LIMITED") return { messageKey: "chat.rateLimited" };
+      if (parsed.code === "NO_CREDITS") {
+        return { messageKey: "chat.noCredits", link: { href: WALLET_URL, labelKey: "chat.topUp" } };
+      }
+    } catch {
+      // 不是 JSON(比如网络层错误),走默认文案
+    }
   }
-  return "chat.error";
+  return { messageKey: "chat.error" };
 }
 
 export default function ChatWidget() {
@@ -120,19 +124,25 @@ export default function ChatWidget() {
               {status === "submitted" && (
                 <p className="px-1 text-xs text-zinc-500">{t("chat.thinking")}</p>
               )}
-              {error && (
-                <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
-                  <p>{t(errorMessageKey(error.message))}</p>
-                  <a
-                    href={COMICLAW_CHAT_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-1 inline-block font-medium underline underline-offset-2"
-                  >
-                    {t("nav.chatWithComiclaw")} →
-                  </a>
-                </div>
-              )}
+              {error &&
+                (() => {
+                  const { messageKey, link } = describeError(error.message);
+                  return (
+                    <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+                      <p>{t(messageKey)}</p>
+                      {link && (
+                        <a
+                          href={link.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-1 inline-block font-medium underline underline-offset-2"
+                        >
+                          {t(link.labelKey)} →
+                        </a>
+                      )}
+                    </div>
+                  );
+                })()}
             </div>
 
             <form onSubmit={handleSubmit} className="border-t border-zinc-800 p-2.5">
