@@ -225,6 +225,17 @@ const zh = {
   "castingReturn.failedHint": "出了点问题,请稍后重试,或回到 Studio 重新发起授权",
   "castingReturn.backToCast": "返回角色市场",
 
+  // 站内对话
+  "chat.placeholder": "问点什么…",
+  "chat.send": "发送",
+  "chat.welcome": "你好,我是 comiclaw。给我发一句话,比如「帮我做一个 15s 宣传短视频」。",
+  "chat.notConfigured": "站内对话暂未开通,可通过下方链接联系 comiclaw。",
+  "chat.rateLimited": "今日对话次数已用完,请明天再来。",
+  "chat.error": "出错了,请稍后重试。",
+  "chat.needLogin": "登录后可与 comiclaw 站内对话",
+  "chat.thinking": "正在输入…",
+  "chat.disclaimer": "对话由 comiclaw 智能体自动生成,内容仅供参考",
+
   // 404
   "notFound.title": "页面不存在",
   "notFound.desc": "链接可能有误或项目已被移除。请核对 comiclaw 发给你的专属项目链接。",
@@ -444,6 +455,17 @@ const en: Record<MessageKey, string> = {
   "castingReturn.failed": "Confirmation failed",
   "castingReturn.failedHint": "Something went wrong — please try again later, or go back to Studio and start over",
   "castingReturn.backToCast": "Back to Cast",
+
+  // In-app chat
+  "chat.placeholder": "Ask something…",
+  "chat.send": "Send",
+  "chat.welcome": "Hi, I'm comiclaw. Try something like \u201cMake me a 15s promo video\u201d.",
+  "chat.notConfigured": "In-app chat isn't live yet — you can reach comiclaw via the link below.",
+  "chat.rateLimited": "You've hit today's message limit — please come back tomorrow.",
+  "chat.error": "Something went wrong. Please try again.",
+  "chat.needLogin": "Sign in to chat with comiclaw in-app",
+  "chat.thinking": "Typing…",
+  "chat.disclaimer": "Generated automatically by the comiclaw agent — for reference only",
 
   "notFound.title": "Page not found",
   "notFound.desc":
