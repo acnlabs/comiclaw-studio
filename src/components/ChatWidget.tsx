@@ -127,9 +127,19 @@ export default function ChatWidget() {
                         : "bg-zinc-800/60 text-zinc-200"
                     }`}
                   >
-                    {m.parts.map((p, i) =>
-                      p.type === "text" ? <span key={i}>{p.text}</span> : null
-                    )}
+                    {m.parts.map((p, i) => {
+                      if (p.type === "text") return <span key={i}>{p.text}</span>;
+                      if (p.type === "tool-createProject") {
+                        return (
+                          <span key={i} className="block text-xs italic text-zinc-500">
+                            {p.state === "output-available"
+                              ? t("chat.projectCreated")
+                              : t("chat.creatingProject")}
+                          </span>
+                        );
+                      }
+                      return null;
+                    })}
                   </div>
                 </div>
               ))}
