@@ -22,8 +22,13 @@ const DAILY_MESSAGE_LIMIT = Number(process.env.CHAT_DAILY_MESSAGE_LIMIT ?? 40);
 const MAX_HISTORY_MESSAGES = 20;
 const MAX_MESSAGE_CHARS = 4000;
 
+// 环境变量做 trim:从终端复制粘贴进 Vercel 的值容易带上换行/空格,
+// 而 fetch 的 header 值含换行会直接抛异常(请求都发不出去),URL 带空白同理。
+const gatewayUrl = () => (process.env.OPENCLAW_GATEWAY_URL ?? "").trim().replace(/\/+$/, "");
+const gatewayToken = () => (process.env.OPENCLAW_GATEWAY_TOKEN ?? "").trim();
+
 function chatConfigured(): boolean {
-  return Boolean(process.env.OPENCLAW_GATEWAY_URL && process.env.OPENCLAW_GATEWAY_TOKEN);
+  return Boolean(gatewayUrl() && gatewayToken());
 }
 
 function todayUTC(): string {
@@ -48,7 +53,14 @@ function clampText(text: string): string {
 
 export async function POST(req: Request) {
   const sub = await verifyUserToken(req);
-  if (!sub) return unauthorized();
+  if (!sub) {
+    // 带上 code,让前端把"登录态失效"与其他错误区分开(unauthorized() 无 code,
+    // 会被前端归入通用兜底文案,排障时无从下手)
+    return Response.json(
+      { error: "Your session has expired. Please sign in again.", code: "UNAUTHORIZED" },
+      { status: 401 }
+    );
+  }
 
   if (!chatConfigured()) {
     return Response.json(
@@ -91,15 +103,15 @@ export async function POST(req: Request) {
 
   const gateway = createOpenAICompatible({
     name: "openclaw",
-    baseURL: process.env.OPENCLAW_GATEWAY_URL!,
-    apiKey: process.env.OPENCLAW_GATEWAY_TOKEN!,
+    baseURL: gatewayUrl(),
+    apiKey: gatewayToken(),
     headers: {
       // 把 Studio 账号身份映射成 Gateway 会话键,保证每个用户的对话相互隔离
       "x-openclaw-session-key": `studio:${sub}`,
     },
   });
 
-  const modelId = process.env.OPENCLAW_GATEWAY_MODEL || "customer";
+  const modelId = (process.env.OPENCLAW_GATEWAY_MODEL ?? "").trim() || "customer";
 
   const result = streamText({
     model: gateway.chatModel(modelId),
@@ -107,9 +119,15 @@ export async function POST(req: Request) {
   });
 
   return result.toUIMessageStreamResponse({
+    // 错误以 JSON 字符串下发:useChat 会把这段文本放进 error.message,
+    // 前端 describeError 按 JSON 解析出 code 显示对应文案(与非 2xx 响应
+    // body 的解析路径共用),同时把上游细节留在服务端日志里。
     onError: (error) => {
       console.error("[api/chat] gateway stream error", error);
-      return "comiclaw is temporarily unavailable, please try again later.";
+      return JSON.stringify({
+        error: "comiclaw is temporarily unavailable, please try again later.",
+        code: "UPSTREAM_ERROR",
+      });
     },
   });
 }

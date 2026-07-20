@@ -21,6 +21,8 @@ function describeError(raw: string | undefined): { messageKey: MessageKey; link?
       const parsed = JSON.parse(raw) as { code?: string };
       if (parsed.code === "NOT_CONFIGURED") return { messageKey: "chat.notConfigured" };
       if (parsed.code === "RATE_LIMITED") return { messageKey: "chat.rateLimited" };
+      if (parsed.code === "UNAUTHORIZED") return { messageKey: "chat.sessionExpired" };
+      if (parsed.code === "UPSTREAM_ERROR") return { messageKey: "chat.upstreamError" };
       if (parsed.code === "NO_CREDITS") {
         return { messageKey: "chat.noCredits", link: { href: WALLET_URL, labelKey: "chat.topUp" } };
       }
