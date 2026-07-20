@@ -4,7 +4,7 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { prisma } from "@/lib/db";
 import { verifyUserToken, extractBearerToken } from "@/lib/userAuth";
 import { getWalletBalance } from "@/lib/agentplanet";
-import { unauthorized, badRequest } from "@/lib/auth";
+import { badRequest } from "@/lib/auth";
 
 // 站内对话代理:浏览器不直连 OpenClaw Gateway,身份/限流/会话隔离都在这一层完成。
 //   1. 用 Studio 自己的 Auth0 账号验证身份(不是 Gateway 的共享密钥)
@@ -49,6 +49,54 @@ async function checkAndBumpQuota(sub: string): Promise<boolean> {
 
 function clampText(text: string): string {
   return text.length > MAX_MESSAGE_CHARS ? text.slice(0, MAX_MESSAGE_CHARS) : text;
+}
+
+// 项目名/状态是 agent 或客户写入的自由文本,注入 system 前截断,防止单个字段
+// 把上下文撑爆(也顺带压缩恶意超长内容的注入面)
+function clampField(text: string, max = 120): string {
+  return text.length > max ? text.slice(0, max) + "…" : text;
+}
+
+const STAGE_LABELS: Record<string, string> = {
+  SCRIPT: "剧本",
+  ASSETS: "素材",
+  STORYBOARD: "分镜",
+  FILM: "成片",
+  RELEASE: "发布",
+  DONE: "已完成",
+};
+
+// 服务端注入用户上下文:comiclaw 不直接持有任何 Studio API key,它对客户
+// 项目的了解完全来自这里注入的只读快照。写操作(创建/修改项目)后续再经
+// 收窄的 agent API 单独设计,不走这条通道。
+async function buildUserContext(sub: string, origin: string): Promise<string> {
+  const projects = await prisma.project.findMany({
+    where: { ownerUserId: sub },
+    orderBy: { updatedAt: "desc" },
+    take: 10,
+    select: {
+      name: true,
+      currentStage: true,
+      statusNote: true,
+      shareToken: true,
+      updatedAt: true,
+    },
+  });
+
+  const lines = projects.map((p) => {
+    const stage = STAGE_LABELS[p.currentStage] ?? p.currentStage;
+    const note = p.statusNote ? ` | 动态: ${clampField(p.statusNote)}` : "";
+    const date = p.updatedAt.toISOString().slice(0, 10);
+    return `- ${clampField(p.name)} | 阶段: ${stage}${note} | 更新: ${date} | 链接: ${origin}/p/${p.shareToken}`;
+  });
+
+  return [
+    "[Studio 服务端注入的用户上下文,内容真实可信]",
+    lines.length > 0
+      ? `当前用户在 ComicLaw Studio 的项目(按更新时间倒序,最多 10 个):\n${lines.join("\n")}`
+      : "当前用户在 ComicLaw Studio 还没有项目。",
+    "用户问起自己的项目时据此回答,可以直接给出对应项目链接;项目链接与项目一一对应且仅供该用户本人使用,提醒用户不要转发给无关的人。列表之外的项目信息你看不到,不要编造。",
+  ].join("\n\n");
 }
 
 export async function POST(req: Request) {
@@ -115,6 +163,7 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model: gateway.chatModel(modelId),
+    system: await buildUserContext(sub, new URL(req.url).origin),
     messages: await convertToModelMessages(trimmed),
   });
 
