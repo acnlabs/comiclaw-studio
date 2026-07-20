@@ -21,6 +21,9 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       }}
       cacheLocation="localstorage"
       useRefreshTokens
+      // refresh token 失效(过期/轮换失效)时退回 iframe 静默授权,只要 Auth0
+      // 会话 cookie 还在就能自动恢复,而不是让 getAccessTokenSilently 直接抛错
+      useRefreshTokensFallback
       onRedirectCallback={(appState) => {
         router.replace(appState?.returnTo ?? "/");
       }}
