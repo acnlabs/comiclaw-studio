@@ -1,6 +1,7 @@
-import { streamText, convertToModelMessages } from "ai";
+import { streamText, convertToModelMessages, tool, stepCountIs } from "ai";
 import type { UIMessage } from "ai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { verifyUserToken, extractBearerToken } from "@/lib/userAuth";
 import { getWalletBalance } from "@/lib/agentplanet";
@@ -16,9 +17,11 @@ import { badRequest } from "@/lib/auth";
 // Gateway 地址/token 尚未确定(comiclaw 迁移到独立实例前),配置为空时直接
 // 返回「暂不可用」,不影响其余功能。
 
-export const maxDuration = 30;
+// 工具循环最多要跑两轮模型调用(决定调用 → 拿结果 → 组织回复),30s 会顶到头
+export const maxDuration = 60;
 
 const DAILY_MESSAGE_LIMIT = Number(process.env.CHAT_DAILY_MESSAGE_LIMIT ?? 40);
+const DAILY_PROJECT_LIMIT = Number(process.env.CHAT_DAILY_PROJECT_LIMIT ?? 3);
 const MAX_HISTORY_MESSAGES = 20;
 const MAX_MESSAGE_CHARS = 4000;
 
@@ -67,8 +70,8 @@ const STAGE_LABELS: Record<string, string> = {
 };
 
 // 服务端注入用户上下文:comiclaw 不直接持有任何 Studio API key,它对客户
-// 项目的了解完全来自这里注入的只读快照。写操作(创建/修改项目)后续再经
-// 收窄的 agent API 单独设计,不走这条通道。
+// 项目的了解完全来自这里注入的只读快照;写操作(创建项目)通过下面的
+// server-side tool 在 Studio 进程内执行,归属人由已验证的身份强制指定。
 async function buildUserContext(sub: string, origin: string): Promise<string> {
   const projects = await prisma.project.findMany({
     where: { ownerUserId: sub },
@@ -96,7 +99,58 @@ async function buildUserContext(sub: string, origin: string): Promise<string> {
       ? `当前用户在 ComicLaw Studio 的项目(按更新时间倒序,最多 10 个):\n${lines.join("\n")}`
       : "当前用户在 ComicLaw Studio 还没有项目。",
     "用户问起自己的项目时据此回答,可以直接给出对应项目链接;项目链接与项目一一对应且仅供该用户本人使用,提醒用户不要转发给无关的人。列表之外的项目信息你看不到,不要编造。",
+    "当用户想新做一个短剧/短视频项目时:先和用户确认项目名称与需求描述,确认后调用 createProject 工具创建(项目自动归属当前用户),然后把返回的项目链接发给用户。不要在用户未确认前创建。",
   ].join("\n\n");
+}
+
+function startOfTodayUTC(): Date {
+  const d = new Date();
+  d.setUTCHours(0, 0, 0, 0);
+  return d;
+}
+
+// 写能力走 server-side tool:网关把工具调用透传回本路由,execute 在 Studio
+// 进程内跑——归属人直接取当次请求已验证的 Auth0 身份,模型没有任何参数能
+// 指定别人;客户 cell 全程零工具、零密钥,不存在混淆代理人问题。
+function buildTools(sub: string, origin: string) {
+  return {
+    createProject: tool({
+      description:
+        "为当前用户创建一个新的短剧/短视频项目。仅在用户明确确认项目名称和需求后调用。",
+      inputSchema: z.object({
+        name: z.string().min(1).max(80).describe("项目名称,例如「XX品牌 15s 宣传短视频」"),
+        description: z
+          .string()
+          .max(2000)
+          .optional()
+          .describe("用户的需求描述:内容方向、时长、风格、参考等"),
+      }),
+      execute: async ({ name, description }) => {
+        const createdToday = await prisma.project.count({
+          where: { ownerUserId: sub, createdAt: { gte: startOfTodayUTC() } },
+        });
+        if (createdToday >= DAILY_PROJECT_LIMIT) {
+          return {
+            ok: false,
+            error: `今日创建项目数已达上限(${DAILY_PROJECT_LIMIT} 个),请明天再来。`,
+          };
+        }
+        const project = await prisma.project.create({
+          data: {
+            name: name.trim(),
+            description: description?.trim() || null,
+            ownerUserId: sub,
+          },
+        });
+        return {
+          ok: true,
+          name: project.name,
+          stage: STAGE_LABELS[project.currentStage] ?? project.currentStage,
+          link: `${origin}/p/${project.shareToken}`,
+        };
+      },
+    }),
+  };
 }
 
 export async function POST(req: Request) {
@@ -161,10 +215,15 @@ export async function POST(req: Request) {
 
   const modelId = (process.env.OPENCLAW_GATEWAY_MODEL ?? "").trim() || "customer";
 
+  const origin = new URL(req.url).origin;
+
   const result = streamText({
     model: gateway.chatModel(modelId),
-    system: await buildUserContext(sub, new URL(req.url).origin),
+    system: await buildUserContext(sub, origin),
     messages: await convertToModelMessages(trimmed),
+    tools: buildTools(sub, origin),
+    // 允许"工具调用 → 拿到结果 → 继续回复"的多步循环;上限防失控
+    stopWhen: stepCountIs(3),
   });
 
   return result.toUIMessageStreamResponse({
