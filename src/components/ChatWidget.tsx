@@ -21,7 +21,9 @@ function describeError(raw: string | undefined): { messageKey: MessageKey; link?
       const parsed = JSON.parse(raw) as { code?: string };
       if (parsed.code === "NOT_CONFIGURED") return { messageKey: "chat.notConfigured" };
       if (parsed.code === "RATE_LIMITED") return { messageKey: "chat.rateLimited" };
-      if (parsed.code === "UNAUTHORIZED") return { messageKey: "chat.sessionExpired" };
+      if (parsed.code === "UNAUTHORIZED" || parsed.code === "AUTH_TOKEN_FAILED") {
+        return { messageKey: "chat.sessionExpired" };
+      }
       if (parsed.code === "UPSTREAM_ERROR") return { messageKey: "chat.upstreamError" };
       if (parsed.code === "NO_CREDITS") {
         return { messageKey: "chat.noCredits", link: { href: WALLET_URL, labelKey: "chat.topUp" } };
@@ -51,10 +53,18 @@ export default function ChatWidget() {
       new DefaultChatTransport({
         api: "/api/chat",
         headers: async () => {
-          const token = await getAccessTokenSilently({
-            authorizationParams: { audience: AUTH0_AUDIENCE },
-          });
-          return { Authorization: `Bearer ${token}` };
+          try {
+            const token = await getAccessTokenSilently({
+              authorizationParams: { audience: AUTH0_AUDIENCE },
+            });
+            return { Authorization: `Bearer ${token}` };
+          } catch (e) {
+            // 取不到 token 时请求根本发不出去,页面上只会看到一句兜底文案,
+            // 无从排障。这里把 Auth0 的原始错误打进 console,并抛出带 code
+            // 的错误让 describeError 显示"登录态过期"而不是通用文案。
+            console.error("[chat] getAccessTokenSilently failed:", e);
+            throw new Error(JSON.stringify({ code: "AUTH_TOKEN_FAILED" }));
+          }
         },
       }),
     [getAccessTokenSilently]
