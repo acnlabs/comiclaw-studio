@@ -108,6 +108,15 @@ usage() {
                                         网络失败/5xx 用**同一个** idempotencyKey 重试,不要换新 key
   get-charges <projectId>               查询这个项目已发起过的扣款记录(排障用;权威金额/余额
                                         以 AgentPlanet 为准,这里不是账本也不做汇总)
+
+ACN 生产任务映射(编排在 ACN Task;Studio 只存 acnTaskId↔projectId)
+  submit-acn-task <projectId> '<json>'  建私有 ACN Task 并 invite 生产 Agent
+                                        {type*: WRITE_SCRIPT|GENERATE_IMAGE, input*: {...}}
+                                        WRITE_SCRIPT input: {brief*, title, style}
+                                        GENERATE_IMAGE input: {assetType*: CHARACTER|SCENE|PROP,
+                                        name*, prompt*, description}
+  list-acn-tasks <projectId>            列出项目的 ACN 任务映射
+  get-acn-task <acnTaskId>              查映射 + ACN 实时状态(?live=0 可跳过 ACN)
 EOF
 }
 
@@ -162,6 +171,9 @@ case "$cmd" in
   delete-work)     call DELETE "/api/agent/works/$2" ;;
   charge)          call POST "/api/agent/projects/$2/charge" "$3" ;;
   get-charges)     call GET "/api/agent/projects/$2/charge" ;;
+  submit-acn-task) call POST "/api/agent/projects/$2/acn-tasks" "$3" ;;
+  list-acn-tasks)  call GET "/api/agent/projects/$2/acn-tasks" ;;
+  get-acn-task)    call GET "/api/agent/acn-tasks/$2" ;;
   upload-file)
     # 上传本地媒体文件到 Studio 存储,返回公网 URL
     # 用法: studio.sh upload-file <文件路径> [自定义文件名]

@@ -36,8 +36,29 @@ model Project {
   comments       Comment[]
   castingLicenses CastingLicense[]
   generationCharges GenerationChargeRef[]
+  acnTaskRefs       AcnTaskRef[]
 
   @@index([ownerUserId])
+}
+
+// ---------- ACN 生产任务映射(编排在 ACN,Studio 只记指针) ----------
+
+// 任务状态机在 ACN Task Pool(create/accept/submit);钱走 AgentPlanet
+// /wallet/charge。这里只存 acnTaskId ↔ projectId,外加入参快照便于排障/
+// 交付物回写,不维护 QUEUED/RUNNING 本地状态机。
+model AcnTaskRef {
+  id        String   @id @default(cuid())
+  acnTaskId String   @unique // ACN task_id
+  projectId String
+  type      String // WRITE_SCRIPT | GENERATE_IMAGE
+  input     Json? // 建单时的入参快照(brief / prompt 等)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt])
+  @@index([type, createdAt])
 }
 
 // ---------- 剧本 ----------

@@ -206,3 +206,30 @@ export const chargeCreditsSchema = z.object({
   idempotencyKey: z.string().trim().min(8).max(128), // AgentPlanet 要求 8-128 字符,约定 comiclaw:gen:{jobId}
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
+
+export const ProductionTaskTypeEnum = z.enum(["WRITE_SCRIPT", "GENERATE_IMAGE"]);
+
+const writeScriptInputSchema = z.object({
+  brief: nonEmpty.max(4000),
+  title: optionalStr,
+  style: optionalStr,
+});
+
+const generateImageInputSchema = z.object({
+  assetType: AssetTypeEnum,
+  name: nonEmpty.max(200),
+  description: optionalStr,
+  prompt: nonEmpty.max(4000),
+});
+
+// 在 Studio 侧发起 ACN 生产任务(编排在 ACN;本地只落 AcnTaskRef 映射)
+export const createAcnProductionTaskSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("WRITE_SCRIPT"),
+    input: writeScriptInputSchema,
+  }),
+  z.object({
+    type: z.literal("GENERATE_IMAGE"),
+    input: generateImageInputSchema,
+  }),
+]);

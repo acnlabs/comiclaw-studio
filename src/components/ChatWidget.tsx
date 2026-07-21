@@ -138,6 +138,24 @@ export default function ChatWidget() {
                           </span>
                         );
                       }
+                      if (p.type === "tool-submitProductionJob") {
+                        return (
+                          <span key={i} className="block text-xs italic text-zinc-500">
+                            {p.state === "output-available"
+                              ? t("chat.jobSubmitted")
+                              : t("chat.submittingJob")}
+                          </span>
+                        );
+                      }
+                      if (p.type === "tool-getProductionJob") {
+                        return (
+                          <span key={i} className="block text-xs italic text-zinc-500">
+                            {p.state === "output-available"
+                              ? t("chat.jobChecked")
+                              : t("chat.checkingJob")}
+                          </span>
+                        );
+                      }
                       return null;
                     })}
                   </div>
