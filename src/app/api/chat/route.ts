@@ -223,7 +223,7 @@ function buildTools(sub: string, origin: string, balance: number) {
               };
 
         try {
-          const { ref, task } = await enqueueAcnProductionTask({
+          const { ref, task, inviteError } = await enqueueAcnProductionTask({
             projectId: project.id,
             projectName: project.name,
             ownerUserId: project.ownerUserId,
@@ -235,6 +235,8 @@ function buildTools(sub: string, origin: string, balance: number) {
             acnTaskId: ref.acnTaskId,
             type: ref.type,
             status: task.status,
+            // invite 失败不影响任务成立(生产 Agent 在 subnet 内可见),仅提示延迟可能
+            inviteError,
             projectId: project.id,
             projectName: project.name,
             link: `${origin}/p/${project.shareToken}`,
@@ -356,7 +358,9 @@ export async function POST(req: Request) {
     system: await buildUserContext(sub, origin, balance),
     messages: await convertToModelMessages(trimmed),
     tools: buildTools(sub, origin, balance),
-    stopWhen: stepCountIs(3),
+    // createProject → submitProductionJob → getProductionJob → 收尾回复,
+    // 最长链路 4 个工具步 + 1 步组织答复;上限防失控
+    stopWhen: stepCountIs(5),
   });
 
   return result.toUIMessageStreamResponse({

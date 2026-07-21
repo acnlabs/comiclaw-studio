@@ -30,14 +30,14 @@ export const POST = withAgentAuth(async (req, ctx: Ctx) => {
   }
 
   try {
-    const { ref, task } = await enqueueAcnProductionTask({
+    const { ref, task, inviteError } = await enqueueAcnProductionTask({
       projectId: project.id,
       projectName: project.name,
       ownerUserId: project.ownerUserId,
       type: body.type,
       input: body.input,
     });
-    return Response.json({ ref, task }, { status: 201 });
+    return Response.json({ ref, task, inviteError }, { status: 201 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg.startsWith("Too many recent")) return badRequest(msg);

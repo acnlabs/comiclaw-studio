@@ -80,7 +80,13 @@ export async function inviteAcnAgent(taskId: string, agentId: string): Promise<A
   return (await res.json()) as AcnTask;
 }
 
-export async function createAcnProductionTask(args: {
+/** invite 生产 Agent(可独立重试;private subnet 成员本就能看到任务) */
+export async function inviteAcnProductionAgent(taskId: string): Promise<AcnTask> {
+  return inviteAcnAgent(taskId, ACN_PROD_AGENT_ID());
+}
+
+/** 仅建单,不 invite——调用方负责先落映射再尽力 invite,避免建单成功但本地失败时盲目重试重复建单 */
+export async function createAcnProductionTaskOnly(args: {
   type: AcnProductionType;
   projectId: string;
   projectName: string;
@@ -145,8 +151,5 @@ export async function createAcnProductionTask(args: {
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`ACN create task failed: ${await readError(res)}`);
-  const task = (await res.json()) as AcnTask;
-
-  // 指定生产 Agent(不进公开板;private subnet 内 invite)
-  return inviteAcnAgent(task.task_id, ACN_PROD_AGENT_ID());
+  return (await res.json()) as AcnTask;
 }
