@@ -288,3 +288,93 @@ export async function acceptCastingOrder(orderId: string, buyerId: string): Prom
     // 忽略:验收窗超时 sweep 兜底
   }
 }
+
+// ---- 生产用量按次扣款(官方受信服务端专用接口,与 Store/Escrow 是三条独立路径)----
+//
+// 主 comiclaw 生产时,每次调用即梦/Seedance 等上游生成前先经这个接口扣款:
+// 用户 balance 减少,收款方(comiclaw 智能体) balance 增加。这不是给社区任意
+// agent 用的通用接口——鉴权靠共享的 X-Internal-Token,且 AgentPlanet 侧的
+// SERVICE_CHARGE_ALLOWLIST 限定了 source(=comiclaw-studio) 能替哪个
+// agent_id(=comiclaw) 扣款。
+//
+// 配置(环境变量,复用 Store 用的同一把内部令牌):
+//   AGENTPLANET_INTERNAL_TOKEN   与 Store 内部端点共享的 X-Internal-Token
+//   AGENTPLANET_AGENT_ID         收款方 agent_id,默认 "comiclaw"
+//   AGENTPLANET_CHARGE_SOURCE    调用方 source 标识,默认 "comiclaw-studio"
+
+const CHARGE_AGENT_ID = () => process.env.AGENTPLANET_AGENT_ID ?? "comiclaw";
+const CHARGE_SOURCE = () => process.env.AGENTPLANET_CHARGE_SOURCE ?? "comiclaw-studio";
+
+export interface WalletChargeSuccess {
+  ok: true;
+  userId: string;
+  amount: number;
+  balance: number; // 扣款后用户余额
+  transactionId: string;
+  idempotent: boolean; // true = 命中同一幂等键的历史记录,未重复扣款
+}
+
+export interface WalletChargeFailure {
+  ok: false;
+  code: "INSUFFICIENT_BALANCE" | "NOT_CONFIGURED" | "ERROR";
+  status?: number;
+  balance?: number; // 402 时 AgentPlanet 会带上当前余额
+  required?: number; // 402 时带上本次所需金额
+  message?: string;
+}
+
+export type WalletChargeResult = WalletChargeSuccess | WalletChargeFailure;
+
+// 按次扣款。amount 必须 > 0;idempotencyKey 建议 `comiclaw:gen:{jobId}`,
+// 保证同一次生成动作(网络重试/agent 重跑)不会被扣两次款——AgentPlanet
+// 侧和本地 CreditCharge 表的唯一约束是两道独立的幂等防线。
+export async function chargeWalletUsage(args: {
+  userSub: string;
+  amount: number;
+  reason: string;
+  idempotencyKey: string;
+  projectId?: string;
+  metadata?: Record<string, unknown>;
+}): Promise<WalletChargeResult> {
+  if (!BASE() || !TOKEN()) return { ok: false, code: "NOT_CONFIGURED" };
+  try {
+    const res = await storeFetch(`/api/internal/wallet/charge`, {
+      method: "POST",
+      body: JSON.stringify({
+        user_id: args.userSub,
+        amount: args.amount,
+        agent_id: CHARGE_AGENT_ID(),
+        source: CHARGE_SOURCE(),
+        reason: args.reason,
+        idempotency_key: args.idempotencyKey,
+        ...(args.projectId ? { project_id: args.projectId } : {}),
+        ...(args.metadata ? { metadata: args.metadata } : {}),
+      }),
+    });
+    if (res.status === 402) {
+      const detail = await res.json().catch(() => null);
+      return {
+        ok: false,
+        code: "INSUFFICIENT_BALANCE",
+        status: 402,
+        balance: detail?.detail?.balance,
+        required: detail?.detail?.required,
+      };
+    }
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      return { ok: false, code: "ERROR", status: res.status, message: text.slice(0, 500) };
+    }
+    const data = await res.json();
+    return {
+      ok: true,
+      userId: data.user_id,
+      amount: data.amount,
+      balance: data.balance,
+      transactionId: data.transaction_id,
+      idempotent: Boolean(data.idempotent),
+    };
+  } catch (err) {
+    return { ok: false, code: "ERROR", message: err instanceof Error ? err.message : String(err) };
+  }
+}

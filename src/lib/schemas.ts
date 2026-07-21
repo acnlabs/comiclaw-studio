@@ -17,6 +17,14 @@ const optionalHttpUrl = z
   .nullable()
   .transform((v) => (v === "" ? null : v));
 
+export const ChargeActionEnum = z.enum([
+  "script_gen",
+  "asset_generate",
+  "shot_generate",
+  "video_generate",
+  "post_production",
+]);
+
 export const StageEnum = z.enum([
   "SCRIPT",
   "ASSETS",
@@ -187,3 +195,12 @@ export const publishWorkSchema = z
     message: "episodes is required for kind SERIES",
     path: ["episodes"],
   });
+
+export const chargeCreditsSchema = z.object({
+  amount: z.number().int().positive(),
+  action: ChargeActionEnum,
+  provider: optionalStr, // 上游服务,如 seedance / jimeng
+  reason: nonEmpty.max(200), // 传给 AgentPlanet 的 reason,如 video_gen:seedance:15s
+  idempotencyKey: nonEmpty.max(128), // 约定 comiclaw:gen:{jobId}
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});

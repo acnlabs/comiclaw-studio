@@ -22,6 +22,11 @@ export const maxDuration = 60;
 
 const DAILY_MESSAGE_LIMIT = Number(process.env.CHAT_DAILY_MESSAGE_LIMIT ?? 40);
 const DAILY_PROJECT_LIMIT = Number(process.env.CHAT_DAILY_PROJECT_LIMIT ?? 3);
+// 临时止血,在 Studio 全量接入按用量扣款(AgentPlanet /api/internal/wallet/charge)
+// 之前的过渡门槛:下单建项目要求余额覆盖至少一笔视频的生成成本,而不是
+// "> 0 就能建"——生产阶段真正花钱时会再按次扣款,这里只是拦掉"1 个 Credit
+// 白嫖一个项目"这种明显漏洞。
+const MIN_PROJECT_CREDITS = Number(process.env.CHAT_MIN_PROJECT_CREDITS ?? 30);
 const MAX_HISTORY_MESSAGES = 20;
 const MAX_MESSAGE_CHARS = 4000;
 
@@ -72,7 +77,7 @@ const STAGE_LABELS: Record<string, string> = {
 // 服务端注入用户上下文:comiclaw 不直接持有任何 Studio API key,它对客户
 // 项目的了解完全来自这里注入的只读快照;写操作(创建项目)通过下面的
 // server-side tool 在 Studio 进程内执行,归属人由已验证的身份强制指定。
-async function buildUserContext(sub: string, origin: string): Promise<string> {
+async function buildUserContext(sub: string, origin: string, balance: number): Promise<string> {
   const projects = await prisma.project.findMany({
     where: { ownerUserId: sub },
     orderBy: { updatedAt: "desc" },
@@ -100,6 +105,7 @@ async function buildUserContext(sub: string, origin: string): Promise<string> {
       : "当前用户在 ComicLaw Studio 还没有项目。",
     "用户问起自己的项目时据此回答,可以直接给出对应项目链接;项目链接与项目一一对应且仅供该用户本人使用,提醒用户不要转发给无关的人。列表之外的项目信息你看不到,不要编造。",
     "当用户想新做一个短剧/短视频项目时:先和用户确认项目名称与需求描述,确认后调用 createProject 工具创建(项目自动归属当前用户),然后把返回的项目链接发给用户。不要在用户未确认前创建。",
+    `当前用户的 AgentPlanet Credits 余额: ${balance}。制作一个视频至少需要 ${MIN_PROJECT_CREDITS} Credits,余额不足时如实告知用户需要先充值,不要代为承诺可以免费制作。`,
   ].join("\n\n");
 }
 
@@ -112,7 +118,7 @@ function startOfTodayUTC(): Date {
 // 写能力走 server-side tool:网关把工具调用透传回本路由,execute 在 Studio
 // 进程内跑——归属人直接取当次请求已验证的 Auth0 身份,模型没有任何参数能
 // 指定别人;客户 cell 全程零工具、零密钥,不存在混淆代理人问题。
-function buildTools(sub: string, origin: string) {
+function buildTools(sub: string, origin: string, balance: number) {
   return {
     createProject: tool({
       description:
@@ -126,6 +132,14 @@ function buildTools(sub: string, origin: string) {
           .describe("用户的需求描述:内容方向、时长、风格、参考等"),
       }),
       execute: async ({ name, description }) => {
+        // 建项目本身免费,但生产会真实消耗 Credits(按次扣款);余额太低时
+        // 现在拦下,好过建了项目又在生产阶段反复因余额不足卡住
+        if (balance < MIN_PROJECT_CREDITS) {
+          return {
+            ok: false,
+            error: `制作一个视频至少需要 ${MIN_PROJECT_CREDITS} Credits(当前余额 ${balance}),请先充值。`,
+          };
+        }
         const createdToday = await prisma.project.count({
           where: { ownerUserId: sub, createdAt: { gte: startOfTodayUTC() } },
         });
@@ -219,9 +233,9 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model: gateway.chatModel(modelId),
-    system: await buildUserContext(sub, origin),
+    system: await buildUserContext(sub, origin, balance),
     messages: await convertToModelMessages(trimmed),
-    tools: buildTools(sub, origin),
+    tools: buildTools(sub, origin, balance),
     // 允许"工具调用 → 拿到结果 → 继续回复"的多步循环;上限防失控
     stopWhen: stepCountIs(3),
   });
