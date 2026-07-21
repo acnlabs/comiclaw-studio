@@ -35,6 +35,7 @@ model Project {
   work           Work?
   comments       Comment[]
   castingLicenses CastingLicense[]
+  generationCharges GenerationChargeRef[]
 
   @@index([ownerUserId])
 }
@@ -283,6 +284,32 @@ model Release {
   createdAt   DateTime  @default(now())
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+// ---------- 生成任务 ↔ 扣款交易 关联 ----------
+
+// 不是账本:Credits 的余额、入账、幂等防重全部由 AgentPlanet 的
+// /api/internal/wallet/charge 权威负责(它自己写 Transaction、自己按
+// idempotency_key 去重)。这张表只记"这次生成动作(jobId)对应哪笔
+// AgentPlanet 交易",纯粹是本地排障用的关联指针——查一个项目做了哪些
+// 生成动作、对应哪个 transactionId——不重复维护"扣了多少钱"这份真相,
+// 避免跟 AgentPlanet 的权威记录双写不一致。
+model GenerationChargeRef {
+  id            String   @id @default(cuid())
+  projectId     String
+  userSub       String // 付款客户(Auth0 sub),便于按用户排查,不是余额字段
+  jobId         String   @unique // 即传给 AgentPlanet 的 idempotency_key
+  amount        Int? // 本次请求金额,仅供排障参考;权威金额见 AgentPlanet Transaction
+  action        String? // script_gen | asset_generate | shot_generate | video_generate | post_production
+  provider      String? // 上游服务,如 seedance / jimeng
+  status        String // SUCCESS | INSUFFICIENT_BALANCE | ERROR
+  transactionId String? // AgentPlanet 返回的 transaction_id(仅 SUCCESS 有)
+  createdAt     DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([userSub])
 }
 
 // ---------- 站内对话(comiclaw 嵌入式聊天) ----------
