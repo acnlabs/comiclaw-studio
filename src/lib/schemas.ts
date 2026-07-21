@@ -197,10 +197,12 @@ export const publishWorkSchema = z
   });
 
 export const chargeCreditsSchema = z.object({
-  amount: z.number().int().positive(),
+  // 上限是防呆:这个端点只有主 comiclaw(STUDIO_API_KEY)能调,不是防攻击,
+  // 是防一次生成任务因为单位换算错误多打几个零之类的操作失误
+  amount: z.number().int().positive().max(100_000),
   action: ChargeActionEnum,
   provider: optionalStr, // 上游服务,如 seedance / jimeng
   reason: nonEmpty.max(200), // 传给 AgentPlanet 的 reason,如 video_gen:seedance:15s
-  idempotencyKey: nonEmpty.max(128), // 约定 comiclaw:gen:{jobId}
+  idempotencyKey: z.string().trim().min(8).max(128), // AgentPlanet 要求 8-128 字符,约定 comiclaw:gen:{jobId}
   metadata: z.record(z.string(), z.unknown()).optional(),
 });

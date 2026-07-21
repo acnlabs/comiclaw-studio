@@ -327,7 +327,8 @@ export type WalletChargeResult = WalletChargeSuccess | WalletChargeFailure;
 
 // 按次扣款。amount 必须 > 0;idempotencyKey 建议 `comiclaw:gen:{jobId}`,
 // 保证同一次生成动作(网络重试/agent 重跑)不会被扣两次款——AgentPlanet
-// 侧和本地 CreditCharge 表的唯一约束是两道独立的幂等防线。
+// 自己的幂等键是权威防线,本地 GenerationChargeRef 的唯一约束只是排障用的
+// 第二道校验,不影响资金正确性。
 export async function chargeWalletUsage(args: {
   userSub: string;
   amount: number;
