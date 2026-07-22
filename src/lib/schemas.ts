@@ -197,14 +197,22 @@ export const publishWorkSchema = z
   });
 
 export const chargeCreditsSchema = z.object({
-  // 上限是防呆:这个端点只有主 comiclaw(STUDIO_API_KEY)能调,不是防攻击,
-  // 是防一次生成任务因为单位换算错误多打几个零之类的操作失误
-  amount: z.number().int().positive().max(100_000),
+  // 工人只上报计量;金额由 Studio 价目表算。amount 若传入必须与报价一致(兼容旧客户端)。
   action: ChargeActionEnum,
+  // asset/shot=张数;video=秒;post=次数;script 也可传 1(单价多为 0)
+  units: z.number().int().positive().max(10_000).default(1),
   provider: optionalStr, // 上游服务,如 seedance / jimeng
-  reason: nonEmpty.max(200), // 传给 AgentPlanet 的 reason,如 video_gen:seedance:15s
-  idempotencyKey: z.string().trim().min(8).max(128), // AgentPlanet 要求 8-128 字符,约定 comiclaw:gen:{jobId}
+  reason: z.string().trim().max(200).optional(), // 不传则服务端按 action:provider:u{N} 生成
+  idempotencyKey: z.string().trim().min(8).max(128), // 约定 comiclaw:gen:{acnTaskId}
   metadata: z.record(z.string(), z.unknown()).optional(),
+  // @deprecated 勿再作为定价依据;若提供则必须等于服务端报价
+  amount: z.number().int().nonnegative().max(100_000).optional(),
+});
+
+export const pricingQuoteSchema = z.object({
+  action: ChargeActionEnum,
+  units: z.number().int().positive().max(10_000).default(1),
+  provider: optionalStr,
 });
 
 export const ProductionTaskTypeEnum = z.enum(["WRITE_SCRIPT", "GENERATE_IMAGE"]);
