@@ -153,7 +153,8 @@ if cmd=="handle":
         print(f"3) 写剧本后: {studio_sh} push-script {pid} '{{\"title\":\"...\",\"content\":\"...\",\"changeLog\":\"ACN task\"}}'")
         print(f"4) {studio_sh} set-stage {pid} ASSETS")
     elif typ=="GENERATE_IMAGE":
-        print(f"3) {studio_sh} charge {pid} '{{\"amount\":5,\"action\":\"asset_generate\",\"provider\":\"jimeng\",\"reason\":\"asset_gen:jimeng:acn\",\"idempotencyKey\":\"comiclaw:gen:{tid}\"}}'")
+        print(f"3) {studio_sh} charge {pid} '{{\"action\":\"asset_generate\",\"units\":1,\"provider\":\"jimeng\",\"idempotencyKey\":\"comiclaw:gen:{tid}\"}}'")
+        print("   # 非 2xx 不得出图;读响应 submitHint 写入 submit")
         print("4) dreamina 出图 → upload-file → add-asset")
     else:
         print("3) 按 metadata.studio.type 执行对应生产步骤")
