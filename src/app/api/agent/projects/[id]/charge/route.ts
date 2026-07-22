@@ -4,6 +4,7 @@ import { notFoundJson, badRequest } from "@/lib/auth";
 import { chargeCreditsSchema } from "@/lib/schemas";
 import { chargeWalletUsage } from "@/lib/agentplanet";
 import { quoteCharge } from "@/lib/pricing";
+import { emitProjectUpdate } from "@/lib/events";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -198,6 +199,8 @@ export const POST = withAgentAuth(async (req, ctx: Ctx) => {
           statusNote: `余额不足:需要 ${required} Credits 才能继续生成,请充值后重试`,
         },
       });
+      // 与 set-status 一致:写完 statusNote 后推 SSE,否则前端要等到下次轮询才看到横幅
+      emitProjectUpdate(id, "project.updated");
       return Response.json(
         {
           error: "Insufficient balance",

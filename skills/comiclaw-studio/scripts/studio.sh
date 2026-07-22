@@ -16,7 +16,8 @@ BASE="${STUDIO_BASE_URL%/}"
 
 call() {
   local method="$1" path="$2" body="${3:-}"
-  local args=(-sS -X "$method" "$BASE$path" -H "Authorization: Bearer $STUDIO_API_KEY")
+  # --fail-with-body: HTTP 4xx/5xx 非 0 退出但仍打印响应体(便于读 402 submitHint)
+  local args=(-sS --fail-with-body -X "$method" "$BASE$path" -H "Authorization: Bearer $STUDIO_API_KEY")
   if [[ -n "$body" ]]; then
     args+=(-H "Content-Type: application/json" -d "$body")
   fi

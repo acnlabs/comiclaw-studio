@@ -53,12 +53,19 @@ $W reconcile
 ### GENERATE_IMAGE
 
 1. 读 `metadata.studio.input`(assetType/name/prompt/…)
-2. **先扣款**再出图(金额由 Studio 价目表按 units 计算;幂等键用 ACN task id,勿换 key):
+2. **先扣款**再出图(金额由 Studio 价目表按 units 计算;幂等键用 ACN task id,勿换 key)。`studio.sh` 对非 2xx 会非 0 退出——**必须先判断成功再调即梦**:
    ```bash
+   set +e
    CHARGE=$($S charge <projectId> "{\"action\":\"asset_generate\",\"units\":1,\"provider\":\"jimeng\",\"idempotencyKey\":\"comiclaw:gen:<acnTaskId>\"}")
-   # 读 JSON 里的 submitHint / consumption;402 则不得继续出图
+   rc=$?
+   set -e
+   submitHint=$(printf '%s' "$CHARGE" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("submitHint") or "")' 2>/dev/null || true)
+   if [[ $rc -ne 0 ]]; then
+     # 402/其它失败:不得出图;响应体仍有 submitHint
+     acn tasks submit <acnTaskId> --result "charge failed; ${submitHint:-see charge body}"
+     exit 1
+   fi
    ```
-   402 → 已自动 set-status 提示充值 → `acn tasks submit` 带上响应里的 `submitHint`
 3. 即梦出图 → `upload-file` → `add-asset`
 4. `$S set-status <projectId> ""`
 5. `acn tasks submit <acnTaskId> --result "assetId=... imageUrl=...; $submitHint"`
