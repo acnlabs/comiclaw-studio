@@ -78,6 +78,7 @@ $W reconcile
 - 查 Studio 映射:`$S get-acn-task <acnTaskId>` / `$S list-acn-tasks <projectId>`
 - **开放工人**(任意 ACN agent 接单):用自己的 `ACN_API_KEY` 调 Studio,不要发 `STUDIO_API_KEY`;见独立技能 `comiclaw-studio-worker`
 - 建单可传 `workerAgentIds` 邀请额外工人;`includeDefaultWorker` 默认 true(主 comiclaw fallback);先 accept 者干活
+- Studio 写权限看 metadata `worker_agent_ids` 白名单:`includeDefaultWorker=false` 时主 comiclaw 即使在 subnet 内 accept 也不能写该项目
 
 ## 铁律
 

@@ -69,20 +69,49 @@ export function readAcnTaskIdHeader(req: Request): string | null {
   return v || null;
 }
 
-/** 该 ACN agent 是否被授权操作此任务(invitee / assignee / metadata 指定工人) */
-export function agentAuthorizedOnAcnTask(agentId: string, task: AcnTask): boolean {
-  if (task.assignee_id && task.assignee_id === agentId) return true;
-  const invited = task.invited_agent_ids ?? [];
-  if (invited.includes(agentId)) return true;
+/** 从 metadata 提取建单时的工人白名单(有则强制执行) */
+export function intendedWorkerIds(task: AcnTask): string[] {
   const meta = task.metadata ?? {};
-  const worker = meta.worker_agent_id;
-  if (typeof worker === "string" && worker === agentId) return true;
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const push = (v: unknown) => {
+    if (typeof v !== "string") return;
+    const t = v.trim();
+    if (!t || seen.has(t)) return;
+    seen.add(t);
+    out.push(t);
+  };
   const workers = meta.worker_agent_ids;
-  if (Array.isArray(workers) && workers.some((w) => w === agentId)) return true;
+  if (Array.isArray(workers)) for (const w of workers) push(w);
   const studio = meta.studio;
   if (studio && typeof studio === "object") {
     const studioWorkers = (studio as { worker_agent_ids?: unknown }).worker_agent_ids;
-    if (Array.isArray(studioWorkers) && studioWorkers.some((w) => w === agentId)) return true;
+    if (Array.isArray(studioWorkers)) for (const w of studioWorkers) push(w);
+  }
+  // 仅有单数字段时也视为白名单(旧单 / 兼容)
+  if (out.length === 0 && typeof meta.worker_agent_id === "string") {
+    push(meta.worker_agent_id);
+  }
+  return out;
+}
+
+/**
+ * 该 ACN agent 是否被授权操作此任务。
+ * - 若 metadata 带工人白名单:只认名单(防 includeDefaultWorker=false 时
+ *   subnet 内主 comiclaw 抢 accept 后仍可写 Studio)
+ * - 无白名单的旧任务:assignee / invitee / worker_agent_id 兼容
+ */
+export function agentAuthorizedOnAcnTask(agentId: string, task: AcnTask): boolean {
+  const allowlist = intendedWorkerIds(task);
+  if (allowlist.length > 0) {
+    return allowlist.includes(agentId);
+  }
+
+  if (task.assignee_id && task.assignee_id === agentId) return true;
+  if ((task.invited_agent_ids ?? []).includes(agentId)) return true;
+  const meta = task.metadata ?? {};
+  if (typeof meta.worker_agent_id === "string" && meta.worker_agent_id === agentId) {
+    return true;
   }
   return false;
 }
