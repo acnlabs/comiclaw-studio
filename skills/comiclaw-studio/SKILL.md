@@ -16,17 +16,32 @@ description: 将短视频/短剧制作全流程的交付物同步到 ComicLaw St
 编排在 **ACN Task Pool**,钱走 **AgentPlanet `/wallet/charge`**,Studio 只存 `acnTaskId↔projectId` 映射与交付物。  
 **不要**维护本地任务状态机;**不要**对生产任务开 Escrow(`use_escrow=false`);**不要**挂公开板 / cultivator / Org。
 
-任务由 Studio(对话 Agent 的 ACN key)在 **private subnet** 内创建并 `invite` 你(生产 Agent)。你主动:
+任务由 Studio(建单服务账号的 ACN key)在 **private subnet `comiclaw-internal`** 内创建并 `invite` 你(生产 Agent)。
+
+### 接单方式:实时为主,list 兜底
+
+ACN 提供实时通道。生产机**应常驻 listen**,被 invite / 收到 `task_request` 后立刻 accept 并执行;不要依赖人工敲命令,也不要把短轮询当主路径。
 
 ```bash
-# 1) 在 private subnet 内查看/接受指派给你的任务
-acn tasks list --status open
-acn tasks get <acnTaskId>
-acn tasks accept <acnTaskId>
-
-# metadata.studio 含: project_id, type(WRITE_SCRIPT|GENERATE_IMAGE), input
+W=skills/comiclaw-studio/scripts/production-worker.sh
 S=skills/comiclaw-studio/scripts/studio.sh
+
+# 1) 常驻实时通道(优先;无需公网入站口)
+acn listen
+# 或: acn listen --forward http://127.0.0.1:<local-a2a-port>
+# 也可: $W listen-hint
+
+# 2) 收到通知 / 拿到 acnTaskId 后
+$W handle <acnTaskId>          # 打印 metadata.studio 与步骤清单
+acn tasks accept <acnTaskId>   # 主动接单
+# …按 type 执行 WRITE_SCRIPT / GENERATE_IMAGE…
+acn tasks submit <acnTaskId> --result "..."
+
+# 3) 兜底对账(重启后或怀疑漏推时;每 5–15 分钟一次即可)
+$W reconcile
 ```
+
+`metadata.studio` 含: `project_id`, `type`(WRITE_SCRIPT|GENERATE_IMAGE), `input`。
 
 ### WRITE_SCRIPT
 
@@ -50,8 +65,8 @@ S=skills/comiclaw-studio/scripts/studio.sh
 ### 边界
 
 - 客户 cell:零工具、零 ACN/Studio 生产密钥
-- 对话 Agent:只建单 + invite
-- 生产 Agent:accept / 干活 / charge / submit
+- Studio 建单账号:只 create + invite(不是第三台 OpenClaw)
+- 生产 Agent:listen → accept / 干活 / charge / submit;`reconcile` 仅兜底
 - 查 Studio 映射:`$S get-acn-task <acnTaskId>` / `$S list-acn-tasks <projectId>`
 
 ## 铁律
