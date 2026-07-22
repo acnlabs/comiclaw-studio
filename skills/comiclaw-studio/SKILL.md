@@ -11,6 +11,49 @@ description: 将短视频/短剧制作全流程的交付物同步到 ComicLaw St
 - `STUDIO_BASE_URL` 默认值: `https://studio.comiclaw.acnlabs.org`
 - `STUDIO_API_KEY`: 由运营方提供
 
+## ACN 生产任务(主 comiclaw / 生产 Agent 必读 · MVP:剧本+出图)
+
+编排在 **ACN Task Pool**,钱走 **AgentPlanet `/wallet/charge`**,Studio 只存 `acnTaskId↔projectId` 映射与交付物。  
+**不要**维护本地任务状态机;**不要**对生产任务开 Escrow(`use_escrow=false`);**不要**挂公开板 / cultivator / Org。
+
+任务由 Studio(对话 Agent 的 ACN key)在 **private subnet** 内创建并 `invite` 你(生产 Agent)。你主动:
+
+```bash
+# 1) 在 private subnet 内查看/接受指派给你的任务
+acn tasks list --status open
+acn tasks get <acnTaskId>
+acn tasks accept <acnTaskId>
+
+# metadata.studio 含: project_id, type(WRITE_SCRIPT|GENERATE_IMAGE), input
+S=skills/comiclaw-studio/scripts/studio.sh
+```
+
+### WRITE_SCRIPT
+
+1. 读 `metadata.studio.input.brief` / `title` / `style`
+2. 撰写剧本 → `$S push-script <projectId> '{...}'`
+3. `$S set-stage <projectId> ASSETS`(若仍停在 SCRIPT);`$S set-status <projectId> ""`
+4. `acn tasks submit <acnTaskId> --result "script pushed; scriptVersionId=..."`
+
+### GENERATE_IMAGE
+
+1. 读 `metadata.studio.input`(assetType/name/prompt/…)
+2. **先扣款**再出图(幂等键用 ACN task id,勿换 key):
+   ```bash
+   $S charge <projectId> "{\"amount\":5,\"action\":\"asset_generate\",\"provider\":\"jimeng\",\"reason\":\"asset_gen:jimeng:acn\",\"idempotencyKey\":\"comiclaw:gen:<acnTaskId>\"}"
+   ```
+   402 → `$S set-status` 提示充值 → `acn tasks submit` 写明失败原因(或等充值后同 key 重试 charge)
+3. 即梦出图 → `upload-file` → `add-asset`
+4. `$S set-status <projectId> ""`
+5. `acn tasks submit <acnTaskId> --result "assetId=... imageUrl=..."`
+
+### 边界
+
+- 客户 cell:零工具、零 ACN/Studio 生产密钥
+- 对话 Agent:只建单 + invite
+- 生产 Agent:accept / 干活 / charge / submit
+- 查 Studio 映射:`$S get-acn-task <acnTaskId>` / `$S list-acn-tasks <projectId>`
+
 ## 铁律
 
 0. **所有媒体文件必须先上传到 Studio**:设定图、分镜画面、成片视频在推送前必须先用 `upload-file` 上传到 Studio Blob,使用返回的 URL,**不得直接使用即梦 / Seedance / 任何外部平台的链接**——外部链接可能过期,导致客户看不到内容。

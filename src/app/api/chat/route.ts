@@ -6,6 +6,8 @@ import { prisma } from "@/lib/db";
 import { verifyUserToken, extractBearerToken } from "@/lib/userAuth";
 import { getWalletBalance } from "@/lib/agentplanet";
 import { badRequest } from "@/lib/auth";
+import { acnProductionConfigured, getAcnTask } from "@/lib/acn";
+import { enqueueAcnProductionTask } from "@/lib/productionTasks";
 
 // 站内对话代理:浏览器不直连 OpenClaw Gateway,身份/限流/会话隔离都在这一层完成。
 //   1. 用 Studio 自己的 Auth0 账号验证身份(不是 Gateway 的共享密钥)
@@ -83,6 +85,7 @@ async function buildUserContext(sub: string, origin: string, balance: number): P
     orderBy: { updatedAt: "desc" },
     take: 10,
     select: {
+      id: true,
       name: true,
       currentStage: true,
       statusNote: true,
@@ -95,7 +98,7 @@ async function buildUserContext(sub: string, origin: string, balance: number): P
     const stage = STAGE_LABELS[p.currentStage] ?? p.currentStage;
     const note = p.statusNote ? ` | 动态: ${clampField(p.statusNote)}` : "";
     const date = p.updatedAt.toISOString().slice(0, 10);
-    return `- ${clampField(p.name)} | 阶段: ${stage}${note} | 更新: ${date} | 链接: ${origin}/p/${p.shareToken}`;
+    return `- id=${p.id} | ${clampField(p.name)} | 阶段: ${stage}${note} | 更新: ${date} | 链接: ${origin}/p/${p.shareToken}`;
   });
 
   return [
@@ -105,6 +108,7 @@ async function buildUserContext(sub: string, origin: string, balance: number): P
       : "当前用户在 ComicLaw Studio 还没有项目。",
     "用户问起自己的项目时据此回答,可以直接给出对应项目链接;项目链接与项目一一对应且仅供该用户本人使用,提醒用户不要转发给无关的人。列表之外的项目信息你看不到,不要编造。",
     "当用户想新做一个短剧/短视频项目时:先和用户确认项目名称与需求描述,确认后调用 createProject 工具创建(项目自动归属当前用户),然后把返回的项目链接发给用户。不要在用户未确认前创建。",
+    "当用户确认要写剧本或出设定图时:用 submitProductionJob 入队(WRITE_SCRIPT / GENERATE_IMAGE)。任务会创建为私有 ACN Task 并指派主工作室;立刻把 acnTaskId 告诉用户。用 getProductionJob 查进度。你自己不执行写剧本/出图/扣款。",
     `当前用户的 AgentPlanet Credits 余额: ${balance}。制作一个视频至少需要 ${MIN_PROJECT_CREDITS} Credits,余额不足时如实告知用户需要先充值,不要代为承诺可以免费制作。`,
   ].join("\n\n");
 }
@@ -113,6 +117,15 @@ function startOfTodayUTC(): Date {
   const d = new Date();
   d.setUTCHours(0, 0, 0, 0);
   return d;
+}
+
+async function assertOwnedProject(projectId: string, sub: string) {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { id: true, name: true, ownerUserId: true, shareToken: true },
+  });
+  if (!project || project.ownerUserId !== sub) return null;
+  return project;
 }
 
 // 写能力走 server-side tool:网关把工具调用透传回本路由,execute 在 Studio
@@ -132,8 +145,6 @@ function buildTools(sub: string, origin: string, balance: number) {
           .describe("用户的需求描述:内容方向、时长、风格、参考等"),
       }),
       execute: async ({ name, description }) => {
-        // 建项目本身免费,但生产会真实消耗 Credits(按次扣款);余额太低时
-        // 现在拦下,好过建了项目又在生产阶段反复因余额不足卡住
         if (balance < MIN_PROJECT_CREDITS) {
           return {
             ok: false,
@@ -158,9 +169,125 @@ function buildTools(sub: string, origin: string, balance: number) {
         });
         return {
           ok: true,
+          projectId: project.id,
           name: project.name,
           stage: STAGE_LABELS[project.currentStage] ?? project.currentStage,
           link: `${origin}/p/${project.shareToken}`,
+        };
+      },
+    }),
+
+    // 窄写:Studio 用对话 Agent 的 ACN key 建私有 Task 并 invite 生产 Agent。
+    // 客户 cell 零工具;编排在 ACN,本地只存 AcnTaskRef。
+    submitProductionJob: tool({
+      description:
+        "为用户的项目提交生产任务(写剧本 WRITE_SCRIPT 或出设定图 GENERATE_IMAGE)。确认需求后调用;任务异步由主工作室(ACN)处理。",
+      inputSchema: z.discriminatedUnion("type", [
+        z.object({
+          projectId: z.string().min(1).describe("项目 id(见用户上下文里的 id=…)"),
+          type: z.literal("WRITE_SCRIPT"),
+          brief: z.string().min(1).max(4000).describe("剧本需求摘要"),
+          title: z.string().max(200).optional(),
+          style: z.string().max(200).optional(),
+        }),
+        z.object({
+          projectId: z.string().min(1).describe("项目 id(见用户上下文里的 id=…)"),
+          type: z.literal("GENERATE_IMAGE"),
+          assetType: z.enum(["CHARACTER", "SCENE", "PROP"]),
+          name: z.string().min(1).max(200),
+          description: z.string().max(2000).optional(),
+          prompt: z.string().min(1).max(4000).describe("出图提示词"),
+        }),
+      ]),
+      execute: async (args) => {
+        if (!acnProductionConfigured()) {
+          return { ok: false, error: "生产队列暂未开通(ACN 未配置),请稍后再试。" };
+        }
+        const project = await assertOwnedProject(args.projectId, sub);
+        if (!project || !project.ownerUserId) {
+          return { ok: false, error: "项目不存在或不属于当前用户。" };
+        }
+
+        const input =
+          args.type === "WRITE_SCRIPT"
+            ? {
+                brief: args.brief.trim(),
+                title: args.title?.trim() || null,
+                style: args.style?.trim() || null,
+              }
+            : {
+                assetType: args.assetType,
+                name: args.name.trim(),
+                description: args.description?.trim() || null,
+                prompt: args.prompt.trim(),
+              };
+
+        try {
+          const { ref, task, inviteError } = await enqueueAcnProductionTask({
+            projectId: project.id,
+            projectName: project.name,
+            ownerUserId: project.ownerUserId,
+            type: args.type,
+            input,
+          });
+          return {
+            ok: true,
+            acnTaskId: ref.acnTaskId,
+            type: ref.type,
+            status: task.status,
+            // invite 失败不影响任务成立(生产 Agent 在 subnet 内可见),仅提示延迟可能
+            inviteError,
+            projectId: project.id,
+            projectName: project.name,
+            link: `${origin}/p/${project.shareToken}`,
+          };
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          return { ok: false, error: msg };
+        }
+      },
+    }),
+
+    getProductionJob: tool({
+      description: "查询生产任务状态(ACN Task)。用户问进度或任务是否完成时调用。",
+      inputSchema: z.object({
+        acnTaskId: z.string().min(1),
+      }),
+      execute: async ({ acnTaskId }) => {
+        const ref = await prisma.acnTaskRef.findUnique({
+          where: { acnTaskId },
+          include: {
+            project: { select: { id: true, name: true, ownerUserId: true, shareToken: true } },
+          },
+        });
+        if (!ref || ref.project.ownerUserId !== sub) {
+          return { ok: false, error: "任务不存在或不属于当前用户。" };
+        }
+
+        let status: string | null = null;
+        let assigneeId: string | null = null;
+        let acnError: string | null = null;
+        if (acnProductionConfigured()) {
+          try {
+            const task = await getAcnTask(acnTaskId);
+            status = task?.status ?? null;
+            assigneeId = task?.assignee_id ?? null;
+          } catch (err) {
+            acnError = err instanceof Error ? err.message : String(err);
+          }
+        }
+
+        return {
+          ok: true,
+          acnTaskId: ref.acnTaskId,
+          type: ref.type,
+          status,
+          assigneeId,
+          acnError,
+          projectId: ref.projectId,
+          projectName: ref.project.name,
+          link: `${origin}/p/${ref.project.shareToken}`,
+          createdAt: ref.createdAt.toISOString(),
         };
       },
     }),
@@ -170,8 +297,6 @@ function buildTools(sub: string, origin: string, balance: number) {
 export async function POST(req: Request) {
   const sub = await verifyUserToken(req);
   if (!sub) {
-    // 带上 code,让前端把"登录态失效"与其他错误区分开(unauthorized() 无 code,
-    // 会被前端归入通用兜底文案,排障时无从下手)
     return Response.json(
       { error: "Your session has expired. Please sign in again.", code: "UNAUTHORIZED" },
       { status: 401 }
@@ -191,7 +316,6 @@ export async function POST(req: Request) {
     return badRequest("`messages` is required");
   }
 
-  // 查不到余额(接口失败/未配置)按"没有余额"处理,不能把查询失败当免费通行证
   const token = extractBearerToken(req);
   const balance = token ? await getWalletBalance(token) : null;
   if (!balance || balance <= 0) {
@@ -222,13 +346,11 @@ export async function POST(req: Request) {
     baseURL: gatewayUrl(),
     apiKey: gatewayToken(),
     headers: {
-      // 把 Studio 账号身份映射成 Gateway 会话键,保证每个用户的对话相互隔离
       "x-openclaw-session-key": `studio:${sub}`,
     },
   });
 
   const modelId = (process.env.OPENCLAW_GATEWAY_MODEL ?? "").trim() || "customer";
-
   const origin = new URL(req.url).origin;
 
   const result = streamText({
@@ -236,14 +358,12 @@ export async function POST(req: Request) {
     system: await buildUserContext(sub, origin, balance),
     messages: await convertToModelMessages(trimmed),
     tools: buildTools(sub, origin, balance),
-    // 允许"工具调用 → 拿到结果 → 继续回复"的多步循环;上限防失控
-    stopWhen: stepCountIs(3),
+    // createProject → submitProductionJob → getProductionJob → 收尾回复,
+    // 最长链路 4 个工具步 + 1 步组织答复;上限防失控
+    stopWhen: stepCountIs(5),
   });
 
   return result.toUIMessageStreamResponse({
-    // 错误以 JSON 字符串下发:useChat 会把这段文本放进 error.message,
-    // 前端 describeError 按 JSON 解析出 code 显示对应文案(与非 2xx 响应
-    // body 的解析路径共用),同时把上游细节留在服务端日志里。
     onError: (error) => {
       console.error("[api/chat] gateway stream error", error);
       return JSON.stringify({
