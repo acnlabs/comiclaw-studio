@@ -96,18 +96,17 @@ usage() {
   publish-work '<json>'                 直接发布作品 {kind*: VIDEO|SERIES, title*, category, videoUrl,
                                         coverUrl, description, authorName, episodes: [{order, title, videoUrl, duration}]}
 
-按用量扣款(生产成本,向项目所有者的 AgentPlanet 钱包按次扣 Credits)
-  charge <projectId> '<json>'           调用即梦/Seedance 等上游生成前先扣款
-                                        {amount*(Credits,整数>0), action*(script_gen|asset_generate|
-                                        shot_generate|video_generate|post_production), reason*(如
-                                        "video_gen:seedance:15s"), idempotencyKey*(建议
-                                        "comiclaw:gen:<jobId>",同一次生成动作重试不会重复扣款),
-                                        provider(如 seedance/jimeng), metadata(任意附加信息)}
-                                        返回 402 = 余额不足,此时**不得**继续调用上游生成,应停下
-                                        并通过 set-status 告知客户"余额不足,请充值后继续";
-                                        网络失败/5xx 用**同一个** idempotencyKey 重试,不要换新 key
-  get-charges <projectId>               查询这个项目已发起过的扣款记录(排障用;权威金额/余额
-                                        以 AgentPlanet 为准,这里不是账本也不做汇总)
+按用量扣款(生产成本;Studio 按价目表定价,工人只报 units)
+  pricing                               查看价目表(每单位 Credits)
+  quote '<json>'                        预览报价 {action*, units?, provider?}
+  charge <projectId> '<json>'           生成前扣款(金额由服务端算,不要传 amount)
+                                        {action*(script_gen|asset_generate|shot_generate|
+                                        video_generate|post_production), units*(默认1;
+                                        出图=张数,视频=秒), idempotencyKey*(建议
+                                        "comiclaw:gen:<acnTaskId>"), provider?, reason?, metadata?}
+                                        成功响应含 consumption / submitHint,请写入 ACN submit;
+                                        402=余额不足,**不得**继续上游;同 key 重试,勿换新 key
+  get-charges <projectId>               查询本地扣款映射(权威金额以 AgentPlanet 为准)
 
 ACN 生产任务映射(编排在 ACN Task;Studio 只存 acnTaskId↔projectId)
   submit-acn-task <projectId> '<json>'  建私有 ACN Task 并 invite 生产 Agent
@@ -169,6 +168,8 @@ case "$cmd" in
   delete-film-version)   call DELETE "/api/agent/film-versions/$2" ;;
   delete-release)  call DELETE "/api/agent/releases/$2" ;;
   delete-work)     call DELETE "/api/agent/works/$2" ;;
+  pricing)         call GET "/api/agent/pricing" ;;
+  quote)           call POST "/api/agent/pricing" "$2" ;;
   charge)          call POST "/api/agent/projects/$2/charge" "$3" ;;
   get-charges)     call GET "/api/agent/projects/$2/charge" ;;
   submit-acn-task) call POST "/api/agent/projects/$2/acn-tasks" "$3" ;;

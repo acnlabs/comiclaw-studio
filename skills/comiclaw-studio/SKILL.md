@@ -53,14 +53,15 @@ $W reconcile
 ### GENERATE_IMAGE
 
 1. 读 `metadata.studio.input`(assetType/name/prompt/…)
-2. **先扣款**再出图(幂等键用 ACN task id,勿换 key):
+2. **先扣款**再出图(金额由 Studio 价目表按 units 计算;幂等键用 ACN task id,勿换 key):
    ```bash
-   $S charge <projectId> "{\"amount\":5,\"action\":\"asset_generate\",\"provider\":\"jimeng\",\"reason\":\"asset_gen:jimeng:acn\",\"idempotencyKey\":\"comiclaw:gen:<acnTaskId>\"}"
+   CHARGE=$($S charge <projectId> "{\"action\":\"asset_generate\",\"units\":1,\"provider\":\"jimeng\",\"idempotencyKey\":\"comiclaw:gen:<acnTaskId>\"}")
+   # 读 JSON 里的 submitHint / consumption;402 则不得继续出图
    ```
-   402 → `$S set-status` 提示充值 → `acn tasks submit` 写明失败原因(或等充值后同 key 重试 charge)
+   402 → 已自动 set-status 提示充值 → `acn tasks submit` 带上响应里的 `submitHint`
 3. 即梦出图 → `upload-file` → `add-asset`
 4. `$S set-status <projectId> ""`
-5. `acn tasks submit <acnTaskId> --result "assetId=... imageUrl=..."`
+5. `acn tasks submit <acnTaskId> --result "assetId=... imageUrl=...; $submitHint"`
 
 ### 边界
 
@@ -84,7 +85,7 @@ $W reconcile
 5. **发行如实登记**:确定发行平台时 `add-release`;实际上架成功后 `update-release` 置为 `PUBLISHED` 并回填链接——此时最新成片会自动发布到平台「推荐」流,无需额外操作。
 5.5. **返工前先看批注**:客户会在成片播放器上留时间码批注(如"00:23 转场太硬")。每次准备修改成片前、以及客户说"我提了意见"时,先 `list-comments <projectId>` 读取未处理的批注,按时间码精确定位修改;每处理完一条,`resolve-comment <commentId>` 标记已解决,客户页面会实时看到「已处理」标记。
 6. **媒体一律先上传**:即梦 / Seedance 等工具产出的图片和视频,先用 `upload-file` 上传到 Studio,再把返回的 URL 填入 `imageUrl` / `mediaUrl` / `videoUrl` 字段。
-7. **消耗真实生成成本前必须先扣款**:凡是会调用即梦 / Seedance 等上游、产生真实成本的生成动作(出图、出视频、后期渲染),调用前**先** `charge <projectId> '<json>'` 向项目所有者扣 Credits,扣款成功才继续生成;**返回 402(余额不足)时不得继续生成**,改用 `set-status` 告知客户"余额不足,请充值后继续",等客户充值后用**同一个** `idempotencyKey` 重试(不要换新 key,否则会被当成两次不同的动作)。免费的动作(读需求、写剧本草稿、规划分镜文案)不需要 `charge`。
+7. **消耗真实生成成本前必须先扣款**:出图/出视频/后期等,调用前先 `charge`,只传 `action`+`units`(+`provider`/`idempotencyKey`),**不要传 amount**(价目在 Studio)。成功后把响应里的 `submitHint`/`consumption` 写进 ACN `submit` 与必要时的 `set-status`。**402 不得继续上游**;同 `idempotencyKey` 重试。写剧本草稿等单价为 0 的动作可跳过,或 charge 后会返回 `charged=0`。
 8. **本地只是工作台,不留永久副本**:生成物(图片/视频等中间产物)用完即通过 `upload-file` 推送到 Studio,推送成功后删掉本地临时文件——Studio 是唯一权威来源,不要在本地攒一份永久的项目目录。项目做完(进入 DONE)后,清空这个项目的本地工作目录。
 
 ```bash
@@ -111,7 +112,7 @@ $S set-stage <projectId> ASSETS
 
 # 3. 资产阶段(type: CHARACTER 角色 / SCENE 场景 / PROP 道具)
 # 调用即梦出图前先扣款,402(余额不足)就停下,不继续调用生成
-$S charge <projectId> '{"amount":5,"action":"asset_generate","provider":"jimeng","reason":"asset_gen:jimeng:character","idempotencyKey":"comiclaw:gen:<jobId>"}'
+$S charge <projectId> '{"action":"asset_generate","units":1,"provider":"jimeng","idempotencyKey":"comiclaw:gen:<jobId>"}'
 IMG=$(upload /path/to/character.png)
 $S add-asset <projectId> "{\"type\":\"CHARACTER\",\"name\":\"小智数字人\",\"imageUrl\":\"$IMG\",\"notes\":\"首稿\"}"
 # => 记下返回的 asset.id,客户要求修改时:
