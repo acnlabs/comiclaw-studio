@@ -181,7 +181,7 @@ function buildTools(sub: string, origin: string, balance: number) {
     // 客户 cell 零工具;编排在 ACN,本地只存 AcnTaskRef。
     submitProductionJob: tool({
       description:
-        "为用户的项目提交生产任务(写剧本 WRITE_SCRIPT 或出设定图 GENERATE_IMAGE)。确认需求后调用;任务异步由主工作室(ACN)处理。",
+        "为用户的项目提交生产任务(写剧本 WRITE_SCRIPT 或出设定图 GENERATE_IMAGE)。确认需求后调用;默认指派主工作室,也可额外指定用户自有 ACN 工人(先到先得,主工作室作 fallback)。",
       inputSchema: z.discriminatedUnion("type", [
         z.object({
           projectId: z.string().min(1).describe("项目 id(见用户上下文里的 id=…)"),
@@ -189,6 +189,15 @@ function buildTools(sub: string, origin: string, balance: number) {
           brief: z.string().min(1).max(4000).describe("剧本需求摘要"),
           title: z.string().max(200).optional(),
           style: z.string().max(200).optional(),
+          workerAgentIds: z
+            .array(z.string().min(8).max(128))
+            .max(8)
+            .optional()
+            .describe("额外邀请的 ACN agent_id;默认仍含主工作室"),
+          includeDefaultWorker: z
+            .boolean()
+            .optional()
+            .describe("是否邀请主工作室作 fallback,默认 true"),
         }),
         z.object({
           projectId: z.string().min(1).describe("项目 id(见用户上下文里的 id=…)"),
@@ -197,6 +206,15 @@ function buildTools(sub: string, origin: string, balance: number) {
           name: z.string().min(1).max(200),
           description: z.string().max(2000).optional(),
           prompt: z.string().min(1).max(4000).describe("出图提示词"),
+          workerAgentIds: z
+            .array(z.string().min(8).max(128))
+            .max(8)
+            .optional()
+            .describe("额外邀请的 ACN agent_id;默认仍含主工作室"),
+          includeDefaultWorker: z
+            .boolean()
+            .optional()
+            .describe("是否邀请主工作室作 fallback,默认 true"),
         }),
       ]),
       execute: async (args) => {
@@ -223,12 +241,14 @@ function buildTools(sub: string, origin: string, balance: number) {
               };
 
         try {
-          const { ref, task, inviteError } = await enqueueAcnProductionTask({
+          const { ref, task, inviteError, inviteeIds } = await enqueueAcnProductionTask({
             projectId: project.id,
             projectName: project.name,
             ownerUserId: project.ownerUserId,
             type: args.type,
             input,
+            workerAgentIds: args.workerAgentIds,
+            includeDefaultWorker: args.includeDefaultWorker,
           });
           return {
             ok: true,
@@ -237,6 +257,7 @@ function buildTools(sub: string, origin: string, balance: number) {
             status: task.status,
             // invite 失败不影响任务成立(生产 Agent 在 subnet 内可见),仅提示延迟可能
             inviteError,
+            inviteeIds,
             projectId: project.id,
             projectName: project.name,
             link: `${origin}/p/${project.shareToken}`,

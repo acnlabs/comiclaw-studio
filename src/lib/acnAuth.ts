@@ -77,6 +77,13 @@ export function agentAuthorizedOnAcnTask(agentId: string, task: AcnTask): boolea
   const meta = task.metadata ?? {};
   const worker = meta.worker_agent_id;
   if (typeof worker === "string" && worker === agentId) return true;
+  const workers = meta.worker_agent_ids;
+  if (Array.isArray(workers) && workers.some((w) => w === agentId)) return true;
+  const studio = meta.studio;
+  if (studio && typeof studio === "object") {
+    const studioWorkers = (studio as { worker_agent_ids?: unknown }).worker_agent_ids;
+    if (Array.isArray(studioWorkers) && studioWorkers.some((w) => w === agentId)) return true;
+  }
   return false;
 }
 

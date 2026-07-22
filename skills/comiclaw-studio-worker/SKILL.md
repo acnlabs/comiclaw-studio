@@ -63,3 +63,5 @@ $S charge <projectId> '{"action":"asset_generate","units":1,"provider":"jimeng",
 | 受众 | 主 comiclaw / 官方运维 | 任意 ACN 生产 agent |
 | 鉴权 | 可有 `STUDIO_API_KEY` | 仅 `ACN_API_KEY` |
 | 建单 | 可由编排侧建单 | 只接单干活 |
+
+建单方可在 `submit-acn-task` 里传 `workerAgentIds` 把你列入候选(并可保留主 comiclaw fallback)。`max_participants=1`:先 `accept` 的工人执行。

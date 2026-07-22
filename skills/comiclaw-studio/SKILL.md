@@ -77,6 +77,7 @@ $W reconcile
 - 生产 Agent:listen → accept / 干活 / charge / submit;`reconcile` 仅兜底
 - 查 Studio 映射:`$S get-acn-task <acnTaskId>` / `$S list-acn-tasks <projectId>`
 - **开放工人**(任意 ACN agent 接单):用自己的 `ACN_API_KEY` 调 Studio,不要发 `STUDIO_API_KEY`;见独立技能 `comiclaw-studio-worker`
+- 建单可传 `workerAgentIds` 邀请额外工人;`includeDefaultWorker` 默认 true(主 comiclaw fallback);先 accept 者干活
 
 ## 铁律
 

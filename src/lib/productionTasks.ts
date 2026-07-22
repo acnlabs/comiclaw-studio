@@ -1,6 +1,10 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { createAcnProductionTaskOnly, inviteAcnProductionAgent, type AcnProductionType } from "@/lib/acn";
+import {
+  createAcnProductionTaskOnly,
+  inviteAcnAgent,
+  type AcnProductionType,
+} from "@/lib/acn";
 
 const MAX_ACTIVE_REFS_PER_PROJECT = 8;
 
@@ -20,6 +24,8 @@ export async function enqueueAcnProductionTask(args: {
   ownerUserId: string;
   type: AcnProductionType;
   input: Record<string, unknown>;
+  workerAgentIds?: string[] | null;
+  includeDefaultWorker?: boolean;
 }) {
   const recent = await countRecentAcnTasks(args.projectId);
   if (recent >= MAX_ACTIVE_REFS_PER_PROJECT) {
@@ -29,10 +35,7 @@ export async function enqueueAcnProductionTask(args: {
   }
 
   // 顺序刻意为:ACN 建单 → 立刻落本地映射 → invite / 状态条降级为尽力而为。
-  // ACN 任务一旦建成,后续任何本地失败都不能让调用方误以为"没建成"而重试
-  // 再建一单(重复生产 + 重复扣款)。invite 失败不算失败:任务挂在 private
-  // subnet 上,生产 Agent 是成员,轮询任务列表也能看到并 accept。
-  const task = await createAcnProductionTaskOnly(args);
+  const { task, inviteeIds } = await createAcnProductionTaskOnly(args);
 
   let ref;
   try {
@@ -45,7 +48,6 @@ export async function enqueueAcnProductionTask(args: {
       },
     });
   } catch (err) {
-    // 映射没落库但 ACN 任务已存在:把 task_id 抛给调用方,禁止盲目重试建新单
     throw new Error(
       `ACN task ${task.task_id} was created but Studio failed to persist the mapping — do NOT retry blindly (would duplicate the task). Record acnTaskId manually. Cause: ${
         err instanceof Error ? err.message : String(err)
@@ -53,27 +55,42 @@ export async function enqueueAcnProductionTask(args: {
     );
   }
 
-  let inviteError: string | null = null;
-  try {
-    await inviteAcnProductionAgent(task.task_id);
-  } catch (err) {
-    inviteError = err instanceof Error ? err.message : String(err);
-    console.error(`[productionTasks] invite failed for ${task.task_id} (subnet visibility still applies)`, err);
+  const inviteErrors: Array<{ agentId: string; error: string }> = [];
+  for (const agentId of inviteeIds) {
+    try {
+      await inviteAcnAgent(task.task_id, agentId);
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      inviteErrors.push({ agentId, error });
+      console.error(
+        `[productionTasks] invite ${agentId} failed for ${task.task_id} (subnet visibility still applies)`,
+        err
+      );
+    }
   }
+  // 兼容旧响应字段:全部失败时给字符串;部分失败时拼摘要
+  const inviteError =
+    inviteErrors.length === 0
+      ? null
+      : inviteErrors.length === inviteeIds.length
+        ? inviteErrors.map((e) => `${e.agentId}: ${e.error}`).join("; ")
+        : `partial: ${inviteErrors.map((e) => `${e.agentId}: ${e.error}`).join("; ")}`;
 
   try {
+    const workerHint =
+      inviteeIds.length === 1 ? "生产工人" : `候选工人×${inviteeIds.length}`;
     await prisma.project.update({
       where: { id: args.projectId },
       data: {
         statusNote:
           args.type === "WRITE_SCRIPT"
-            ? "剧本任务已提交主工作室(ACN)…"
-            : "出图任务已提交主工作室(ACN)…",
+            ? `剧本任务已提交${workerHint}(ACN)…`
+            : `出图任务已提交${workerHint}(ACN)…`,
       },
     });
   } catch (err) {
     console.error(`[productionTasks] statusNote update failed for ${args.projectId}`, err);
   }
 
-  return { ref, task, inviteError };
+  return { ref, task, inviteError, inviteErrors, inviteeIds };
 }
