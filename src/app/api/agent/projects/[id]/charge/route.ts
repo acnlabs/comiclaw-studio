@@ -80,6 +80,31 @@ export const POST = withAgentAuth(async (req, ctx: Ctx) => {
     return badRequest("idempotencyKey already used by a different project");
   }
   if (existing?.status === "SUCCESS") {
+    // 与 AgentPlanet 409 同语义:同幂等键不得换套餐(action/金额)。
+    // 本地短路前必须校验,否则会把新报价的 units 和旧 charged 拼进同一响应。
+    const prevAmount = existing.amount ?? 0;
+    if (existing.action !== quote.action || prevAmount !== quote.amount) {
+      return Response.json(
+        {
+          error: "idempotencyKey already used with different charge parameters",
+          code: "IDEMPOTENCY_CONFLICT",
+          existing: {
+            action: existing.action,
+            amount: prevAmount,
+            provider: existing.provider,
+            transactionId: existing.transactionId,
+          },
+          requested: {
+            action: quote.action,
+            amount: quote.amount,
+            units: quote.units,
+            unitPrice: quote.unitPrice,
+            provider: quote.provider,
+          },
+        },
+        { status: 409 }
+      );
+    }
     return Response.json({
       ref: existing,
       idempotent: true,
@@ -91,7 +116,7 @@ export const POST = withAgentAuth(async (req, ctx: Ctx) => {
         idempotent: true,
       }),
       // 给工人写进 ACN submit / set-status 的短摘要
-      submitHint: `charged=${existing.amount ?? 0}; action=${existing.action}; txn=${existing.transactionId ?? "n/a"}; idempotent=true`,
+      submitHint: `charged=${prevAmount}; action=${existing.action}; txn=${existing.transactionId ?? "n/a"}; idempotent=true`,
     });
   }
 
