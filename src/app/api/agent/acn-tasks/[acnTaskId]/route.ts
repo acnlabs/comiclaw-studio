@@ -40,6 +40,7 @@ export const GET = withProjectWorkerAuth(
     return Response.json({ ref, task, acnError });
   },
   {
+    access: "read",
     getProjectId: async (_req, ctx) => {
       const { acnTaskId } = await ctx.params;
       const ref = await prisma.acnTaskRef.findUnique({

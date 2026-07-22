@@ -274,14 +274,17 @@ export const POST = withProjectWorkerAuth(async (req, ctx: Ctx) => {
 
 // 查询这个项目已经发起过的生成任务扣款(排障用的本地关联记录);
 // 权威金额/余额以 AgentPlanet 的 Transaction 为准,这里不做汇总统计。
-export const GET = withProjectWorkerAuth(async (_req, ctx: Ctx) => {
-  const { id } = await ctx.params;
-  const project = await prisma.project.findUnique({ where: { id }, select: { id: true } });
-  if (!project) return notFoundJson();
+export const GET = withProjectWorkerAuth(
+  async (_req, ctx: Ctx) => {
+    const { id } = await ctx.params;
+    const project = await prisma.project.findUnique({ where: { id }, select: { id: true } });
+    if (!project) return notFoundJson();
 
-  const refs = await prisma.generationChargeRef.findMany({
-    where: { projectId: id },
-    orderBy: { createdAt: "desc" },
-  });
-  return Response.json({ refs });
-});
+    const refs = await prisma.generationChargeRef.findMany({
+      where: { projectId: id },
+      orderBy: { createdAt: "desc" },
+    });
+    return Response.json({ refs });
+  },
+  { access: "read" }
+);

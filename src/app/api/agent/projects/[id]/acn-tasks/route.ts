@@ -46,16 +46,19 @@ export const POST = withAgentAuth(async (req, ctx: Ctx) => {
   }
 });
 
-export const GET = withProjectWorkerAuth(async (req, ctx: Ctx) => {
-  const { id } = await ctx.params;
-  const project = await prisma.project.findUnique({ where: { id }, select: { id: true } });
-  if (!project) return notFoundJson();
+export const GET = withProjectWorkerAuth(
+  async (req, ctx: Ctx) => {
+    const { id } = await ctx.params;
+    const project = await prisma.project.findUnique({ where: { id }, select: { id: true } });
+    if (!project) return notFoundJson();
 
-  const take = Math.min(Number(new URL(req.url).searchParams.get("limit") ?? 20) || 20, 50);
-  const refs = await prisma.acnTaskRef.findMany({
-    where: { projectId: id },
-    orderBy: { createdAt: "desc" },
-    take,
-  });
-  return Response.json({ refs });
-});
+    const take = Math.min(Number(new URL(req.url).searchParams.get("limit") ?? 20) || 20, 50);
+    const refs = await prisma.acnTaskRef.findMany({
+      where: { projectId: id },
+      orderBy: { createdAt: "desc" },
+      take,
+    });
+    return Response.json({ refs });
+  },
+  { access: "read" }
+);

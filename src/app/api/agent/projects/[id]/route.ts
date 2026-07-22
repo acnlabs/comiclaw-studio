@@ -8,27 +8,30 @@ import type { ProductionAuth } from "@/lib/acnAuth";
 type Ctx = { params: Promise<{ id: string }> };
 
 // 读取项目全量数据(官方 key 或已绑定任务的 ACN 工人)
-export const GET = withProjectWorkerAuth(async (_req, ctx: Ctx) => {
-  const { id } = await ctx.params;
-  const project = await prisma.project.findUnique({
-    where: { id },
-    include: {
-      scriptVersions: { orderBy: { version: "desc" } },
-      assets: { include: { versions: { orderBy: { version: "desc" } } } },
-      shots: {
-        orderBy: { order: "asc" },
-        include: {
-          versions: { orderBy: { version: "desc" } },
-          assetRefs: { include: { asset: { select: { id: true, name: true, type: true } } } },
+export const GET = withProjectWorkerAuth(
+  async (_req, ctx: Ctx) => {
+    const { id } = await ctx.params;
+    const project = await prisma.project.findUnique({
+      where: { id },
+      include: {
+        scriptVersions: { orderBy: { version: "desc" } },
+        assets: { include: { versions: { orderBy: { version: "desc" } } } },
+        shots: {
+          orderBy: { order: "asc" },
+          include: {
+            versions: { orderBy: { version: "desc" } },
+            assetRefs: { include: { asset: { select: { id: true, name: true, type: true } } } },
+          },
         },
+        filmVersions: { orderBy: { version: "desc" } },
+        releases: { orderBy: { createdAt: "asc" } },
       },
-      filmVersions: { orderBy: { version: "desc" } },
-      releases: { orderBy: { createdAt: "asc" } },
-    },
-  });
-  if (!project) return notFoundJson();
-  return Response.json({ project });
-});
+    });
+    if (!project) return notFoundJson();
+    return Response.json({ project });
+  },
+  { access: "read" }
+);
 
 // 删除项目:仅官方 STUDIO_API_KEY
 export const DELETE = withAgentAuth(async (_req, ctx: Ctx) => {

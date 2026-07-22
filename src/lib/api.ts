@@ -2,9 +2,10 @@ import { Prisma } from "@prisma/client";
 import { ZodError, type ZodType } from "zod";
 import { checkApiKey, unauthorized, badRequest, notFoundJson, conflict, serverError } from "@/lib/auth";
 import {
-  authorizeProjectWorker,
+  authorizeAcnWorkerForProject,
   authenticateStudioOrAcnAgent,
   type ProductionAuth,
+  type WorkerAccess,
 } from "@/lib/acnAuth";
 
 // 统一封装 Agent API 路由:鉴权 + Prisma 错误映射 + Zod 校验错误处理
@@ -24,6 +25,7 @@ export function withAgentAuth<Ctx>(
 
 /**
  * 生产工人路由:STUDIO_API_KEY 或「ACN agent + 任务绑定」。
+ * 先做身份认证,再解析资源,避免未认证调用靠 404/401 差异枚举 ID。
  * projectId 默认取 ctx.params.id;也可自定义(嵌套资源先查所属项目)。
  */
 export function withProjectWorkerAuth<Ctx>(
@@ -31,19 +33,33 @@ export function withProjectWorkerAuth<Ctx>(
   options?: {
     getProjectId?: (req: Request, ctx: Ctx) => Promise<string | null>;
     getAcnTaskId?: (req: Request, ctx: Ctx) => Promise<string | null | undefined>;
+    /** 默认 write;GET/对账用 read(终态任务仍可读) */
+    access?: WorkerAccess;
   }
 ): (req: Request, ctx: Ctx) => Promise<Response> {
   return async (req, ctx) => {
+    const identity = await authenticateStudioOrAcnAgent(req);
+    if (identity instanceof Response) return identity;
+
     const projectId = options?.getProjectId
       ? await options.getProjectId(req, ctx)
       : await defaultProjectIdFromParams(ctx);
     if (!projectId) return notFoundJson();
 
-    const acnTaskId = options?.getAcnTaskId
-      ? await options.getAcnTaskId(req, ctx)
-      : undefined;
-    const auth = await authorizeProjectWorker(req, projectId, { acnTaskId });
-    if (auth instanceof Response) return auth;
+    let auth: ProductionAuth;
+    if (identity.kind === "studio_key") {
+      auth = { kind: "studio_key" };
+    } else {
+      const acnTaskId = options?.getAcnTaskId
+        ? await options.getAcnTaskId(req, ctx)
+        : undefined;
+      const bound = await authorizeAcnWorkerForProject(req, projectId, identity.agentId, {
+        acnTaskId,
+        access: options?.access ?? "write",
+      });
+      if (bound instanceof Response) return bound;
+      auth = bound;
+    }
 
     try {
       return await handler(req, ctx, auth);

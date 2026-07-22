@@ -20,6 +20,22 @@ export type ProductionAuth =
   | { kind: "studio_key" }
   | { kind: "acn_worker"; agentId: string; acnTaskId: string };
 
+export type WorkerAccess = "read" | "write";
+
+/** 终态:写接口拒绝;读接口仍允许(便于 submit 后对账) */
+const TERMINAL_TASK_STATUSES = new Set([
+  "cancelled",
+  "canceled",
+  "rejected",
+  "expired",
+  "completed",
+  "submitted",
+  "approved",
+  "done",
+  "closed",
+  "failed",
+]);
+
 type MeCacheEntry = { agentId: string; exp: number };
 const meCache = new Map<string, MeCacheEntry>();
 const ME_TTL_MS = 60_000;
@@ -64,26 +80,35 @@ export function agentAuthorizedOnAcnTask(agentId: string, task: AcnTask): boolea
   return false;
 }
 
-/**
- * 解析生产调用方:
- * - STUDIO_API_KEY → 官方全权限(无需任务绑定)
- * - 否则按 ACN Bearer 解析 agent,并校验任务↔项目绑定
- */
-export async function authorizeProjectWorker(
-  req: Request,
-  projectId: string,
-  opts?: { acnTaskId?: string | null }
-): Promise<ProductionAuth | Response> {
-  if (checkApiKey(req)) {
-    return { kind: "studio_key" };
-  }
+export function taskStatusAllowsAccess(status: string | undefined | null, access: WorkerAccess): boolean {
+  const s = (status || "").toLowerCase();
+  if (!s) return true;
+  if (access === "read") return true;
+  return !TERMINAL_TASK_STATUSES.has(s);
+}
 
+/** 仅认证(定价/ping/防枚举前置):Studio key 或任意有效 ACN agent */
+export async function authenticateStudioOrAcnAgent(
+  req: Request
+): Promise<{ kind: "studio_key" } | { kind: "acn_agent"; agentId: string } | Response> {
+  if (checkApiKey(req)) return { kind: "studio_key" };
   const bearer = extractBearer(req);
   if (!bearer) return unauthorized();
-
   const agentId = await resolveAcnAgentId(bearer);
   if (!agentId) return unauthorized();
+  return { kind: "acn_agent", agentId };
+}
 
+/**
+ * 已确认是 ACN agent 后的任务绑定授权。
+ */
+export async function authorizeAcnWorkerForProject(
+  req: Request,
+  projectId: string,
+  agentId: string,
+  opts?: { acnTaskId?: string | null; access?: WorkerAccess }
+): Promise<ProductionAuth | Response> {
+  const access: WorkerAccess = opts?.access ?? "write";
   const acnTaskId = (opts?.acnTaskId ?? readAcnTaskIdHeader(req) ?? "").trim();
   if (!acnTaskId) {
     return badRequest(
@@ -105,9 +130,8 @@ export async function authorizeProjectWorker(
   }
   if (!task) return forbidden("ACN task not found");
 
-  const status = (task.status || "").toLowerCase();
-  if (["cancelled", "canceled", "rejected", "expired"].includes(status)) {
-    return forbidden(`ACN task status '${task.status}' does not allow Studio writes`);
+  if (!taskStatusAllowsAccess(task.status, access)) {
+    return forbidden(`ACN task status '${task.status}' does not allow Studio ${access}s`);
   }
 
   if (!agentAuthorizedOnAcnTask(agentId, task)) {
@@ -117,14 +141,18 @@ export async function authorizeProjectWorker(
   return { kind: "acn_worker", agentId, acnTaskId };
 }
 
-/** 仅认证(定价/ping):Studio key 或任意有效 ACN agent,不做任务绑定 */
-export async function authenticateStudioOrAcnAgent(
-  req: Request
-): Promise<{ kind: "studio_key" } | { kind: "acn_agent"; agentId: string } | Response> {
-  if (checkApiKey(req)) return { kind: "studio_key" };
-  const bearer = extractBearer(req);
-  if (!bearer) return unauthorized();
-  const agentId = await resolveAcnAgentId(bearer);
-  if (!agentId) return unauthorized();
-  return { kind: "acn_agent", agentId };
+/**
+ * 解析生产调用方(upload 等未走 wrapper 的路由):
+ * - STUDIO_API_KEY → 官方全权限(无需任务绑定)
+ * - 否则按 ACN Bearer 解析 agent,并校验任务↔项目绑定
+ */
+export async function authorizeProjectWorker(
+  req: Request,
+  projectId: string,
+  opts?: { acnTaskId?: string | null; access?: WorkerAccess }
+): Promise<ProductionAuth | Response> {
+  const identity = await authenticateStudioOrAcnAgent(req);
+  if (identity instanceof Response) return identity;
+  if (identity.kind === "studio_key") return { kind: "studio_key" };
+  return authorizeAcnWorkerForProject(req, projectId, identity.agentId, opts);
 }

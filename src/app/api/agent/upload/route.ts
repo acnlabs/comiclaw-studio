@@ -1,6 +1,10 @@
 import { uploadFile } from "@/lib/storage";
-import { checkApiKey, badRequest, serverError } from "@/lib/auth";
-import { authorizeProjectWorker, readAcnTaskIdHeader } from "@/lib/acnAuth";
+import { badRequest, serverError } from "@/lib/auth";
+import {
+  authenticateStudioOrAcnAgent,
+  authorizeAcnWorkerForProject,
+  readAcnTaskIdHeader,
+} from "@/lib/acnAuth";
 
 export const runtime = "nodejs";
 
@@ -19,16 +23,20 @@ function sanitizeFilename(name: string): string {
 // - STUDIO_API_KEY: 全权限上传
 // - ACN worker: 必须带 X-Acn-Task-Id + X-Project-Id(任务映射校验)
 export async function POST(req: Request) {
-  let projectIdForWorker: string | null = null;
-  if (!checkApiKey(req)) {
-    projectIdForWorker = req.headers.get("x-project-id")?.trim() || null;
-    if (!projectIdForWorker) {
+  const identity = await authenticateStudioOrAcnAgent(req);
+  if (identity instanceof Response) return identity;
+
+  if (identity.kind === "acn_agent") {
+    const projectId = req.headers.get("x-project-id")?.trim() || null;
+    if (!projectId) {
       return badRequest("ACN workers must send X-Project-Id and X-Acn-Task-Id for upload");
     }
     if (!readAcnTaskIdHeader(req)) {
       return badRequest("ACN workers must send X-Acn-Task-Id for upload");
     }
-    const auth = await authorizeProjectWorker(req, projectIdForWorker);
+    const auth = await authorizeAcnWorkerForProject(req, projectId, identity.agentId, {
+      access: "write",
+    });
     if (auth instanceof Response) return auth;
   }
 
