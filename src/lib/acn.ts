@@ -1,7 +1,8 @@
 // ACN Task Pool 对接(官方内部生产线编排)。
 //
 // 钱不走 Escrow:use_escrow=false + AgentPlanet /wallet/charge。
-// 任务挂 private subnet,建单后 invite 生产 Agent。客户 cell 不持有 ACN key。
+// 任务挂 private subnet,建单后 invite 生产 Agent(可多候选 + 主 comiclaw fallback)。
+// 客户 cell 不持有 ACN key。
 
 const ACN_API_URL = () => (process.env.ACN_API_URL ?? "https://api.acnlabs.dev").trim().replace(/\/+$/, "");
 const ACN_CHAT_API_KEY = () => (process.env.ACN_CHAT_API_KEY ?? "").trim();
@@ -29,6 +30,10 @@ export function acnConfigSummary() {
     subnetSlug: ACN_SUBNET_SLUG() || null,
     configured: acnProductionConfigured(),
   };
+}
+
+export function defaultProductionAgentId(): string {
+  return ACN_PROD_AGENT_ID();
 }
 
 export interface AcnTask {
@@ -85,18 +90,47 @@ export async function inviteAcnProductionAgent(taskId: string): Promise<AcnTask>
   return inviteAcnAgent(taskId, ACN_PROD_AGENT_ID());
 }
 
-/** 仅建单,不 invite——调用方负责先落映射再尽力 invite,避免建单成功但本地失败时盲目重试重复建单 */
+/** 去重保序的 invite 列表 */
+export function resolveWorkerInvitees(args: {
+  workerAgentIds?: string[] | null;
+  includeDefaultWorker?: boolean;
+}): string[] {
+  const includeDefault = args.includeDefaultWorker !== false;
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const push = (id: string) => {
+    const t = id.trim();
+    if (!t || seen.has(t)) return;
+    seen.add(t);
+    out.push(t);
+  };
+  for (const id of args.workerAgentIds ?? []) push(id);
+  if (includeDefault) push(ACN_PROD_AGENT_ID());
+  return out;
+}
+
+/** 仅建单,不 invite——调用方负责先落映射再尽力 invite */
 export async function createAcnProductionTaskOnly(args: {
   type: AcnProductionType;
   projectId: string;
   projectName: string;
   ownerUserId: string;
   input: Record<string, unknown>;
-}): Promise<AcnTask> {
+  workerAgentIds?: string[] | null;
+  includeDefaultWorker?: boolean;
+}): Promise<{ task: AcnTask; inviteeIds: string[] }> {
   if (!acnProductionConfigured()) {
     throw new Error(
       "ACN production is not configured (need ACN_CHAT_API_KEY, ACN_CHAT_AGENT_ID, ACN_PROD_AGENT_ID, ACN_SUBNET_SLUG)"
     );
+  }
+
+  const inviteeIds = resolveWorkerInvitees({
+    workerAgentIds: args.workerAgentIds,
+    includeDefaultWorker: args.includeDefaultWorker,
+  });
+  if (inviteeIds.length === 0) {
+    throw new Error("No workers to invite: provide workerAgentIds or includeDefaultWorker=true");
   }
 
   const brief =
@@ -111,6 +145,7 @@ export async function createAcnProductionTaskOnly(args: {
     `Studio production task (${args.type}).`,
     `project_id=${args.projectId}`,
     `owner=${args.ownerUserId}`,
+    `workers=${inviteeIds.join(",")}`,
     "",
     brief,
   ]
@@ -121,6 +156,7 @@ export async function createAcnProductionTaskOnly(args: {
     throw new Error("Task description too short");
   }
 
+  // max_participants=1:多人被 invite,先 accept 的一人干活(主 comiclaw 作 fallback)
   const body = {
     title,
     description,
@@ -140,9 +176,12 @@ export async function createAcnProductionTaskOnly(args: {
         type: args.type,
         input: args.input,
         charge_idempotency_key_prefix: "comiclaw:gen:",
+        worker_agent_ids: inviteeIds,
       },
       creator_agent_id: ACN_CHAT_AGENT_ID(),
-      worker_agent_id: ACN_PROD_AGENT_ID(),
+      // 兼容旧工人 skill:主候选放第一个;完整列表见 worker_agent_ids
+      worker_agent_id: inviteeIds[0],
+      worker_agent_ids: inviteeIds,
     },
   };
 
@@ -151,5 +190,6 @@ export async function createAcnProductionTaskOnly(args: {
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`ACN create task failed: ${await readError(res)}`);
-  return (await res.json()) as AcnTask;
+  const task = (await res.json()) as AcnTask;
+  return { task, inviteeIds };
 }

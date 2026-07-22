@@ -230,14 +230,27 @@ const generateImageInputSchema = z.object({
   prompt: nonEmpty.max(4000),
 });
 
+/** 额外指派的 ACN 工人(可多选);默认仍会 invite 主 comiclaw 作 fallback */
+const workerInviteFields = {
+  workerAgentIds: z
+    .array(z.string().trim().min(8).max(128))
+    .max(8)
+    .optional()
+    .describe("额外邀请的 ACN agent_id 列表(用户自有视频 agent 等)"),
+  // 默认 true:始终 invite ACN_PROD_AGENT_ID。自用专属时可 false 且只传 workerAgentIds
+  includeDefaultWorker: z.boolean().optional().default(true),
+};
+
 // 在 Studio 侧发起 ACN 生产任务(编排在 ACN;本地只落 AcnTaskRef 映射)
 export const createAcnProductionTaskSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("WRITE_SCRIPT"),
     input: writeScriptInputSchema,
+    ...workerInviteFields,
   }),
   z.object({
     type: z.literal("GENERATE_IMAGE"),
     input: generateImageInputSchema,
+    ...workerInviteFields,
   }),
 ]);

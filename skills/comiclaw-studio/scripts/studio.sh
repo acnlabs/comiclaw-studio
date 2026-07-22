@@ -129,11 +129,13 @@ usage() {
   get-charges <projectId>               查询本地扣款映射(权威金额以 AgentPlanet 为准)
 
 ACN 生产任务映射(编排在 ACN Task;Studio 只存 acnTaskId↔projectId)
-  submit-acn-task <projectId> '<json>'  建私有 ACN Task 并 invite 生产 Agent
-                                        {type*: WRITE_SCRIPT|GENERATE_IMAGE, input*: {...}}
+  submit-acn-task <projectId> '<json>'  建私有 ACN Task 并 invite 工人
+                                        {type*: WRITE_SCRIPT|GENERATE_IMAGE, input*: {...},
+                                        workerAgentIds?: [acnAgentId…], includeDefaultWorker?: true}
                                         WRITE_SCRIPT input: {brief*, title, style}
                                         GENERATE_IMAGE input: {assetType*: CHARACTER|SCENE|PROP,
                                         name*, prompt*, description}
+                                        默认 invite 主 comiclaw;可加用户自有 agent,先 accept 者干活
   list-acn-tasks <projectId>            列出项目的 ACN 任务映射
   get-acn-task <acnTaskId>              查映射 + ACN 实时状态(?live=0 可跳过 ACN)
 EOF
