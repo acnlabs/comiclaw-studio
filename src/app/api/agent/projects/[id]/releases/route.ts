@@ -1,14 +1,14 @@
 import { prisma } from "@/lib/db";
 import { emitProjectUpdate } from "@/lib/events";
 import { syncProjectToWork } from "@/lib/publish";
-import { withAgentAuth, parseBody } from "@/lib/api";
+import { withProjectWorkerAuth, parseBody } from "@/lib/api";
 import { notFoundJson } from "@/lib/auth";
 import { createReleaseSchema } from "@/lib/schemas";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 // 新增发行记录
-export const POST = withAgentAuth(async (req, ctx: Ctx) => {
+export const POST = withProjectWorkerAuth(async (req, ctx: Ctx) => {
   const { id } = await ctx.params;
   const body = await parseBody(req, createReleaseSchema);
 

@@ -1,11 +1,11 @@
 import { prisma } from "@/lib/db";
-import { withAgentAuth } from "@/lib/api";
+import { withProjectWorkerAuth } from "@/lib/api";
 import { notFoundJson } from "@/lib/auth";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 // agent 读取项目批注(默认只看未处理的;?status=all 看全部)
-export const GET = withAgentAuth(async (req, ctx: Ctx) => {
+export const GET = withProjectWorkerAuth(async (req, ctx: Ctx) => {
   const { id } = await ctx.params;
   const project = await prisma.project.findUnique({ where: { id }, select: { id: true } });
   if (!project) return notFoundJson();

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { withAgentAuth, parseBody } from "@/lib/api";
+import { withProjectWorkerAuth, parseBody } from "@/lib/api";
 import { notFoundJson, badRequest } from "@/lib/auth";
 import { chargeCreditsSchema } from "@/lib/schemas";
 import { chargeWalletUsage } from "@/lib/agentplanet";
@@ -43,7 +43,7 @@ function consumptionFromRef(
 // 生产用量按次扣款:工人上报 action+units,Studio 按价目表定价后向项目所有者扣款。
 // 钱的权威账本在 AgentPlanet;本地 GenerationChargeRef 只是 jobId↔txn 映射。
 // 归属人由服务端从项目读取,不接受调用方指定付款人。
-export const POST = withAgentAuth(async (req, ctx: Ctx) => {
+export const POST = withProjectWorkerAuth(async (req, ctx: Ctx) => {
   const { id } = await ctx.params;
   const body = await parseBody(req, chargeCreditsSchema);
 
@@ -274,7 +274,7 @@ export const POST = withAgentAuth(async (req, ctx: Ctx) => {
 
 // 查询这个项目已经发起过的生成任务扣款(排障用的本地关联记录);
 // 权威金额/余额以 AgentPlanet 的 Transaction 为准,这里不做汇总统计。
-export const GET = withAgentAuth(async (_req, ctx: Ctx) => {
+export const GET = withProjectWorkerAuth(async (_req, ctx: Ctx) => {
   const { id } = await ctx.params;
   const project = await prisma.project.findUnique({ where: { id }, select: { id: true } });
   if (!project) return notFoundJson();

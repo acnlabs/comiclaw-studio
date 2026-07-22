@@ -1,13 +1,13 @@
 import { prisma } from "@/lib/db";
 import { emitProjectUpdate } from "@/lib/events";
-import { withAgentAuth, parseBody } from "@/lib/api";
+import { withProjectWorkerAuth, parseBody } from "@/lib/api";
 import { notFoundJson } from "@/lib/auth";
 import { createAssetSchema } from "@/lib/schemas";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 // 创建资产(可携带首版设定图)
-export const POST = withAgentAuth(async (req, ctx: Ctx) => {
+export const POST = withProjectWorkerAuth(async (req, ctx: Ctx) => {
   const { id } = await ctx.params;
   const body = await parseBody(req, createAssetSchema);
 

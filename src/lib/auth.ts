@@ -26,8 +26,18 @@ export function checkAdminKey(key: string | undefined | null): boolean {
   return safeEqual(key, expected);
 }
 
+export function extractBearer(req: Request): string | null {
+  const header = req.headers.get("authorization") ?? "";
+  const token = header.replace(/^Bearer\s+/i, "").trim();
+  return token || null;
+}
+
 export function unauthorized() {
   return Response.json({ error: "Unauthorized" }, { status: 401 });
+}
+
+export function forbidden(message = "Forbidden") {
+  return Response.json({ error: message }, { status: 403 });
 }
 
 export function badRequest(message: string) {

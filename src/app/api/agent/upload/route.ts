@@ -1,5 +1,6 @@
 import { uploadFile } from "@/lib/storage";
-import { checkApiKey, unauthorized, badRequest, serverError } from "@/lib/auth";
+import { checkApiKey, badRequest, serverError } from "@/lib/auth";
+import { authorizeProjectWorker, readAcnTaskIdHeader } from "@/lib/acnAuth";
 
 export const runtime = "nodejs";
 
@@ -10,14 +11,26 @@ const ALLOWED_MIME =
 // 消毒文件名:仅保留基础名,过滤危险字符,限制长度
 function sanitizeFilename(name: string): string {
   const base = name.split(/[/\\]/).pop() ?? "upload";
-  const cleaned = base.replace(/[^\w.\-]/g, "_").slice(0, 100);
+  const cleaned = base.replace(/[^\w.\-]+/g, "_").slice(0, 100);
   return cleaned || "upload";
 }
 
 // Agent 上传媒体文件(图片或视频),返回公网 URL
-// 存储后端由环境变量 STORAGE_PROVIDER 控制:blob(默认) | oss | cos
+// - STUDIO_API_KEY: 全权限上传
+// - ACN worker: 必须带 X-Acn-Task-Id + X-Project-Id(任务映射校验)
 export async function POST(req: Request) {
-  if (!checkApiKey(req)) return unauthorized();
+  let projectIdForWorker: string | null = null;
+  if (!checkApiKey(req)) {
+    projectIdForWorker = req.headers.get("x-project-id")?.trim() || null;
+    if (!projectIdForWorker) {
+      return badRequest("ACN workers must send X-Project-Id and X-Acn-Task-Id for upload");
+    }
+    if (!readAcnTaskIdHeader(req)) {
+      return badRequest("ACN workers must send X-Acn-Task-Id for upload");
+    }
+    const auth = await authorizeProjectWorker(req, projectIdForWorker);
+    if (auth instanceof Response) return auth;
+  }
 
   const contentType = req.headers.get("content-type") ?? "";
 
