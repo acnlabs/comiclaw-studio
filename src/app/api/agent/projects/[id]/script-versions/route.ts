@@ -1,13 +1,13 @@
 import { prisma } from "@/lib/db";
 import { emitProjectUpdate } from "@/lib/events";
-import { withAgentAuth, parseBody, withRetry } from "@/lib/api";
+import { withProjectWorkerAuth, parseBody, withRetry } from "@/lib/api";
 import { notFoundJson } from "@/lib/auth";
 import { scriptVersionSchema } from "@/lib/schemas";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 // 推送新版剧本(版本号自动递增,并发安全)
-export const POST = withAgentAuth(async (req, ctx: Ctx) => {
+export const POST = withProjectWorkerAuth(async (req, ctx: Ctx) => {
   const { id } = await ctx.params;
   const body = await parseBody(req, scriptVersionSchema);
 

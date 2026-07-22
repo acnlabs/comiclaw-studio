@@ -1,7 +1,16 @@
-import { checkApiKey, unauthorized } from "@/lib/auth";
+import { authenticateStudioOrAcnAgent } from "@/lib/acnAuth";
 
-// 技能自检端点:验证地址与密钥。旧部署快照没有此路由(404),可用于识别过期地址。
+// 技能自检:STUDIO_API_KEY 或工人自己的 ACN Bearer 均可。
 export async function GET(req: Request) {
-  if (!checkApiKey(req)) return unauthorized();
-  return Response.json({ ok: true, service: "comiclaw-studio" });
+  const auth = await authenticateStudioOrAcnAgent(req);
+  if (auth instanceof Response) return auth;
+  if (auth.kind === "studio_key") {
+    return Response.json({ ok: true, service: "comiclaw-studio", auth: "studio_key" });
+  }
+  return Response.json({
+    ok: true,
+    service: "comiclaw-studio",
+    auth: "acn_agent",
+    agentId: auth.agentId,
+  });
 }

@@ -1,23 +1,42 @@
 #!/usr/bin/env bash
-# ComicLaw Studio API 客户端(供 OpenClaw 实例调用)
-# 依赖环境变量:
-#   STUDIO_BASE_URL  Studio 部署地址,如 https://studio.example.com
-#   STUDIO_API_KEY   Agent API 密钥
+# ComicLaw Studio API 客户端(供 OpenClaw / ACN 工人调用)
+# 鉴权二选一:
+#   STUDIO_API_KEY  官方编排/运维全权限
+#   ACN_API_KEY     开放工人(自己的 ACN 身份);写项目时还需 ACN_TASK_ID
+# 可选:
+#   STUDIO_BASE_URL 默认 https://studio.comiclaw.acnlabs.org
+#   ACN_TASK_ID     工人绑定的 ACN task id → 自动加 X-Acn-Task-Id
 set -euo pipefail
 
 STUDIO_BASE_URL="${STUDIO_BASE_URL:-https://studio.comiclaw.acnlabs.org}"
 
-if [[ -z "${STUDIO_API_KEY:-}" ]]; then
-  echo "error: STUDIO_API_KEY must be set" >&2
+if [[ -n "${STUDIO_API_KEY:-}" ]]; then
+  AUTH_BEARER="$STUDIO_API_KEY"
+  AUTH_MODE="studio"
+elif [[ -n "${ACN_API_KEY:-}" ]]; then
+  AUTH_BEARER="$ACN_API_KEY"
+  AUTH_MODE="acn"
+else
+  echo "error: set STUDIO_API_KEY (official) or ACN_API_KEY (open worker)" >&2
   exit 1
 fi
 
 BASE="${STUDIO_BASE_URL%/}"
 
+require_worker_task() {
+  if [[ "$AUTH_MODE" == "acn" && -z "${ACN_TASK_ID:-}" ]]; then
+    echo "error: ACN workers must set ACN_TASK_ID for this command" >&2
+    exit 1
+  fi
+}
+
 call() {
   local method="$1" path="$2" body="${3:-}"
   # --fail-with-body: HTTP 4xx/5xx 非 0 退出但仍打印响应体(便于读 402 submitHint)
-  local args=(-sS --fail-with-body -X "$method" "$BASE$path" -H "Authorization: Bearer $STUDIO_API_KEY")
+  local args=(-sS --fail-with-body -X "$method" "$BASE$path" -H "Authorization: Bearer $AUTH_BEARER")
+  if [[ "$AUTH_MODE" == "acn" && -n "${ACN_TASK_ID:-}" ]]; then
+    args+=(-H "X-Acn-Task-Id: $ACN_TASK_ID")
+  fi
   if [[ -n "$body" ]]; then
     args+=(-H "Content-Type: application/json" -d "$body")
   fi
@@ -123,12 +142,13 @@ EOF
 cmd="${1:-}"
 case "$cmd" in
   ping)
-    # 自检:验证 STUDIO_BASE_URL 与 STUDIO_API_KEY 配置是否正确
+    # 自检:验证 STUDIO_BASE_URL 与鉴权(Studio key 或 ACN key)
     echo "STUDIO_BASE_URL = $BASE"
-    code=$(curl -s -o /dev/null -w "%{http_code}" "$BASE/api/agent/ping" -H "Authorization: Bearer $STUDIO_API_KEY")
+    echo "AUTH_MODE = $AUTH_MODE"
+    code=$(curl -s -o /dev/null -w "%{http_code}" "$BASE/api/agent/ping" -H "Authorization: Bearer $AUTH_BEARER")
     case "$code" in
-      200) echo "OK ($code): 地址与密钥均正确" ;;
-      401) echo "FAIL ($code): 地址正确,但 STUDIO_API_KEY 错误" ;;
+      200) echo "OK ($code): 地址与鉴权均正确" ;;
+      401) echo "FAIL ($code): 地址正确,但 Bearer 无效(检查 STUDIO_API_KEY / ACN_API_KEY)" ;;
       404) echo "FAIL ($code): STUDIO_BASE_URL 指向了旧部署或错误地址,应为 https://studio.comiclaw.acnlabs.org" ;;
       000) echo "FAIL: 网络不可达(出站白名单未放行该域名?)" ;;
       *)   echo "FAIL ($code)" ;;
@@ -136,23 +156,24 @@ case "$cmd" in
     ;;
   list-projects)   call GET "/api/agent/projects" ;;
   create-project)  call POST "/api/agent/projects" "$2" ;;
-  get-project)     call GET "/api/agent/projects/$2" ;;
-  update-project)  call PATCH "/api/agent/projects/$2" "$3" ;;
-  set-stage)       call PATCH "/api/agent/projects/$2" "{\"currentStage\":\"$3\"}" ;;
+  get-project)     require_worker_task; call GET "/api/agent/projects/$2" ;;
+  update-project)  require_worker_task; call PATCH "/api/agent/projects/$2" "$3" ;;
+  set-stage)       require_worker_task; call PATCH "/api/agent/projects/$2" "{\"currentStage\":\"$3\"}" ;;
   set-status)
     # 更新实时状态条(客户页面顶部实时显示);传空字符串清除
+    require_worker_task
     note="${3:-}"
     call PATCH "/api/agent/projects/$2" "{\"statusNote\":$(python3 -c "import json,sys;print(json.dumps(sys.argv[1]))" "$note")}"
     ;;
-  push-script)     call POST "/api/agent/projects/$2/script-versions" "$3" ;;
-  add-asset)       call POST "/api/agent/projects/$2/assets" "$3" ;;
-  asset-version)   call POST "/api/agent/assets/$2/versions" "$3" ;;
-  add-shot)        call POST "/api/agent/projects/$2/shots" "$3" ;;
-  update-shot)     call PATCH "/api/agent/shots/$2" "$3" ;;
-  shot-version)    call POST "/api/agent/shots/$2/versions" "$3" ;;
-  push-film)       call POST "/api/agent/projects/$2/film-versions" "$3" ;;
-  add-release)     call POST "/api/agent/projects/$2/releases" "$3" ;;
-  update-release)  call PATCH "/api/agent/releases/$2" "$3" ;;
+  push-script)     require_worker_task; call POST "/api/agent/projects/$2/script-versions" "$3" ;;
+  add-asset)       require_worker_task; call POST "/api/agent/projects/$2/assets" "$3" ;;
+  asset-version)   require_worker_task; call POST "/api/agent/assets/$2/versions" "$3" ;;
+  add-shot)        require_worker_task; call POST "/api/agent/projects/$2/shots" "$3" ;;
+  update-shot)     require_worker_task; call PATCH "/api/agent/shots/$2" "$3" ;;
+  shot-version)    require_worker_task; call POST "/api/agent/shots/$2/versions" "$3" ;;
+  push-film)       require_worker_task; call POST "/api/agent/projects/$2/film-versions" "$3" ;;
+  add-release)     require_worker_task; call POST "/api/agent/projects/$2/releases" "$3" ;;
+  update-release)  require_worker_task; call PATCH "/api/agent/releases/$2" "$3" ;;
   publish-work)    call POST "/api/agent/works" "$2" ;;
   create-character) call POST "/api/agent/characters" "$2" ;;
   set-work-cast)    call POST "/api/agent/works/$2/cast" "$3" ;;
@@ -160,8 +181,8 @@ case "$cmd" in
   update-character) call PATCH "/api/agent/characters/$2" "$3" ;;
   character-listing) call GET "/api/agent/characters/$2/listing" ;;
   delete-character) call DELETE "/api/agent/characters/$2" ;;
-  list-comments)   call GET "/api/agent/projects/$2/comments${3:+?status=$3}" ;;
-  resolve-comment) call PATCH "/api/agent/comments/$2" '{"status":"RESOLVED"}' ;;
+  list-comments)   require_worker_task; call GET "/api/agent/projects/$2/comments${3:+?status=$3}" ;;
+  resolve-comment) require_worker_task; call PATCH "/api/agent/comments/$2" '{"status":"RESOLVED"}' ;;
   delete-project)  call DELETE "/api/agent/projects/$2" ;;
   delete-asset)    call DELETE "/api/agent/assets/$2" ;;
   delete-shot)     call DELETE "/api/agent/shots/$2" ;;
@@ -171,23 +192,32 @@ case "$cmd" in
   delete-work)     call DELETE "/api/agent/works/$2" ;;
   pricing)         call GET "/api/agent/pricing" ;;
   quote)           call POST "/api/agent/pricing" "$2" ;;
-  charge)          call POST "/api/agent/projects/$2/charge" "$3" ;;
-  get-charges)     call GET "/api/agent/projects/$2/charge" ;;
+  charge)          require_worker_task; call POST "/api/agent/projects/$2/charge" "$3" ;;
+  get-charges)     require_worker_task; call GET "/api/agent/projects/$2/charge" ;;
   submit-acn-task) call POST "/api/agent/projects/$2/acn-tasks" "$3" ;;
-  list-acn-tasks)  call GET "/api/agent/projects/$2/acn-tasks" ;;
+  list-acn-tasks)  require_worker_task; call GET "/api/agent/projects/$2/acn-tasks" ;;
   get-acn-task)    call GET "/api/agent/acn-tasks/$2" ;;
   upload-file)
     # 上传本地媒体文件到 Studio 存储,返回公网 URL
     # 用法: studio.sh upload-file <文件路径> [自定义文件名]
+    # ACN 工人还需: ACN_TASK_ID + 第 4 参 projectId(或环境变量 PROJECT_ID)
     # 限制:单文件 ≤ 200MB;支持图片(png/jpeg/gif/webp/svg)、视频(mp4/webm/mov)、音频(mp3/wav/ogg/aac/m4a)
     filepath="$2"
     fname="${3:-$(basename "$filepath")}"
+    project_id="${4:-${PROJECT_ID:-}}"
     if [[ ! -f "$filepath" ]]; then
       echo "error: file not found: $filepath" >&2; exit 1
     fi
-    curl -sS -X POST "$BASE/api/agent/upload" \
-      -H "Authorization: Bearer $STUDIO_API_KEY" \
-      -F "file=@${filepath};filename=${fname}"
+    up_args=(-sS --fail-with-body -X POST "$BASE/api/agent/upload" -H "Authorization: Bearer $AUTH_BEARER")
+    if [[ "$AUTH_MODE" == "acn" ]]; then
+      require_worker_task
+      if [[ -z "$project_id" ]]; then
+        echo "error: ACN upload needs projectId (arg4 or PROJECT_ID)" >&2
+        exit 1
+      fi
+      up_args+=(-H "X-Acn-Task-Id: $ACN_TASK_ID" -H "X-Project-Id: $project_id")
+    fi
+    curl "${up_args[@]}" -F "file=@${filepath};filename=${fname}"
     echo
     ;;
   ""|-h|--help|help) usage ;;
