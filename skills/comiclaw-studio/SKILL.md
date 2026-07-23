@@ -124,7 +124,10 @@ $S set-stage <projectId> ASSETS
 # 3. Assets — charge before Jimeng; stop on 402
 $S charge <projectId> '{"action":"asset_generate","units":1,"provider":"jimeng","idempotencyKey":"comiclaw:gen:<jobId>"}'
 IMG=$(upload /path/to/character.png)
-$S add-asset <projectId> "{\"type\":\"CHARACTER\",\"name\":\"Hero\",\"imageUrl\":\"$IMG\"}"
+$S add-asset <projectId> "{\"type\":\"CHARACTER\",\"name\":\"Hero\",\"imageUrl\":\"$IMG\",\"notes\":\"First draft\"}"
+# Client revision → new asset version:
+IMG2=$(upload /path/to/character_v2.png)
+$S asset-version <assetId> "{\"imageUrl\":\"$IMG2\",\"notes\":\"Hair per feedback\"}"
 $S set-stage <projectId> STORYBOARD
 
 # 4. Shots (order = sequence; assetIds reference project assets)
