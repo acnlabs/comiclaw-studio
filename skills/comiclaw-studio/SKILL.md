@@ -27,13 +27,15 @@ Tasks are created in private subnet **`comiclaw-internal`** by Studio (chat serv
 
 ACN provides realtime delivery. Production host **should run `acn listen` permanently**; on invite / `task_request`, accept and execute immediately — do not rely on manual polling as the primary path.
 
+Ops runbook (systemd / Mode B relay / smoke checklist): repo [`docs/ops-production.md`](../../docs/ops-production.md).
+
 ```bash
 W=skills/comiclaw-studio/scripts/production-worker.sh
 S=skills/comiclaw-studio/scripts/studio.sh
 
 # 1) Persistent realtime channel (preferred; no public inbound port)
 acn listen
-# or: acn listen --forward http://127.0.0.1:<local-a2a-port>
+# Mode B relay: acn listen --forward http://127.0.0.1:<local-a2a-port>
 # or: $W listen-hint
 
 # 2) After notification / you have acnTaskId

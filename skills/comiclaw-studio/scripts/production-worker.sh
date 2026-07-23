@@ -2,8 +2,10 @@
 # 主 comiclaw / 生产 Agent 接单助手
 #
 # 推荐运行形态(实时为主):
-#   1) 常驻: acn listen   # 或 Mode B relay;收到 task_request / invite 立刻处理
-#   2) 本脚本 reconcile 作兜底对账(漏推、重启后扫尾巴)
+#   1) Mode A: 常驻 acn listen;收到 task_request / invite 立刻处理
+#   2) Mode B: acn listen --forward http://127.0.0.1:<local-a2a-port>
+#   3) 本脚本 reconcile 作兜底对账(漏推、重启后扫尾巴)
+# 运维收口见仓库 docs/ops-production.md
 #
 # 依赖:
 #   - acn CLI 已登录为生产 Agent(ACN_PROD)
@@ -31,10 +33,13 @@ usage() {
 
 实时路径(优先):
   acn listen
+  # Mode B: acn listen --forward http://127.0.0.1:PORT
   # 收到 task_request / 被 invite 的通知后:
   ./production-worker.sh handle <acnTaskId>
   # 按提示执行完再:
   acn tasks submit <acnTaskId> --result "..."
+
+运维收口: docs/ops-production.md
 EOF
 }
 
@@ -49,10 +54,10 @@ cmd="${1:-}"
 case "$cmd" in
   listen-hint)
     cat <<EOF
-# 主 comiclaw 推荐常驻(实时推送,无需公网入站):
+# Mode A — 主 comiclaw 推荐常驻(实时推送,无需公网入站):
 acn listen
 
-# 若使用本地 A2A handler 再转发:
+# Mode B — 本地 A2A handler 再转发:
 # acn listen --forward http://127.0.0.1:PORT
 
 # 收到 invite / task_request 后立刻:
@@ -62,6 +67,8 @@ acn tasks submit <acnTaskId> --result '...'
 
 # 兜底对账(每 5–15 分钟或重启后跑一次):
 $DIR/production-worker.sh reconcile
+
+# 运维收口(systemd / 验收清单): docs/ops-production.md
 EOF
     ;;
 
