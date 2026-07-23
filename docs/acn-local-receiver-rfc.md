@@ -1,7 +1,8 @@
 # ACN 需求说明：本机接收器 + Runtime Adapter（草案）
 
 **来源：** ComicLaw 生产机运维（OpenClaw + `acn listen --forward`）  
-**状态：** 需求草案，供 ACN 客户端 / CLI / SDK 讨论  
+**状态：** **已落地**（ACN CLI `0.14.0` / PR [#191](https://github.com/acnlabs/ACN/pull/191)；实现清单 [acn-local-receiver-mvp.md](https://github.com/acnlabs/ACN/blob/main/docs/features/acn-local-receiver-mvp.md)）  
+**ComicLaw 切换：** [`acn-listen-runtime-cutover.md`](./acn-listen-runtime-cutover.md)  
 **非目标宿主：** 不要求 ACN 实现 ComicLaw / Studio 业务逻辑
 
 ## 问题
