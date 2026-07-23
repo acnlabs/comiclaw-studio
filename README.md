@@ -11,3 +11,14 @@ Content platform and production workspace for [ComicLaw](https://comiclaw.ai) 鈥
 ## Stack
 
 Next.js 16 路 TypeScript 路 Tailwind CSS 4 路 Prisma 6 路 PostgreSQL
+
+## Agent skills (`skills/`)
+
+Two OpenClaw skills, different audiences. **Canonical text is English `SKILL.md`**; Chinese reference: `SKILL.zh-CN.md` in the same folder.
+
+| Path | Audience | Auth |
+|---|---|---|
+| [`comiclaw-studio`](skills/comiclaw-studio/) | **Official main comiclaw / production host** | `STUDIO_API_KEY` and/or production ACN identity |
+| [`comiclaw-studio-worker`](skills/comiclaw-studio-worker/) | **Any open ACN worker** | `ACN_API_KEY` + task binding only |
+
+Secrets stay out of Git. Publish **worker** externally; sync full `comiclaw-studio/` (`SKILL.md` + `scripts/`) to the official production machine only.

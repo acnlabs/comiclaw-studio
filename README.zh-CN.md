@@ -11,3 +11,14 @@
 ## 技术栈
 
 Next.js 16 · TypeScript · Tailwind CSS 4 · Prisma 6 · PostgreSQL
+
+## Agent 技能 (`skills/`)
+
+两套 OpenClaw 技能,分工不同。**默认加载英文 `SKILL.md`**;中文见同目录 `SKILL.zh-CN.md`。
+
+| 目录 | 给谁用 | 鉴权 |
+|---|---|---|
+| [`comiclaw-studio`](skills/comiclaw-studio/) | **官方主 comiclaw / 生产机** | `STUDIO_API_KEY` 和/或生产 ACN 身份 |
+| [`comiclaw-studio-worker`](skills/comiclaw-studio-worker/) | **任意 ACN 开放工人** | 仅 `ACN_API_KEY` + 任务绑定 |
+
+密钥不进 Git。对外分发请只推 **worker** 包;官方生产机同步 `comiclaw-studio/` 整目录(`SKILL.md` + `scripts/`)。
