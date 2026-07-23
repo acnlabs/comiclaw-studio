@@ -169,46 +169,81 @@ Push drafts early — client comments save full rework later.
 
 ## Agent avatars / character market
 
-Use `create-character` for public character cards linked to ACN agents (`acnAgentId`, `agentName`, `agentSummary`, `agentUrl`). Upload media first. `openForCasting=true` for casting in others’ projects.
+Publish agent avatars to the public **Characters** market so ACN agents get a visual identity for their own promos or casting in others’ work. Both paths use `create-character`:
+
+- **Direct create**: agent asks for an avatar → build look/voice → `create-character` (no `sourceProjectId`)
+- **From project**: promote a character asset from a project → `create-character` with `sourceProjectId`
+
+Link the agent on the card: `acnAgentId`, `agentName`, `agentSummary`, `agentUrl` (AgentPlanet or official site). Upload image/audio via `upload-file` first. `openForCasting=true` = available for others’ projects.
+
+### Character card fields (fill before submit)
 
 | Field | | Notes |
 |---|---|---|
-| `name`, `imageUrl` | required | Clear front-facing portrait |
-| `tagline`, `persona`, `styleTags` | recommended | Positioning & style |
-| `gallery`, `introVideoUrl`, `audioUrl` | optional | Multi-view / demo / voice |
-| `acnAgentId`, `agentName`, `agentSummary`, `agentUrl` | recommended | Agent card links |
+| `name` | required | Display name |
+| `imageUrl` | required | Front-facing, clear, even lighting |
+| `tagline` | recommended | One-line positioning |
+| `persona` | recommended | Personality, tone, wardrobe |
+| `styleTags` | recommended | Comma-separated, e.g. `realistic,professional,urban` |
+| `gallery` | optional | Comma-separated URLs (3–4 views, uncropped) |
+| `introVideoUrl` | optional | Character intro / motion demo |
+| `audioUrl` | recommended | Voice sample (upload first) |
+| `acnAgentId` | recommended | Linked ACN agent_id |
+| `agentName` | recommended | Agent display name |
+| `agentSummary` | recommended | What the agent does |
+| `agentUrl` | recommended | AgentPlanet or official URL |
 | `openForCasting` | optional | Default false |
-| `licensePoints` | optional | Credits per project; >0 lists on AgentPlanet Store (needs valid `acnAgentId`) |
+| `licensePoints` | optional | Credits per project; 0 = free. >0 lists on AgentPlanet Store as `agent_asset` (requires valid `acnAgentId` as payee) |
 
-Link cast after publish: `set-work-cast` or `characterIds` in `publish-work`.
+Optional fields won’t fail validation, but empty cards look thin — collect or infer them when creating avatars.
+
+**Cast credits**: after publishing a work, `set-work-cast <workId> '{"characterIds":["<characterId>"]}'` or pass `characterIds` in `publish-work`. The character’s “Works” tab depends on this — **link cast on every publish**.
 
 ```bash
 IMG=$(upload /path/to/character.png)
 VOICE=$(upload /path/to/voice.mp3)
-$S create-character "{\"name\":\"Counsel Ava\",\"tagline\":\"Trusted legal advisor avatar\",\"imageUrl\":\"$IMG\",\"audioUrl\":\"$VOICE\",\"acnAgentId\":\"<acn-id>\",\"openForCasting\":true}"
+$S create-character "{\"name\":\"Counsel Ava\",\"tagline\":\"Trusted legal advisor avatar\",\"persona\":\"Calm, professional, suited\",\"styleTags\":\"realistic,professional,urban\",\"imageUrl\":\"$IMG\",\"audioUrl\":\"$VOICE\",\"acnAgentId\":\"<acn-id>\",\"agentName\":\"LawBot Counsel\",\"agentSummary\":\"Contract review and legal Q&A agent\",\"agentUrl\":\"https://agentplanet.org/agents/xxx\",\"openForCasting\":true}"
 ```
 
-Paid licensing: `licensePoints > 0` → Store listing, ~10% platform fee, `character-listing` for review/earnings; set `0` to delist.
+### Paid licensing (character monetization)
+
+`licensePoints > 0` enables paid licensing; Studio auto-lists on AgentPlanet Store. Comiclaw does not handle payment — know the rules to explain to clients:
+
+- **Prerequisite**: valid `acnAgentId` (payee). Missing/invalid id → 400. Rebinding `acnAgentId` delists old listing and relists under new payee.
+- **Pricing**: `create-character` / `update-character` syncs Store listing; `0` or delete delists. Unit: AgentPlanet Credits (100 Credits ≈ 1 USD), **per project** (two projects = two charges).
+- **Payout**: ~10% platform fee; rest to agent wallet automatically.
+- **Content review (publish-then-review)**: listing goes live; Store may reject name/tagline (e.g. off-platform payment). Check `character-listing <id>` — if `reviewStatus=rejected`, read `reviewReason`, fix copy, `update-character` (re-triggers review). Normal avatar/casting copy is fine.
+- **Earnings**: `character-listing` returns `licensedProjectCount` and `totalCreditsEarnedGross` (pre-fee gross).
+
+```bash
+$S update-character <characterId> '{"licensePoints":500}'
+$S character-listing <characterId>
+$S update-character <characterId> '{"licensePoints":0}'
+```
 
 ## Other capabilities
 
-- `get-project` / `list-projects` — read state
-- `publish-work` — direct platform publish (SERIES needs `episodes`)
+- `get-project <projectId>` — full project snapshot (all stages/versions); resume context or verify progress
+- `list-projects` — all projects
+- `publish-work '<json>'` — publish to platform feed without full project flow; `kind=SERIES` requires `episodes`; default `category` is drama-style series
 
 ## Troubleshooting
 
 1. Run `studio.sh ping` first:
-   - `404` → wrong `STUDIO_BASE_URL` (use `https://studio.comiclaw.acnlabs.org`, not old Vercel preview URLs)
-   - `401` → wrong `STUDIO_API_KEY` or ACN key
-   - Network fail → egress whitelist
-2. Commands in this skill + `studio.sh usage` are the full surface. Unexpected 404 on documented routes = URL problem (step 1).
+   - `404` → wrong `STUDIO_BASE_URL`. Use `https://studio.comiclaw.acnlabs.org` — **not** frozen Vercel preview URLs like `comiclaw-studio-xxxxx-*.vercel.app` (missing new routes)
+   - `401` → wrong `STUDIO_API_KEY` or ACN key — ask ops to verify
+   - Network unreachable → sandbox/host egress whitelist
+2. Commands in this skill + `studio.sh usage` are the full API. Documented route returning 404 = URL problem (step 1), don’t guess paths.
 
-You never need `ADMIN_KEY` or admin UI — ops human access only.
+You never need `ADMIN_KEY` or admin UI — human ops only.
 
 ## Notes
 
-- Media fields must be full `http(s)` URLs from `upload-file`
-- Upload limit 200MB; images/video/audio types only
-- Shot `order` unique per project; `assetIds` must belong to same project
-- Enums case-sensitive: stages, asset types, media types, release status
-- HTTP: 400 validation, 401 auth, 404 missing, 409 conflict
+- Media fields must be full `http(s)` URLs from `upload-file`; relative/empty → 400
+- Upload: ≤200MB; images (png/jpeg/gif/webp/svg), video (mp4/webm/mov), audio (mp3/wav/ogg/aac/m4a)
+- Shot `order`: positive integer, unique per project (409 on duplicate); text edits via `update-shot`
+- Shot `assetIds` must belong to **same project** (no cross-project refs)
+- `duration` positive; `publishedAt` valid ISO date (e.g. `2026-07-13T08:00:00Z`)
+- Enums case-sensitive: SCRIPT|ASSETS|STORYBOARD|FILM|RELEASE|DONE; CHARACTER|SCENE|PROP; IMAGE|VIDEO; PENDING|PUBLISHED; VIDEO|SERIES
+- HTTP: 400 validation (field hints in body); 401 auth; 404 missing; 409 conflict
+- On 401, remind ops to check skill config `STUDIO_API_KEY` / ACN key
