@@ -191,3 +191,5 @@ tail -f ~/logs/comiclaw/a2a-forward.log ~/logs/comiclaw/reconcile.log
 ```
 
 说明：`:8081` stub **只保证 listen forward 不打空**；真正自动接单仍靠 OpenClaw 消费 A2A / 或人工·Agent 按 `handle` 执行。长期应用真实 A2A handler 替换 stub，或改为无 `--forward` 的 listen + Agent 侧消费。
+
+**平台方向：** 「ACN forward → 叫醒宿主 runtime」应是 ACN 客户端通用能力，不是 ComicLaw 私有 bridge。需求草案见 [`acn-local-receiver-rfc.md`](./acn-local-receiver-rfc.md)。
