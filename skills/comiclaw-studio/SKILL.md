@@ -27,16 +27,20 @@ Tasks are created in private subnet **`comiclaw-internal`** by Studio (chat serv
 
 ACN provides realtime delivery. Production host **should run `acn listen` permanently**; on invite / `task_request`, accept and execute immediately — do not rely on manual polling as the primary path.
 
+Ops runbook / cutover (`--runtime`, systemd, smoke): [`docs/ops-production.md`](../../docs/ops-production.md), [`docs/acn-listen-runtime-cutover.md`](../../docs/acn-listen-runtime-cutover.md). Requires `@acnlabs/acn-cli` ≥ **0.14.0**.
+
 ```bash
 W=skills/comiclaw-studio/scripts/production-worker.sh
 S=skills/comiclaw-studio/scripts/studio.sh
 
-# 1) Persistent realtime channel (preferred; no public inbound port)
-acn listen
-# or: acn listen --forward http://127.0.0.1:<local-a2a-port>
+# 1) Persistent realtime channel (preferred; CLI answers A2A + wakes OpenClaw)
+acn listen --runtime http \
+  --wake-url http://127.0.0.1:<openclaw-port>/hooks/agent \
+  --wake-header 'Authorization: Bearer …'
 # or: $W listen-hint
+# Compat only: acn listen --forward http://127.0.0.1:<local-a2a-port>
 
-# 2) After notification / you have acnTaskId
+# 2) After wake / notification / you have acnTaskId
 $W handle <acnTaskId>          # print metadata.studio + checklist
 acn tasks accept <acnTaskId>   # accept task
 # …execute WRITE_SCRIPT / GENERATE_IMAGE by type…

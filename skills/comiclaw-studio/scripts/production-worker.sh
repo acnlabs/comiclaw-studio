@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # 主 comiclaw / 生产 Agent 接单助手
 #
-# 推荐运行形态(实时为主):
-#   1) 常驻: acn listen   # 或 Mode B relay;收到 task_request / invite 立刻处理
-#   2) 本脚本 reconcile 作兜底对账(漏推、重启后扫尾巴)
+# 推荐运行形态(实时为主;需 acn CLI ≥ 0.14.0):
+#   1) acn listen --runtime http --wake-url <OpenClaw hooks>;被叫醒后立刻处理
+#   2) 兼容: acn listen --forward http://127.0.0.1:<local-a2a-port>(不推荐生产)
+#   3) 本脚本 reconcile 作兜底对账(漏推、重启后扫尾巴)
+# 运维收口 / 切换: docs/ops-production.md 、 docs/acn-listen-runtime-cutover.md
 #
 # 依赖:
 #   - acn CLI 已登录为生产 Agent(ACN_PROD)
@@ -29,12 +31,16 @@ usage() {
   accept <acnTaskId>       accept 指定任务
   handle <acnTaskId>       show + 打印按 type 应执行的步骤清单(不自动调即梦)
 
-实时路径(优先):
-  acn listen
-  # 收到 task_request / 被 invite 的通知后:
+实时路径(优先; CLI ≥ 0.14.0):
+  acn listen --runtime http --wake-url http://127.0.0.1:PORT/hooks/agent \
+    --wake-header 'Authorization: Bearer …'
+  # 收到 wake / task_request / invite 后:
   ./production-worker.sh handle <acnTaskId>
   # 按提示执行完再:
   acn tasks submit <acnTaskId> --result "..."
+
+运维收口: docs/ops-production.md
+切换说明: docs/acn-listen-runtime-cutover.md
 EOF
 }
 
@@ -49,19 +55,24 @@ cmd="${1:-}"
 case "$cmd" in
   listen-hint)
     cat <<EOF
-# 主 comiclaw 推荐常驻(实时推送,无需公网入站):
-acn listen
+# 推荐 — CLI ≥ 0.14.0:内置 A2A + 叫醒 OpenClaw(无需 :8081 stub):
+acn listen --runtime http \\
+  --wake-url http://127.0.0.1:<openclaw-port>/hooks/agent \\
+  --wake-header 'Authorization: Bearer …'
 
-# 若使用本地 A2A handler 再转发:
+# 兼容(不推荐生产) — 自备本机 A2A 再转发:
 # acn listen --forward http://127.0.0.1:PORT
 
-# 收到 invite / task_request 后立刻:
+# 被叫醒 / 收到 invite / task_request 后立刻:
 $DIR/production-worker.sh handle <acnTaskId>
 # 做完交付物后:
 acn tasks submit <acnTaskId> --result '...'
 
 # 兜底对账(每 5–15 分钟或重启后跑一次):
 $DIR/production-worker.sh reconcile
+
+# 运维收口: docs/ops-production.md
+# 生产机切换: docs/acn-listen-runtime-cutover.md
 EOF
     ;;
 

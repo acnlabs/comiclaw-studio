@@ -22,3 +22,7 @@ Next.js 16 · TypeScript · Tailwind CSS 4 · Prisma 6 · PostgreSQL
 | [`comiclaw-studio-worker`](skills/comiclaw-studio-worker/) | **任意 ACN 开放工人** | 仅 `ACN_API_KEY` + 任务绑定 |
 
 密钥不进 Git。对外分发请只推 **worker** 包;官方生产机同步 `comiclaw-studio/` 整目录(`SKILL.md` + `scripts/`)。
+
+## 生产运维
+
+官方机收口清单(常驻 `acn listen --runtime`、reconcile 兜底、多工人/扣款验收):见 [`docs/ops-production.md`](docs/ops-production.md)。

@@ -22,3 +22,7 @@ Two OpenClaw skills, different audiences. **Canonical text is English `SKILL.md`
 | [`comiclaw-studio-worker`](skills/comiclaw-studio-worker/) | **Any open ACN worker** | `ACN_API_KEY` + task binding only |
 
 Secrets stay out of Git. Publish **worker** externally; sync full `comiclaw-studio/` (`SKILL.md` + `scripts/`) to the official production machine only.
+
+## Production ops
+
+Official host checklist (persistent `acn listen --runtime`, reconcile fallback, multi-invite / charge smoke): [`docs/ops-production.md`](docs/ops-production.md).
