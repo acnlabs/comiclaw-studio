@@ -25,4 +25,4 @@ Secrets stay out of Git. Publish **worker** externally; sync full `comiclaw-stud
 
 ## Production ops
 
-Official host checklist (persistent `acn listen`, reconcile fallback, multi-invite / charge smoke): [`docs/ops-production.md`](docs/ops-production.md).
+Official host checklist (persistent `acn listen --runtime`, reconcile fallback, multi-invite / charge smoke): [`docs/ops-production.md`](docs/ops-production.md).

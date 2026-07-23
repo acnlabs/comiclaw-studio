@@ -25,4 +25,4 @@ Next.js 16 · TypeScript · Tailwind CSS 4 · Prisma 6 · PostgreSQL
 
 ## 生产运维
 
-官方机收口清单(常驻 `acn listen`、reconcile 兜底、多工人/扣款验收):见 [`docs/ops-production.md`](docs/ops-production.md)。
+官方机收口清单(常驻 `acn listen --runtime`、reconcile 兜底、多工人/扣款验收):见 [`docs/ops-production.md`](docs/ops-production.md)。
