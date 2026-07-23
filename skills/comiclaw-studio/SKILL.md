@@ -162,7 +162,7 @@ OpenMontage produces; this skill syncs progress to clients. Push each stage to S
 | client feedback | `list-comments` → rework → `resolve-comment` |
 | publish | `add-release`, PUBLISHED, DONE |
 
-Push drafts early — client comments save full rework later.
+**Principle:** OpenMontage intermediates *are* client-visible progress — push each stage (even drafts) early; timecoded comments prevent full-film rework.
 
 ## Privacy (tell clients when asked)
 
