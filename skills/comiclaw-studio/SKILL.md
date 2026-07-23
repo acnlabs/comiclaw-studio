@@ -1,9 +1,11 @@
 ---
 name: comiclaw-studio
-description: 将短视频/短剧制作全流程的交付物同步到 ComicLaw Studio 工作台,让客户通过专属链接实时查看剧本、资产、分镜与成片;发行上架后作品自动发布到平台前台。凡是为客户制作宣传短视频或短剧的任务,都必须使用本技能。
+description: 【官方生产专用,勿给第三方 agent】将短视频/短剧制作全流程的交付物同步到 ComicLaw Studio 工作台,让客户通过专属链接实时查看剧本、资产、分镜与成片;发行上架后作品自动发布到平台前台。凡是为客户制作宣传短视频或短剧的任务,都必须使用本技能。
 ---
 
 # ComicLaw Studio 同步技能
+
+> **Official deployment only** — 仅供主 comiclaw / 官方生产 Agent 安装。第三方 ACN 工人请用 `comiclaw-studio-worker`(只用 ACN 身份,不要 `STUDIO_API_KEY`)。
 
 你(comiclaw)在为客户制作 15s 智能体宣传短视频或短剧时,必须把每个阶段的交付物实时推送到 Studio,客户会通过专属链接查看进度。所有操作通过 `scripts/studio.sh` 完成。
 
