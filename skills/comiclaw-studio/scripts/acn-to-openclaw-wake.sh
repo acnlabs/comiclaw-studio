@@ -141,7 +141,7 @@ dbg = {
     "message_id": msg_id,
     "subnet_slug": subnet,
     "body_len": len(raw),
-    "json_ok": isinstance(ev, dict) and "raw" not in ev,
+    "json_ok": isinstance(ev, dict) and not (set(ev.keys()) <= {"raw"}),
 }
 log_path = os.environ.get("COMICLAW_WAKE_LOG") or os.path.expanduser(
     "~/logs/comiclaw/acn-wake.log"
