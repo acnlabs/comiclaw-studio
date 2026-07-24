@@ -295,14 +295,17 @@ export async function acceptCastingOrder(orderId: string, buyerId: string): Prom
 // 用户 balance 减少,收款方(comiclaw 智能体) balance 增加。这不是给社区任意
 // agent 用的通用接口——鉴权靠共享的 X-Internal-Token,且 AgentPlanet 侧的
 // SERVICE_CHARGE_ALLOWLIST 限定了 source(=comiclaw-studio) 能替哪个
-// agent_id(=comiclaw) 扣款。
+// agent_id(主 comiclaw 在 AgentPlanet 的 UUID) 扣款。
 //
 // 配置(环境变量,复用 Store 用的同一把内部令牌):
 //   AGENTPLANET_INTERNAL_TOKEN   与 Store 内部端点共享的 X-Internal-Token
-//   AGENTPLANET_AGENT_ID         收款方 agent_id,默认 "comiclaw"
+//   AGENTPLANET_AGENT_ID         收款方 agent_id(AgentPlanet UUID;勿填展示名 "comiclaw")
 //   AGENTPLANET_CHARGE_SOURCE    调用方 source 标识,默认 "comiclaw-studio"
 
-const CHARGE_AGENT_ID = () => process.env.AGENTPLANET_AGENT_ID ?? "comiclaw";
+/** 主 comiclaw 在 AgentPlanet 的收款 agent UUID(不是 ACN id,也不是展示名) */
+const DEFAULT_CHARGE_AGENT_ID = "390287c9-f7cc-4b6c-82b8-ead10409fb0d";
+const CHARGE_AGENT_ID = () =>
+  (process.env.AGENTPLANET_AGENT_ID ?? "").trim() || DEFAULT_CHARGE_AGENT_ID;
 const CHARGE_SOURCE = () => process.env.AGENTPLANET_CHARGE_SOURCE ?? "comiclaw-studio";
 
 export interface WalletChargeSuccess {
