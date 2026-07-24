@@ -177,7 +177,7 @@ function buildTools(sub: string, origin: string, balance: number) {
       },
     }),
 
-    // 窄写:Studio 用对话 Agent 的 ACN key 建私有 Task 并 invite 生产 Agent。
+    // 窄写:Studio 用 comiclaw-studio 的 ACN key 建私有 Task 并 invite 生产 Agent。
     // 客户 cell 零工具;编排在 ACN,本地只存 AcnTaskRef。
     submitProductionJob: tool({
       description:

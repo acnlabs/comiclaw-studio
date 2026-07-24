@@ -1,14 +1,58 @@
 // ACN Task Pool 对接(官方内部生产线编排)。
 //
 // 钱不走 Escrow:use_escrow=false + AgentPlanet /wallet/charge。
+// 建单身份固定为已注册的 **comiclaw-studio** agent(ACN_CHAT_API_KEY / ACN_CHAT_AGENT_ID)。
+// ACN 已废止 system:task-invite;不要用人类 ID 建单。
 // 任务挂 private subnet,建单后 invite 生产 Agent(可多候选 + 主 comiclaw fallback)。
 // 客户 cell 不持有 ACN key。
 
 const ACN_API_URL = () => (process.env.ACN_API_URL ?? "https://api.acnlabs.dev").trim().replace(/\/+$/, "");
+/** comiclaw-studio 建单 agent 的 API key(历史名 CHAT;身份必须是 studio agent) */
 const ACN_CHAT_API_KEY = () => (process.env.ACN_CHAT_API_KEY ?? "").trim();
+/** comiclaw-studio 的 agent_id(如 90f884c1-…) */
 const ACN_CHAT_AGENT_ID = () => (process.env.ACN_CHAT_AGENT_ID ?? "").trim();
 const ACN_PROD_AGENT_ID = () => (process.env.ACN_PROD_AGENT_ID ?? "").trim();
 const ACN_SUBNET_SLUG = () => (process.env.ACN_SUBNET_SLUG ?? "").trim();
+
+let creatorIdentityCheckedAt = 0;
+let creatorIdentityOk = false;
+const CREATOR_IDENTITY_TTL_MS = 5 * 60 * 1000;
+
+/** 确认 ACN_CHAT_API_KEY 对应 comiclaw-studio(ACN_CHAT_AGENT_ID),防止配错人类/其他 agent key */
+async function assertStudioCreatorIdentity(): Promise<void> {
+  const expected = ACN_CHAT_AGENT_ID();
+  const key = ACN_CHAT_API_KEY();
+  if (!expected || !key) {
+    throw new Error("ACN_CHAT_API_KEY / ACN_CHAT_AGENT_ID required (comiclaw-studio agent)");
+  }
+  if (creatorIdentityOk && Date.now() - creatorIdentityCheckedAt < CREATOR_IDENTITY_TTL_MS) {
+    return;
+  }
+  const res = await fetch(`${ACN_API_URL()}/api/v1/agents/me`, {
+    headers: { Authorization: `Bearer ${key}` },
+    cache: "no-store",
+  }).catch(() => null);
+  if (!res || !res.ok) {
+    throw new Error(
+      `ACN creator identity check failed: cannot GET /agents/me with ACN_CHAT_API_KEY (HTTP ${res?.status ?? "network"})`
+    );
+  }
+  const body = (await res.json().catch(() => null)) as {
+    agent_id?: unknown;
+    name?: unknown;
+  } | null;
+  const agentId = typeof body?.agent_id === "string" ? body.agent_id.trim() : "";
+  if (!agentId) {
+    throw new Error("ACN creator identity check failed: /agents/me missing agent_id");
+  }
+  if (agentId !== expected) {
+    throw new Error(
+      `ACN creator identity mismatch: key is agent ${agentId}, but ACN_CHAT_AGENT_ID=${expected} (must be comiclaw-studio)`
+    );
+  }
+  creatorIdentityCheckedAt = Date.now();
+  creatorIdentityOk = true;
+}
 
 export type AcnProductionType = "WRITE_SCRIPT" | "GENERATE_IMAGE";
 
@@ -124,6 +168,7 @@ export async function createAcnProductionTaskOnly(args: {
       "ACN production is not configured (need ACN_CHAT_API_KEY, ACN_CHAT_AGENT_ID, ACN_PROD_AGENT_ID, ACN_SUBNET_SLUG)"
     );
   }
+  await assertStudioCreatorIdentity();
 
   const inviteeIds = resolveWorkerInvitees({
     workerAgentIds: args.workerAgentIds,
