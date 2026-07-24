@@ -267,3 +267,9 @@ $S update-character <characterId> '{"licensePoints":0}'
 
 Studio `invite` 后，生产 ACN 会 best-effort 推 A2A `task_request`；工人侧应出现 wake，**不必只靠** `comiclaw reconcile`。CLI 保持 `@acnlabs/acn-cli` ≥ 0.14.0 即可（本次无需再升 CLI）。
 
+## Wake 桥接（生产 Mode B）
+
+`acn listen --runtime command --wake-exec ~/.config/comiclaw/acn-to-openclaw-wake.sh`
+
+脚本见 `scripts/acn-to-openclaw-wake.sh`。解析 ACN 规范化事件中的 `task_id` 后叫醒 OpenClaw；**切勿**用 heredoc 读取 stdin。OpenClaw Job ID ≠ ACN task id。
+

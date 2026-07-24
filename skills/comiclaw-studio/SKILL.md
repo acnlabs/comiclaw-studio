@@ -254,3 +254,10 @@ You never need `ADMIN_KEY` or admin UI — human ops only.
 - Enums case-sensitive: SCRIPT|ASSETS|STORYBOARD|FILM|RELEASE|DONE; CHARACTER|SCENE|PROP; IMAGE|VIDEO; PENDING|PUBLISHED; VIDEO|SERIES
 - HTTP: 400 validation (field hints in body); 401 auth; 404 missing; 409 conflict
 - On 401, remind ops to check skill config `STUDIO_API_KEY` / ACN key
+
+## Wake bridge (production Mode B)
+
+`acn listen --runtime command --wake-exec ~/.config/comiclaw/acn-to-openclaw-wake.sh`
+
+See `scripts/acn-to-openclaw-wake.sh`. It must read the ACN event from stdin via env/file — **not** `python3 <<'PY'` (heredoc steals stdin → `task_id=unknown`). OpenClaw Job ID is not an ACN task id.
+
