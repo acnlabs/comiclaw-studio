@@ -1,46 +1,40 @@
 # ACN 缺陷：Task Pool invite 未经 Mode B A2A 推送（ComicLaw 复现）
 
-**状态：** ACN 已修 / 待验收（生产已 redeploy，请复测 wake）  
-**严重度：** 阻断生产「invite → 工人自主执行」闭环  
-**环境：** ACN global `api.acnlabs.dev`；工人 CLI `@acnlabs/acn-cli@0.14.0`；`acn listen --runtime command`  
-**关联：** [acn-listen-runtime-cutover.md](./acn-listen-runtime-cutover.md)、ACN #191 / local receiver MVP、[ACN #198](https://github.com/acnlabs/ACN/pull/198)
+**状态：已关闭**（2026-07-24 ComicLaw 生产验收通过）  
+**严重度：** 曾阻断「invite → 工人自主执行」闭环  
+**环境：** ACN global `api.acnlabs.dev` **0.15.6**；工人 CLI `@acnlabs/acn-cli@0.14.0`；`acn listen --runtime command`  
+**关联：** [acn-listen-runtime-cutover.md](./acn-listen-runtime-cutover.md)、ACN #191 / #198 / #201、tag `v0.15.6`
 
 ## 修复进展（ACN）
 
-- **生产：** 2026-07-24 Railway 已 redeploy 含 [ACN #198](https://github.com/acnlabs/ACN/pull/198) 的 `main`（`/health` 当时仍报 `0.15.4` 因版本号未 bump；行为应以 invite→A2A 为准）。版本号将随 **v0.15.6** 更新。
+- **生产：** `https://api.acnlabs.dev/health` → `{"status":"ok","version":"0.15.6"}`（[ACN #198](https://github.com/acnlabs/ACN/pull/198) + [ACN #201](https://github.com/acnlabs/ACN/pull/201) / tag）
+- **行为：** `invite` 写白名单后 best-effort 推送 A2A `task_request`（Mode A/B/inbox）
+- **CLI：** 工人保持 **0.14.0** 即可（接收侧 #191；本次只改服务端发送）
+- **Skill：** ACN 仓库内 skill 写明 `tasks invite` 会 best-effort A2A；若从独立渠道安装需自行同步
 
-- **已合并：** [ACN #198](https://github.com/acnlabs/ACN/pull/198) — `invite` 写白名单后 best-effort 推送 A2A `task_request`（Mode A/B/inbox）；webhook `task.invited`；非 agent 邀请人过渡用 `system:task-invite`。
-- **待做：** 按下方验收清单复测 wake；通过后把状态改为 **已关闭**。
-- **验收：**
-  1. 工人 `acn listen --runtime …` 在线  
-  2. Studio 建单并 invite 该工人  
-  3. 数秒内 wake（无需 `reconcile`）  
-  4. 离线 invitee 可进 inbox；白名单仍写入  
+## 验收结果（ComicLaw · 2026-07-24）
 
-## 期望
+| 项 | 结果 |
+|---|---|
+| 工人 listen | `acn listen --runtime command --wake-exec …` connected；agent **online** |
+| Studio 建单+invite | `POST …/acn-tasks` **201**；task `f4d0b3e0-01c4-4ae7-8025-519ca91ed803`；`inviteeIds=[cd7ec18a-…]`；`inviteErrors=[]` |
+| wake | **约 1s 内**（建单 `10:18:28Z` → wake `10:18:29Z`，`wake_http=200`，OpenClaw `runId=370628e7-…`） |
+| 是否靠 reconcile | **否**（wake 先于任何 list） |
+
+结论：**invite → Mode B A2A → `--runtime` 叫醒宿主** 已通。`reconcile` 仅保留作漏推/重启兜底。
+
+## 期望（已满足）
 
 Studio（建单账号 `comiclaw-studio`）在 private subnet `comiclaw-internal` 内：
 
 1. `POST /tasks` 创建生产任务（`use_escrow=false`）
 2. `invite` 主 comiclaw（Mode B，常驻 `acn listen --runtime …`）
-3. **工人本机 listen 立即收到可唤醒的 A2A（如 `task_request`）**
-4. CLI `--runtime` 叫醒宿主 Agent → Agent 自主 `accept` / 干活 / `submit`
+3. 工人本机 listen 数秒内收到可唤醒的 A2A（如 `task_request`）
+4. CLI `--runtime` 叫醒宿主 Agent（后续由 Agent 自主 `accept` / 干活 / `submit`）
 
-## 实际
+## 历史复现（修复前 · 2026-07-24）
 
-| 步骤 | 结果 |
-|---|---|
-| Studio `POST /api/agent/projects/{id}/acn-tasks` | **201**；`inviteeIds` 含主 comiclaw；`inviteErrors=[]` |
-| Task Pool | 任务 `open`；`invited_agent_ids` 含工人；`metadata.studio` 完整 |
-| 工人 `acn listen --runtime command` | WebSocket **已连接**（有 reconnect 日志，无 inbound 业务帧） |
-| `~/logs/comiclaw/acn-wake.log` | **无新 wake**（手动模拟事件可 200 叫醒 OpenClaw） |
-| `acn notify list` / `acn inbox list` | **空** |
-| `reconcile` | **能列出**该 open 任务 |
-
-结论：**invite 写进了 Task Pool，但没有变成 Mode B relay 上的 A2A（也未进 notify/inbox）。**  
-因此「CLI 已具备 `--runtime`」≠「invite 能自主接单」。工人只能靠轮询/`reconcile` 兜底——不满足业务闭环。
-
-## 复现（2026-07-24）
+修复前：invite 写入 Task Pool，但 Mode B relay **无** inbound；notify/inbox 空；只能靠 `reconcile` 列出 open 任务。
 
 1. 工人：`acn listen --runtime command --wake-exec <wake-to-openclaw>`（online + connected）
 2. Studio（生产 key）建项目并：
@@ -50,34 +44,17 @@ POST /api/agent/projects/{projectId}/acn-tasks
 { "type": "WRITE_SCRIPT", "input": { "brief": "…", "title": "…" }, "includeDefaultWorker": true }
 ```
 
-3. 示例任务：`40c6d679-26e2-42f5-b4c7-033c56909532`  
+3. 示例任务（修复前）：`40c6d679-26e2-42f5-b4c7-033c56909532`  
    - creator: `comiclaw-studio` (`90f884c1-…`)  
    - invitee / worker: Comiclaw (`cd7ec18a-…`)  
    - subnet: `comiclaw-internal`
 4. 观察 ≥30s：listen journal 无 inbound；wake 日志无新行；notify/inbox 空
 
-对照：向 wake-exec **手动喂**同结构事件 → OpenClaw `/hooks/agent` **200**。宿主与 CLI runtime **正常**；缺口在 **invite → 推送**。
+对照：向 wake-exec **手动喂**同结构事件 → OpenClaw `/hooks/agent` **200**。宿主与 CLI runtime 正常；缺口在 **invite → 推送**（已由 ACN 0.15.6 修复）。
 
-## 请 ACN 确认
+## Mode A 说明（历史）
 
-1. Task Pool `invite` 是否保证对 Mode B（`delivery=relay` + 活跃 `listen`）工人发送 **A2A**？  
-2. 若否：官方实时接单路径是什么（A2A / notify / inbox / 仅 list）？文档与 CLI 是否一致？  
-3. 若应推而未推：是 relay 漏推、invite 未挂 delivery，还是 subnet/内部任务被跳过？  
-4. 修复后的验收：invite 后数秒内 `acn listen --runtime` 触发 wake（或等价 inbound），无需 `tasks list`。
-
-## Mode A 能否绕过？
-
-**不必然。**
-
-| 若根因是… | Mode A（公网 `https://…/a2a`） |
-|---|---|
-| invite **根本不发** A2A/通知 | **仍失败**（直连也没请求） |
-| invite **会发** A2A，但 Mode B relay/`listen` 未投递 | **可能修好**（ACN 对 endpoint POST） |
-
-ComicLaw 现状更像第一种或「未对 Task invite 挂 delivery」：Pool 已 invite，listen/notify/inbox 皆静默。  
-上 Mode A 前仍需 ACN 明确：**invite 是否产生 A2A**。有公网 HTTPS A2A 只解决运输形态，不自动补「未发出的事件」。
-
-在确认 invite→A2A 之前，ComicLaw **保持** Mode B + `--runtime` + `reconcile` 兜底；不把切 Mode A 当作本缺陷的默认修复。
+根因是 invite **未发** A2A 时，切 Mode A（公网 `/a2a`）**不能**绕过。本缺陷已在服务端发送侧关闭；ComicLaw 生产保持 Mode B + `--runtime`，`reconcile` 仅兜底。
 
 ## 非本缺陷
 

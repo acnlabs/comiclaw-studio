@@ -262,3 +262,8 @@ $S update-character <characterId> '{"licensePoints":0}'
 - 枚举值区分大小写:阶段 SCRIPT|ASSETS|STORYBOARD|FILM|RELEASE|DONE;资产 CHARACTER|SCENE|PROP;媒体 IMAGE|VIDEO;发行 PENDING|PUBLISHED;作品 VIDEO|SERIES。传错返回 400。
 - 接口返回:400=输入校验失败(错误信息会指出具体字段);401=`STUDIO_API_KEY` 错误;404=资源不存在;409=唯一约束冲突。
 - 返回 401 时提醒运营者检查技能配置的 `STUDIO_API_KEY`。
+
+## Invite 后实时叫醒（ACN ≥ 0.15.6）
+
+Studio `invite` 后，生产 ACN 会 best-effort 推 A2A `task_request`；工人侧应出现 wake，**不必只靠** `comiclaw reconcile`。CLI 保持 `@acnlabs/acn-cli` ≥ 0.14.0 即可（本次无需再升 CLI）。
+
