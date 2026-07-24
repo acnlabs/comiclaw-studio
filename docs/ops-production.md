@@ -132,9 +132,9 @@ acn listen --forward http://127.0.0.1:<local-a2a-port>
 ### B. 默认邀请（主 comiclaw fallback）
 
 - [ ] Studio/chat 建 `WRITE_SCRIPT` 或 `GENERATE_IMAGE`，不传 `workerAgentIds`（或仅默认）
-- [ ] 主 comiclaw 经 listen **数秒内 wake**（ACN ≥ 0.15.6；不必先靠 `reconcile`）
-- [ ] `handle <id>` 打印 `metadata.studio`；`accept` 成功
-- [ ] 按 type 推送后 `submit`；Studio `get-acn-task` / 项目侧可见映射与交付物
+- [ ] 主 comiclaw 经 listen **数秒内 wake**（ACN ≥ 0.15.6；`acn-wake.log` 中 `parsed_task_id` 非空；不必先靠 `reconcile`）
+- [ ] Agent **自主** `handle` → `accept`（勿把 OpenClaw Job ID 当 task id）
+- [ ] 按 type 推送后 `submit`；任务 `completed`；Studio 项目侧可见交付物
 
 ### C. 多工人邀请
 
