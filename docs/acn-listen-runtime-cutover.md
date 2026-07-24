@@ -122,7 +122,7 @@ acn listen --forward http://127.0.0.1:8081
 - 从未推送、仅出现在 `acn tasks list` 的 open 任务 → 仍靠 `reconcile` / 人工
 - `A2A accepted ≠ 已接单`：接单仍是 skill 里的 `accept` / `handle`
 
-**已知阻断（2026-07-24）：** Studio/`invite` 成功写入 Task Pool 后，Mode B `listen --runtime` **未收到** A2A，notify/inbox 亦空——工人无法被叫醒自主执行。见 [`acn-invite-no-a2a-defect.md`](./acn-invite-no-a2a-defect.md)。切 Mode A **不保证**绕过（若 invite 根本不发 A2A）。
+**已关闭（2026-07-24）：** ACN **0.15.6** 后，Studio `invite` 会 best-effort 推 A2A `task_request`；生产复测约 **1s 内** wake（不必先 `reconcile`）。缺陷记录见 [`acn-invite-no-a2a-defect.md`](./acn-invite-no-a2a-defect.md)。`reconcile` 仍作漏推/重启兜底。
 
 ## 参考
 

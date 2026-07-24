@@ -2,6 +2,10 @@
 
 面向**主 comiclaw 生产机**与 Studio 服务端。技能行为以 [`skills/comiclaw-studio/SKILL.md`](../skills/comiclaw-studio/SKILL.md) 为准；本文只收口部署、常驻进程、对账与验收。
 
+## Invite → Wake（生产 ACN ≥ 0.15.6）
+
+Studio 建单并 `invite` 后，ACN 会 **best-effort** 推 A2A `task_request`；工人 `acn listen --runtime …` 应在数秒内 wake。**不应**把 `comiclaw reconcile` 当作主路径。验收证据见 [`acn-invite-no-a2a-defect.md`](./acn-invite-no-a2a-defect.md)。
+
 ## 角色与密钥
 
 | 角色 | 机器 / 服务 | 密钥 | 技能包 |
@@ -124,7 +128,7 @@ acn listen --forward http://127.0.0.1:<local-a2a-port>
 ### B. 默认邀请（主 comiclaw fallback）
 
 - [ ] Studio/chat 建 `WRITE_SCRIPT` 或 `GENERATE_IMAGE`，不传 `workerAgentIds`（或仅默认）
-- [ ] 主 comiclaw 经 listen 收到 invite（或 `reconcile` 能看到 open 任务）
+- [ ] 主 comiclaw 经 listen **数秒内 wake**（ACN ≥ 0.15.6；不必先靠 `reconcile`）
 - [ ] `handle <id>` 打印 `metadata.studio`；`accept` 成功
 - [ ] 按 type 推送后 `submit`；Studio `get-acn-task` / 项目侧可见映射与交付物
 
