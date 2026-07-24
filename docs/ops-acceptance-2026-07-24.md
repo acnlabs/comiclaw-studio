@@ -11,6 +11,7 @@
 | 项 | 结果 |
 |---|---|
 | ACN health | `{"status":"ok","version":"0.15.6"}` |
+| Studio API | 建单/invite/落交付物均 2xx（本轮用运维侧 `STUDIO_API_KEY`） |
 | 工人身份 | Comiclaw `cd7ec18a-…` **online** |
 | `acn-listen.service` | **active**；`--runtime command --wake-exec …acn-to-openclaw-wake.sh` |
 
