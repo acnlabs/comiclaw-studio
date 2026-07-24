@@ -1,14 +1,16 @@
 # ACN 缺陷：Task Pool invite 未经 Mode B A2A 推送（ComicLaw 复现）
 
-**状态：** ACN 已修 / 待验收（部署后）  
+**状态：** ACN 已修 / 待验收（生产已 redeploy，请复测 wake）  
 **严重度：** 阻断生产「invite → 工人自主执行」闭环  
 **环境：** ACN global `api.acnlabs.dev`；工人 CLI `@acnlabs/acn-cli@0.14.0`；`acn listen --runtime command`  
 **关联：** [acn-listen-runtime-cutover.md](./acn-listen-runtime-cutover.md)、ACN #191 / local receiver MVP、[ACN #198](https://github.com/acnlabs/ACN/pull/198)
 
 ## 修复进展（ACN）
 
+- **生产：** 2026-07-24 Railway 已 redeploy 含 [ACN #198](https://github.com/acnlabs/ACN/pull/198) 的 `main`（`/health` 当时仍报 `0.15.4` 因版本号未 bump；行为应以 invite→A2A 为准）。版本号将随 **v0.15.6** 更新。
+
 - **已合并：** [ACN #198](https://github.com/acnlabs/ACN/pull/198) — `invite` 写白名单后 best-effort 推送 A2A `task_request`（Mode A/B/inbox）；webhook `task.invited`；非 agent 邀请人过渡用 `system:task-invite`。
-- **待做：** ACN 生产部署后，按下方验收清单复测；通过后把状态改为 **已关闭**。
+- **待做：** 按下方验收清单复测 wake；通过后把状态改为 **已关闭**。
 - **验收：**
   1. 工人 `acn listen --runtime …` 在线  
   2. Studio 建单并 invite 该工人  
