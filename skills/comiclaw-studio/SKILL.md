@@ -254,3 +254,18 @@ You never need `ADMIN_KEY` or admin UI — human ops only.
 - Enums case-sensitive: SCRIPT|ASSETS|STORYBOARD|FILM|RELEASE|DONE; CHARACTER|SCENE|PROP; IMAGE|VIDEO; PENDING|PUBLISHED; VIDEO|SERIES
 - HTTP: 400 validation (field hints in body); 401 auth; 404 missing; 409 conflict
 - On 401, remind ops to check skill config `STUDIO_API_KEY` / ACN key
+
+## Wake bridge (production Mode B)
+
+```bash
+# Install script + OpenClaw hooks bearer (ops once)
+install -m 755 scripts/acn-to-openclaw-wake.sh ~/.config/comiclaw/acn-to-openclaw-wake.sh
+# Token file required (or set COMICLAW_HOOKS_TOKEN_FILE):
+#   ~/.config/comiclaw/hooks.token   # contents = Bearer token for /hooks/agent
+# Optional: OPENCLAW_WAKE_URL (default http://127.0.0.1:10122/hooks/agent)
+
+acn listen --runtime command --wake-exec ~/.config/comiclaw/acn-to-openclaw-wake.sh
+```
+
+See `scripts/acn-to-openclaw-wake.sh`. It must read the ACN event from stdin via env/file — **not** `python3 <<'PY'` (heredoc steals stdin → `task_id=unknown`). Only UUID `task_id` is accepted; OpenClaw Job ID is not an ACN task id. Wake logs keep structured fields only (no task brief).
+

@@ -15,6 +15,7 @@
 | 新路径 | 行为 |
 |---|---|
 | `acn listen --runtime http --wake-url …` | CLI 自己回合法 A2A `accepted`，再 POST 规范化事件叫醒宿主 |
+| `acn listen --runtime command --wake-exec …` | 同上，stdin 喂规范化 JSON；ComicLaw 用 `acn-to-openclaw-wake.sh` 转 OpenClaw hooks |
 | 无本地 A2A 端口 | 不再依赖 `:8081` |
 | wake 失败 | 打 `wake_failed` 并释放 dedupe，便于重推再叫醒 |
 
@@ -121,6 +122,8 @@ acn listen --forward http://127.0.0.1:8081
 - `--runtime` 只处理 **经 Mode B relay 到达的 A2A**
 - 从未推送、仅出现在 `acn tasks list` 的 open 任务 → 仍靠 `reconcile` / 人工
 - `A2A accepted ≠ 已接单`：接单仍是 skill 里的 `accept` / `handle`
+
+**Wake 桥接注意：** `--wake-exec` 脚本必须用环境变量/文件读 stdin 事件，**不要** `python3 <<'PY'` 吃掉管道 body（否则 `task_id=unknown`）。仓库脚本：`skills/comiclaw-studio/scripts/acn-to-openclaw-wake.sh`。
 
 **已关闭（2026-07-24）：** ACN **0.15.6** 后，Studio `invite` 会 best-effort 推 A2A `task_request`；生产复测约 **1s 内** wake（不必先 `reconcile`）。缺陷记录见 [`acn-invite-no-a2a-defect.md`](./acn-invite-no-a2a-defect.md)。`reconcile` 仍作漏推/重启兜底。
 
