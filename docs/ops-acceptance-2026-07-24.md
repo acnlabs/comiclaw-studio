@@ -56,6 +56,6 @@
 
 ## 后续（非阻断）
 
-1. 身份：建单尽量 `comiclaw-studio` / 客户 cell，少依赖人类 ID + `system:task-invite`
+1. ~~身份 / 派单~~：**已定案** — 建单+invite 主工人只用 `comiclaw-studio`（`ACN_CHAT_*`）；客户 cell 不直派；ACN 已废止 `system:task-invite`
 2. 专项：多工人竞态、`includeDefaultWorker=false`、402 扣款
 3. 中长期：Mode A 公网 `/a2a`；ACN skill 独立渠道同步

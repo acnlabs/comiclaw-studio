@@ -4,7 +4,7 @@
 
 ## Invite → Wake → Handle（生产 ACN ≥ 0.15.6）
 
-Studio 建单并 `invite` 后，ACN 会 **best-effort** 推 A2A `task_request`；工人 `acn listen --runtime …` 应在数秒内 wake，Agent 再 `handle` → `accept` → 干活 → `submit`。**不应**把 `comiclaw reconcile` 当作主路径。
+Studio 以 **`comiclaw-studio`** agent（`ACN_CHAT_*`）建单并 `invite` 后，ACN 会 **best-effort** 推 A2A `task_request`；工人 `acn listen --runtime …` 应在数秒内 wake，Agent 再 `handle` → `accept` → 干活 → `submit`。**不应**把 `comiclaw reconcile` 当作主路径。ACN 已废止 `system:task-invite`。
 
 生产机 wake 桥接脚本：[`skills/comiclaw-studio/scripts/acn-to-openclaw-wake.sh`](../skills/comiclaw-studio/scripts/acn-to-openclaw-wake.sh)（安装到 `~/.config/comiclaw/`，供 `--wake-exec` 使用）。需 `~/.config/comiclaw/hooks.token`（或 `COMICLAW_HOOKS_TOKEN_FILE`）。**禁止** `printf … | python3 <<'PY'`——heredoc 会吞掉 stdin，导致 `task_id=unknown`，Agent 误用 OpenClaw Job ID。仅接受 UUID `task_id`；`acn-wake.log` 只记结构化字段（无 brief / 响应体）。
 
@@ -18,12 +18,22 @@ GENERATE_IMAGE 闭环（2026-07-24）：task `2b94a6b0-…` wake 后约 6min `co
 
 | 角色 | 机器 / 服务 | 密钥 | 技能包 |
 |---|---|---|---|
-| Studio 服务端 | Vercel / 自托管 Next | `STUDIO_API_KEY`、`ADMIN_KEY`、ACN chat 建单 key、价目与存储 | — |
+| Studio 服务端 | Vercel / 自托管 Next | `STUDIO_API_KEY`、`ADMIN_KEY`、**comiclaw-studio** 建单 key（`ACN_CHAT_*`）、价目与存储 | — |
 | 主 comiclaw（官方生产 Agent） | OpenClaw 生产主机 | `STUDIO_API_KEY`（可选）和/或生产 ACN 身份；`STUDIO_BASE_URL` | `comiclaw-studio` 整目录 |
 | 开放工人 | 任意 ACN agent | 仅自己的 `ACN_API_KEY` | `comiclaw-studio-worker` |
 
 - 不要把 `STUDIO_API_KEY` 发给第三方工人。
 - 生产任务走私有 subnet `comiclaw-internal`，`use_escrow=false`，不上 Org / 公开看板。
+
+## 派单定案（谁可叫主 comiclaw）
+
+| 路径 | 是否采用 |
+|---|---|
+| Studio / chat → 服务端 **`comiclaw-studio`**（`ACN_CHAT_*`）建单并 invite 主 comiclaw | **是（唯一主路径）** |
+| 客户 cell agent 直调 ACN 建单并 invite 主 comiclaw | **否** |
+| 人类 ID + `system:task-invite` | **否**（ACN 已废止） |
+
+客户 cell：**零生产工具、零 ACN/Studio 生产密钥**；人类在 Studio/chat 确认生产后，由 `comiclaw-studio` 代建并推给主工人。`metadata.studio.owner_user_id` 只表业务归属，不是 ACN creator。开放工人可被 `workerAgentIds` 额外 invite，但仍由 **comiclaw-studio** 发起。
 
 ## 生产机必备状态
 
@@ -117,7 +127,8 @@ acn listen --forward http://127.0.0.1:<local-a2a-port>
 
 见仓库根目录 [`.env.example`](../.env.example)。生产至少核对：
 
-- `ACN_API_URL` / `ACN_CHAT_AGENT_ID` / `ACN_CHAT_API_KEY` / `ACN_PROD_AGENT_ID` / `ACN_SUBNET_SLUG`
+- `ACN_API_URL` / `ACN_CHAT_AGENT_ID` / `ACN_CHAT_API_KEY` / `ACN_PROD_AGENT_ID` / `ACN_SUBNET_SLUG`  
+  - **建单身份固定 comiclaw-studio**：`ACN_CHAT_API_KEY` 必须是该已注册 agent 的 key；`ACN_CHAT_AGENT_ID` 为其 agent_id（生产 `90f884c1-…`）。ACN 已废止 `system:task-invite`，勿用人类 ID 建单。
 - `AGENTPLANET_*` 与 `SERVICE_CHARGE_ALLOWLIST`（用量扣款）
 - 价目 `PRICE_*`（charge 只传 `action`+`units`，金额服务端算）
 

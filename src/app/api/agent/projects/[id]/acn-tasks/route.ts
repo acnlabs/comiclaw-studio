@@ -7,7 +7,7 @@ import { enqueueAcnProductionTask } from "@/lib/productionTasks";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-// 为项目创建 ACN 生产任务(对话 Agent 身份建单 + invite 工人)。
+// 为项目创建 ACN 生产任务(comiclaw-studio agent 建单 + invite 工人)。
 // 可额外 invite 用户自有 ACN agent;默认仍 invite 主 comiclaw 作 fallback。
 // 本地只落 AcnTaskRef 映射;状态以 ACN 为准。
 export const POST = withAgentAuth(async (req, ctx: Ctx) => {
