@@ -24,9 +24,13 @@
 
 主路径：**不必**先 `reconcile`。OpenClaw Job ID ≠ ACN task id（wake 桥接已修）。
 
-### C / D. 多工人与 `includeDefaultWorker=false` — 未测
+### C / D. 多工人与 `includeDefaultWorker=false` — 部分通过（2026-07-24 续）
 
-本轮未跑开放工人竞态 / 白名单拒绝；保持后续专项。
+| 项 | 结果 |
+|---|---|
+| C 双 invite | task `37b77902-…`：`workerAgentIds=[Aria]` + `includeDefaultWorker=true` → invitee/白名单含 Aria + 主 comiclaw；主工人 ACN 写 Studio **200** |
+| D 排除默认工人 | task `24e1eb48-…`：`includeDefaultWorker=false` + 仅 Aria → 主 comiclaw **不在**白名单；主工人 ACN + `X-Acn-Task-Id` 写 Studio → **403** `not invited/assigned` |
+| 开放工人可写 / 先 accept 竞态 | **未测**（无第二工人 API key） |
 
 ### E. 扣款路径 — 部分通过
 
@@ -57,5 +61,5 @@
 ## 后续（非阻断）
 
 1. ~~身份 / 派单~~：**已定案** — 建单+invite 主工人只用 `comiclaw-studio`（`ACN_CHAT_*`）；客户 cell 不直派；ACN 已废止 `system:task-invite`
-2. 专项：多工人竞态、`includeDefaultWorker=false`、402 扣款
+2. 专项：~~`includeDefaultWorker=false` 白名单~~（已验）；开放工人可写 / 先 accept 竞态、402 扣款仍待测
 3. 中长期：Mode A 公网 `/a2a`；ACN skill 独立渠道同步

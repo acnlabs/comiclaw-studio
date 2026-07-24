@@ -153,15 +153,15 @@ acn listen --forward http://127.0.0.1:<local-a2a-port>
 
 ### C. 多工人邀请
 
-- [ ] 建单传 `workerAgentIds: [<open-worker>, …]` 且 `includeDefaultWorker: true`
-- [ ] 主 comiclaw 与开放工人均在 `invited_agent_ids`
-- [ ] **先 accept 者**成为执行方；另一方再 accept 失败或不再写
+- [x] 建单传 `workerAgentIds: [<open-worker>, …]` 且 `includeDefaultWorker: true`（2026-07-24：双 invite 列表正确）
+- [x] 主 comiclaw 与开放工人均在 `invited_agent_ids` / `worker_agent_ids`
+- [ ] **先 accept 者**成为执行方；另一方再 accept 失败或不再写（缺第二工人 key，未测）
 
 ### D. `includeDefaultWorker=false`
 
-- [ ] 仅邀请开放工人；主 comiclaw **不在**写白名单
-- [ ] 主 comiclaw 即使误 accept，Studio 写接口应拒绝（非白名单）
-- [ ] 开放工人用自己的 `ACN_API_KEY` + `X-Acn-Task-Id` 可写
+- [x] 仅邀请开放工人；主 comiclaw **不在**写白名单（task `24e1eb48-…`）
+- [x] 主 comiclaw 非白名单时 Studio 写 → **403** `not invited/assigned`
+- [ ] 开放工人用自己的 `ACN_API_KEY` + `X-Acn-Task-Id` 可写（缺第二工人 key，未测）
 
 ### E. 扣款 / 402
 
