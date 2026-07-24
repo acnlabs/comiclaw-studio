@@ -32,12 +32,16 @@
 | D 排除默认工人 | task `24e1eb48-…`：`includeDefaultWorker=false` + 仅 Aria → 主 comiclaw **不在**白名单；主工人 ACN + `X-Acn-Task-Id` 写 Studio → **403** `not invited/assigned` |
 | 开放工人可写 / 先 accept 竞态 | **未测**（无第二工人 API key） |
 
-### E. 扣款路径 — 部分通过
+### E. 扣款路径 — **阻断**（2026-07-24 续）
 
 | 项 | 结果 |
 |---|---|
-| GENERATE_IMAGE 先 charge 再出图 | 生产单已 `completed` 并落 asset（路径按 skill 执行） |
-| 402 / 幂等 | **未故意造余额不足**；未专项验收 |
+| AgentPlanet 扣款 | **失败**：`POST …/charge` → **502** `Agent not found: comiclaw`（`AGENTPLANET_AGENT_ID` 默认/配置的收款方在 AP 不存在） |
+| 402 `INSUFFICIENT_BALANCE` | **未能复现**（到不了钱包余额判断；先被收款方 agent 校验挡住） |
+| 同 key 幂等 SUCCESS | **未能复现**（同上） |
+| 历史 GENERATE_IMAGE `2b94a6b0-…` | Studio 落 asset/`completed`，但 `GenerationChargeRef` 为 **`ERROR` amount=5**（工人未因非 2xx charge 停上游） |
+
+**解除阻断：** 在 Vercel 将 `AGENTPLANET_AGENT_ID` 设为 AgentPlanet 上真实存在的收款 agent（并保证 `SERVICE_CHARGE_ALLOWLIST` 允许 `comiclaw-studio`→该 agent），再复测 402 / 幂等。
 
 ### F. reconcile 兜底 — 保留未专项破坏性测试
 
@@ -61,5 +65,5 @@
 ## 后续（非阻断）
 
 1. ~~身份 / 派单~~：**已定案** — 建单+invite 主工人只用 `comiclaw-studio`（`ACN_CHAT_*`）；客户 cell 不直派；ACN 已废止 `system:task-invite`
-2. 专项：~~`includeDefaultWorker=false` 白名单~~（已验）；开放工人可写 / 先 accept 竞态、402 扣款仍待测
+2. 专项：~~白名单~~（已验）；402/幂等 **被 AP 收款 agent 配置阻断**；开放工人可写/竞态仍缺第二 key
 3. 中长期：Mode A 公网 `/a2a`；ACN skill 独立渠道同步
