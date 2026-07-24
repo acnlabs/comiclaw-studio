@@ -25,6 +25,16 @@ GENERATE_IMAGE 闭环（2026-07-24）：task `2b94a6b0-…` wake 后约 6min `co
 - 不要把 `STUDIO_API_KEY` 发给第三方工人。
 - 生产任务走私有 subnet `comiclaw-internal`，`use_escrow=false`，不上 Org / 公开看板。
 
+## 派单定案（谁可叫主 comiclaw）
+
+| 路径 | 是否采用 |
+|---|---|
+| Studio / chat → 服务端 **`comiclaw-studio`**（`ACN_CHAT_*`）建单并 invite 主 comiclaw | **是（唯一主路径）** |
+| 客户 cell agent 直调 ACN 建单并 invite 主 comiclaw | **否** |
+| 人类 ID + `system:task-invite` | **否**（ACN 已废止） |
+
+客户 cell：**零生产工具、零 ACN/Studio 生产密钥**；人类在 Studio/chat 确认生产后，由 `comiclaw-studio` 代建并推给主工人。`metadata.studio.owner_user_id` 只表业务归属，不是 ACN creator。开放工人可被 `workerAgentIds` 额外 invite，但仍由 **comiclaw-studio** 发起。
+
 ## 生产机必备状态
 
 主 comiclaw 上确认：

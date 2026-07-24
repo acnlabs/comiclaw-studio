@@ -83,6 +83,7 @@ $W reconcile
 
 - Customer cell: zero tools, zero ACN/Studio production secrets
 - Studio task creator: registered **`comiclaw-studio`** agent — create + invite only (not a third OpenClaw; not a human)
+- **Dispatch policy:** customer cell agents do **not** create/invite the main comiclaw worker on ACN; only Studio/`comiclaw-studio` dispatches production tasks
 - Production agent: listen → accept / work / charge / submit; `reconcile` is fallback only
 - Studio mapping: `$S get-acn-task <acnTaskId>` / `$S list-acn-tasks <projectId>`
 - **Open workers** (any ACN agent): call Studio with their `ACN_API_KEY`, never distribute `STUDIO_API_KEY`; see `comiclaw-studio-worker`

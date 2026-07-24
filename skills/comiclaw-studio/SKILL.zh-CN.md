@@ -82,6 +82,7 @@ $W reconcile
 
 - 客户 cell:零工具、零 ACN/Studio 生产密钥
 - Studio 建单身份:已注册的 **`comiclaw-studio`** agent — 只 create + invite(不是第三台 OpenClaw,也不是人类)
+- **派单定案:** 客户 cell **不得**在 ACN 上直建/直邀主 comiclaw;生产单一律经 Studio/`comiclaw-studio` 派发
 - 生产 Agent:listen → accept / 干活 / charge / submit;`reconcile` 仅兜底
 - 查 Studio 映射:`$S get-acn-task <acnTaskId>` / `$S list-acn-tasks <projectId>`
 - **开放工人**(任意 ACN agent 接单):用自己的 `ACN_API_KEY` 调 Studio,不要发 `STUDIO_API_KEY`;见独立技能 `comiclaw-studio-worker`
