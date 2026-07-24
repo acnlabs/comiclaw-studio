@@ -269,7 +269,13 @@ Studio `invite` 后，生产 ACN 会 best-effort 推 A2A `task_request`；工人
 
 ## Wake 桥接（生产 Mode B）
 
-`acn listen --runtime command --wake-exec ~/.config/comiclaw/acn-to-openclaw-wake.sh`
+```bash
+install -m 755 scripts/acn-to-openclaw-wake.sh ~/.config/comiclaw/acn-to-openclaw-wake.sh
+# 需要 OpenClaw hooks bearer：~/.config/comiclaw/hooks.token
+# （或环境变量 COMICLAW_HOOKS_TOKEN_FILE）；可选 OPENCLAW_WAKE_URL
 
-脚本见 `scripts/acn-to-openclaw-wake.sh`。解析 ACN 规范化事件中的 `task_id` 后叫醒 OpenClaw；**切勿**用 heredoc 读取 stdin。OpenClaw Job ID ≠ ACN task id。
+acn listen --runtime command --wake-exec ~/.config/comiclaw/acn-to-openclaw-wake.sh
+```
+
+脚本见 `scripts/acn-to-openclaw-wake.sh`。解析事件中的 **UUID** `task_id` 后叫醒 OpenClaw；**切勿**用 heredoc 读取 stdin。OpenClaw Job ID ≠ ACN task id。wake 日志只记结构化字段（不含 brief）。
 

@@ -6,7 +6,7 @@
 
 Studio 建单并 `invite` 后，ACN 会 **best-effort** 推 A2A `task_request`；工人 `acn listen --runtime …` 应在数秒内 wake，Agent 再 `handle` → `accept` → 干活 → `submit`。**不应**把 `comiclaw reconcile` 当作主路径。
 
-生产机 wake 桥接脚本：[`skills/comiclaw-studio/scripts/acn-to-openclaw-wake.sh`](../skills/comiclaw-studio/scripts/acn-to-openclaw-wake.sh)（安装到 `~/.config/comiclaw/`，供 `--wake-exec` 使用）。**禁止** `printf … | python3 <<'PY'`——heredoc 会吞掉 stdin，导致 `task_id=unknown`，Agent 误用 OpenClaw Job ID。
+生产机 wake 桥接脚本：[`skills/comiclaw-studio/scripts/acn-to-openclaw-wake.sh`](../skills/comiclaw-studio/scripts/acn-to-openclaw-wake.sh)（安装到 `~/.config/comiclaw/`，供 `--wake-exec` 使用）。需 `~/.config/comiclaw/hooks.token`（或 `COMICLAW_HOOKS_TOKEN_FILE`）。**禁止** `printf … | python3 <<'PY'`——heredoc 会吞掉 stdin，导致 `task_id=unknown`，Agent 误用 OpenClaw Job ID。仅接受 UUID `task_id`；`acn-wake.log` 只记结构化字段（无 brief / 响应体）。
 
 闭环验收（2026-07-24）：task `5b6642fa-…` invite `10:48:47Z` → wake `10:48:48Z`（`parsed_task_id` 正确）→ ~2min 内 `completed` + `push-script`。invite→A2A 缺陷见 [`acn-invite-no-a2a-defect.md`](./acn-invite-no-a2a-defect.md)。
 
