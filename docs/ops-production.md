@@ -130,7 +130,7 @@ acn listen --forward http://127.0.0.1:<local-a2a-port>
 - `ACN_API_URL` / `ACN_CHAT_AGENT_ID` / `ACN_CHAT_API_KEY` / `ACN_PROD_AGENT_ID` / `ACN_SUBNET_SLUG`  
   - **建单身份固定 comiclaw-studio**：`ACN_CHAT_API_KEY` 必须是该已注册 agent 的 key；`ACN_CHAT_AGENT_ID` 为其 agent_id（生产 `90f884c1-…`）。ACN 已废止 `system:task-invite`，勿用人类 ID 建单。
 - `AGENTPLANET_*` 与 `SERVICE_CHARGE_ALLOWLIST`（用量扣款）
-  - `CHARGE_PAYEE_AGENT_ID` 必须是 AgentPlanet **已存在**的收款 agent（默认字符串 `comiclaw` 在生产会 502 `Agent not found`；402 余额不足之前先过这一关；旧名 `AGENTPLANET_AGENT_ID` 仍兼容）
+  - `CHARGE_PAYEE_AGENT_ID` = 本 Studio 收款 Agent（生产 `90f884c1-…` = comiclaw-studio）；`AGENTPLANET_CHARGE_SOURCE=comiclaw-studio`（source 字符串，不是 UUID）。默认展示名 `comiclaw` 会 502 `Agent not found`；旧名 `AGENTPLANET_AGENT_ID` 仍兼容
 - 价目 `PRICE_*`（charge 只传 `action`+`units`，金额服务端算）
 
 建单默认 `includeDefaultWorker=true`（邀请主 comiclaw）；可额外传 `workerAgentIds`；`includeDefaultWorker=false` 时主 comiclaw 即使 accept 也不能写该项目（白名单以 metadata `worker_agent_ids` 为准）。
@@ -166,9 +166,10 @@ acn listen --forward http://127.0.0.1:<local-a2a-port>
 
 ### E. 扣款 / 402
 
-- [ ] `GENERATE_IMAGE`：`charge` **2xx** 后才出图；idempotency key = `comiclaw:gen:<acnTaskId>`（2026-07-24：曾 completed 但 charge 实为 **ERROR**——需修 AP agent 后重验）
-- [ ] 余额不足 → **402**，`studio.sh` 非零退出；**不得**调即梦；`submit` 带 `submitHint`（收款方用 `CHARGE_PAYEE_AGENT_ID`；曾为 **502** `Agent not found: comiclaw`）
-- [ ] 同 key 重试不重复扣（幂等）
+- [x] `POST /charge` units=1 → **201 SUCCESS**（2026-07-25：owner `github\|43027886`；收款方 `CHARGE_PAYEE_AGENT_ID=90f884c1-…`）
+- [x] 余额不足 → **402**，`studio.sh` exit 22 + `submitHint`；余额不扣（`units=1000` quote 5000）
+- [x] 同 key 重试 → **200** `idempotent=true`，不重复扣
+- [ ] 全链路 `GENERATE_IMAGE`：非 2xx charge **不得**调即梦（skill 已写；API 层已可返回 402；未再烧上游专项重跑）
 
 ### F. reconcile 兜底
 
@@ -184,7 +185,8 @@ acn listen --forward http://127.0.0.1:<local-a2a-port>
 | `ping` 404 | `STUDIO_BASE_URL` 是否指向正式域，而非过期 preview |
 | `ping` / 写接口 401 | `STUDIO_API_KEY` 或工人 ACN key；任务绑定头 |
 | 出图前已烧上游 | 是否跳过了 `charge` **2xx** 检查（含 402/502） |
-| charge 502 `Agent not found` | Vercel `CHARGE_PAYEE_AGENT_ID` 是否指向 AP 真实 agent；allowlist 是否含 `comiclaw-studio` |
+| charge 502 `Agent not found` | Vercel `CHARGE_PAYEE_AGENT_ID` 是否为 comiclaw-studio UUID `90f884c1-…`（勿填展示名）；allowlist `comiclaw-studio:<payee-uuid>` |
+| charge 502 `Wallet not found` | 项目 `ownerUserId` 在 AgentPlanet 是否已有钱包（e2e 探针无钱包属预期） |
 | 主 comiclaw 写被拒 | 是否 `includeDefaultWorker=false` / 不在 `worker_agent_ids` |
 | 开放工人要官方 key | 拒绝；指引 `comiclaw-studio-worker` |
 

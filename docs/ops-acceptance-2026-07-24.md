@@ -32,16 +32,18 @@
 | D 排除默认工人 | task `24e1eb48-…`：`includeDefaultWorker=false` + 仅 Aria → 主 comiclaw **不在**白名单；主工人 ACN + `X-Acn-Task-Id` 写 Studio → **403** `not invited/assigned` |
 | 开放工人可写 / 先 accept 竞态 | **未测**（无第二工人 API key） |
 
-### E. 扣款路径 — **阻断**（2026-07-24 续）
+### E. 扣款路径 — **通过**（2026-07-25 续）
 
 | 项 | 结果 |
 |---|---|
-| AgentPlanet 扣款 | **失败**：`POST …/charge` → **502** `Agent not found: comiclaw`（收款方 env 默认/配置的 agent 在 AP 不存在；现名 `CHARGE_PAYEE_AGENT_ID`） |
-| 402 `INSUFFICIENT_BALANCE` | **未能复现**（到不了钱包余额判断；先被收款方 agent 校验挡住） |
-| 同 key 幂等 SUCCESS | **未能复现**（同上） |
-| 历史 GENERATE_IMAGE `2b94a6b0-…` | Studio 落 asset/`completed`，但 `GenerationChargeRef` 为 **`ERROR` amount=5**（工人未因非 2xx charge 停上游） |
+| 收款方配置 | `CHARGE_PAYEE_AGENT_ID=90f884c1-…`（comiclaw-studio）；`AGENTPLANET_CHARGE_SOURCE=comiclaw-studio`；旧名 `AGENTPLANET_AGENT_ID` 仍兼容（[#44](https://github.com/acnlabs/comiclaw-studio/pull/44)/[#45](https://github.com/acnlabs/comiclaw-studio/pull/45)） |
+| units=1 SUCCESS | 项目 `cmrhtxtr90000jsyybqwxjsif`（owner `github\|43027886`）→ **201**；`amount=5`；`txn=59f046fc-…`；`balance_after=2271` |
+| 同 key 幂等 | 同 `idempotencyKey` 重试 → **200** `idempotent=true`；未重复扣款 |
+| 402 `INSUFFICIENT_BALANCE` | `units=1000`（quote 5000 > balance 2266）→ **402**；`studio.sh` exit **22**；本地 ref `INSUFFICIENT_BALANCE`；余额未扣 |
+| e2e 探针 owner | `auth0\|e2e-studio-probe` → **502** `Wallet not found`（无钱包，属预期；勿当收款方故障） |
+| 历史 GENERATE_IMAGE `2b94a6b0-…` | 曾 completed 但 charge **ERROR**（工人未停上游）；API/`studio.sh` 现已可正确返回非 2xx；**全链路 GENERATE_IMAGE+402 停出图**仍靠 skill 约定，未再烧上游重跑 |
 
-**解除阻断：** 在 Vercel 将 `CHARGE_PAYEE_AGENT_ID` 设为 AgentPlanet 上真实存在的收款 agent（并保证 `SERVICE_CHARGE_ALLOWLIST` 允许 `comiclaw-studio`→该 agent），再复测 402 / 幂等。
+**曾阻断原因：** 默认/配置用了展示名 `comiclaw` → AP `Agent not found`。收款方应为 **comiclaw-studio**（`90f884c1-…`），不是主工人 ACN id，也不是展示名。
 
 ### F. reconcile 兜底 — 保留未专项破坏性测试
 
@@ -65,5 +67,5 @@
 ## 后续（非阻断）
 
 1. ~~身份 / 派单~~：**已定案** — 建单+invite 主工人只用 `comiclaw-studio`（`ACN_CHAT_*`）；客户 cell 不直派；ACN 已废止 `system:task-invite`
-2. 专项：~~白名单~~（已验）；402/幂等 **被 AP 收款 agent 配置阻断**；开放工人可写/竞态仍缺第二 key
+2. 专项：~~白名单~~（已验）；~~402/幂等~~（已验 API + `studio.sh`）；开放工人可写/竞态仍缺第二 key；可选：全链路 `GENERATE_IMAGE` 在 402 时确认未调即梦
 3. 中长期：Mode A 公网 `/a2a`；ACN skill 独立渠道同步
