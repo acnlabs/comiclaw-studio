@@ -30,18 +30,21 @@
 |---|---|
 | C 双 invite | task `37b77902-…`：`workerAgentIds=[Aria]` + `includeDefaultWorker=true` → invitee/白名单含 Aria + 主 comiclaw；主工人 ACN 写 Studio **200** |
 | D 排除默认工人 | task `24e1eb48-…`：`includeDefaultWorker=false` + 仅 Aria → 主 comiclaw **不在**白名单；主工人 ACN + `X-Acn-Task-Id` 写 Studio → **403** `not invited/assigned` |
-| 开放工人可写 / 先 accept 竞态 | **未测**（无第二工人 API key） |
+| 开放工人可写 / 先 accept 竞态 | **通过**（2026-07-25）：第二工人用环境 `cursor-acn-dev`（`ACN_API_KEY`）；入网 `comiclaw-internal`（admin `subnet-invite` auto_resolve）；见下表 |
 
-### E. 扣款路径 — **阻断**（2026-07-24 续）
+### E. 扣款路径 — **通过**（2026-07-25 续）
 
 | 项 | 结果 |
 |---|---|
-| AgentPlanet 扣款 | **失败**：`POST …/charge` → **502** `Agent not found: comiclaw`（收款方 env 默认/配置的 agent 在 AP 不存在；现名 `CHARGE_PAYEE_AGENT_ID`） |
-| 402 `INSUFFICIENT_BALANCE` | **未能复现**（到不了钱包余额判断；先被收款方 agent 校验挡住） |
-| 同 key 幂等 SUCCESS | **未能复现**（同上） |
-| 历史 GENERATE_IMAGE `2b94a6b0-…` | Studio 落 asset/`completed`，但 `GenerationChargeRef` 为 **`ERROR` amount=5**（工人未因非 2xx charge 停上游） |
+| 收款方配置 | `CHARGE_PAYEE_AGENT_ID=90f884c1-…`（comiclaw-studio）；`AGENTPLANET_CHARGE_SOURCE=comiclaw-studio`；旧名 `AGENTPLANET_AGENT_ID` 仍兼容（[#44](https://github.com/acnlabs/comiclaw-studio/pull/44)/[#45](https://github.com/acnlabs/comiclaw-studio/pull/45)） |
+| units=1 SUCCESS | 项目 `cmrhtxtr90000jsyybqwxjsif`（owner `github\|43027886`）→ **201**；`amount=5`；`txn=59f046fc-…`；`balance_after=2271` |
+| 同 key 幂等 | 同 `idempotencyKey` 重试 → **200** `idempotent=true`；未重复扣款 |
+| 402 `INSUFFICIENT_BALANCE` | `units=1000`（quote 5000 > balance 2266）→ **402**；`studio.sh` exit **22**；本地 ref `INSUFFICIENT_BALANCE`；余额未扣 |
+| e2e 探针 owner | `auth0\|e2e-studio-probe` → **502** `Wallet not found`（无钱包，属预期；勿当收款方故障） |
+| 历史 GENERATE_IMAGE `2b94a6b0-…` | 曾 completed 但 charge **ERROR**（工人未停上游） |
+| 硬闸 `charge-before-generate.sh`（2026-07-25） | **通过**：无钱包 **502** / 大额 **402** → exit 22 + `CHARGE_FAILED`（不得继续上游）；幂等 SUCCESS → exit 0。Skill / worker 已改为优先走此脚本 |
 
-**解除阻断：** 在 Vercel 将 `CHARGE_PAYEE_AGENT_ID` 设为 AgentPlanet 上真实存在的收款 agent（并保证 `SERVICE_CHARGE_ALLOWLIST` 允许 `comiclaw-studio`→该 agent），再复测 402 / 幂等。
+**曾阻断原因：** 默认/配置用了展示名 `comiclaw` → AP `Agent not found`。收款方应为 **comiclaw-studio**（`90f884c1-…`），不是主工人 ACN id，也不是展示名。
 
 ### F. reconcile 兜底 — 保留未专项破坏性测试
 
@@ -57,7 +60,7 @@
 
 ## 生产机要点
 
-- Skill：`~/.openclaw/workspace/skills/comiclaw-studio/`（含 `scripts/acn-to-openclaw-wake.sh`）
+- Skill：`~/.openclaw/workspace/skills/comiclaw-studio/`（含 `charge-before-generate.sh`、`acn-to-openclaw-wake.sh`）
 - Wake：`~/.config/comiclaw/acn-to-openclaw-wake.sh` + `hooks.token`
 - 日志：`~/logs/comiclaw/acn-wake.log`（结构化字段；无 brief）
 - CLI：**无需**为 0.15.6 再升（保持 ≥0.14.0）
@@ -65,5 +68,16 @@
 ## 后续（非阻断）
 
 1. ~~身份 / 派单~~：**已定案** — 建单+invite 主工人只用 `comiclaw-studio`（`ACN_CHAT_*`）；客户 cell 不直派；ACN 已废止 `system:task-invite`
-2. 专项：~~白名单~~（已验）；402/幂等 **被 AP 收款 agent 配置阻断**；开放工人可写/竞态仍缺第二 key
-3. 中长期：Mode A 公网 `/a2a`；ACN skill 独立渠道同步
+2. 专项：~~白名单~~ / ~~402/幂等~~ / ~~出图前硬闸~~ / ~~开放工人可写~~ / ~~先 accept 竞态~~（均已验）
+3. ~~生产机 skill 同步硬闸~~（2026-07-25 已 scp + 主机上 402 冒烟）
+4. 中长期：Mode A 公网 `/a2a`；ACN skill 独立渠道同步
+
+### C′ / D′. 开放工人 + 先 accept（2026-07-25）
+
+第二工人：`cursor-acn-dev`（Cloud Agent 注入的 `ACN_API_KEY` / `ACN_AGENT_ID`）。入网：Preview `POST /api/admin/acn/subnet-invite` → ACN `auto_resolved` join_request。
+
+| 项 | 结果 |
+|---|---|
+| D′ 仅开放工人 | `includeDefaultWorker=false` + `workerAgentIds=[cursor-acn-dev]` → open **accept 200**；Studio PATCH + `X-Acn-Task-Id` **200**；主 comiclaw 同 task 写 → **403** `not invited/assigned` |
+| C′ 先 accept（open） | 双 invite；open accept → assignee=open；main 再 accept → **400** `invalid_request`（`max_participants=1`） |
+| C′ 先 accept（main） | 双 invite；main accept → assignee=main；open 再 accept → **400** `invalid_request` |

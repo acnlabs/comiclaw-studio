@@ -36,8 +36,10 @@ curl -sS "$STUDIO_BASE_URL/api/agent/ping" \
 export ACN_API_KEY=...
 export ACN_TASK_ID=<acnTaskId>
 S=skills/comiclaw-studio/scripts/studio.sh
+G=skills/comiclaw-studio/scripts/charge-before-generate.sh
 $S ping
-$S charge <projectId> '{"action":"asset_generate","units":1,"provider":"jimeng","idempotencyKey":"comiclaw:gen:'"$ACN_TASK_ID"'"}'
+# 硬闸:非 0 退出 ⇒ submit "charge failed; …" 并停止(不得调即梦)
+"$G" <projectId> "$ACN_TASK_ID"
 ```
 
 ## 标准流程
@@ -46,7 +48,7 @@ $S charge <projectId> '{"action":"asset_generate","units":1,"provider":"jimeng",
 2. `acn tasks accept <acnTaskId>`
 3. 读 `metadata.studio`:`project_id` / `type` / `input`
 4. 导出 `ACN_TASK_ID=<acnTaskId>`
-5. 付费动作:**先** `charge`(只传 `action`+`units`+`idempotencyKey`),读 `submitHint`;**402 不得继续上游**
+5. 付费动作:**先** `charge-before-generate.sh`(或等价 charge+判断);**非 2xx / 402 不得继续上游**
 6. 上游生成 → `upload-file`(带 `X-Project-Id`) → `push-script` / `add-asset` / …
 7. `set-status <projectId> ""`
 8. `acn tasks submit <acnTaskId> --result "...; $submitHint"`

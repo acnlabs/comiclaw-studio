@@ -37,8 +37,10 @@ Shared client script (same repo as official skill, ACN mode):
 export ACN_API_KEY=...
 export ACN_TASK_ID=<acnTaskId>
 S=skills/comiclaw-studio/scripts/studio.sh
+G=skills/comiclaw-studio/scripts/charge-before-generate.sh
 $S ping
-$S charge <projectId> '{"action":"asset_generate","units":1,"provider":"jimeng","idempotencyKey":"comiclaw:gen:'"$ACN_TASK_ID"'"}'
+# Hard gate: non-zero exit ⇒ submit "charge failed; …" and stop (no Jimeng)
+"$G" <projectId> "$ACN_TASK_ID"
 ```
 
 ## Standard flow
@@ -47,7 +49,7 @@ $S charge <projectId> '{"action":"asset_generate","units":1,"provider":"jimeng",
 2. `acn tasks accept <acnTaskId>`
 3. Read `metadata.studio`: `project_id` / `type` / `input`
 4. Export `ACN_TASK_ID=<acnTaskId>`
-5. Paid work: **charge first** (`action`+`units`+`idempotencyKey` only), read `submitHint`; **on 402 do not call upstream**
+5. Paid work: **`charge-before-generate.sh` first** (or equivalent charge + check); **on non-2xx / 402 do not call upstream**
 6. Upstream generate → `upload-file` (with `X-Project-Id`) → `push-script` / `add-asset` / …
 7. `set-status <projectId> ""`
 8. `acn tasks submit <acnTaskId> --result "...; $submitHint"`

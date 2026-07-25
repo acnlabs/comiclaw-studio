@@ -120,6 +120,7 @@ usage() {
   pricing                               查看价目表(每单位 Credits)
   quote '<json>'                        预览报价 {action*, units?, provider?}
   charge <projectId> '<json>'           生成前扣款(金额由服务端算,不要传 amount)
+                                        出图请优先 charge-before-generate.sh(硬闸;非 2xx 非 0 退出)
                                         {action*(script_gen|asset_generate|shot_generate|
                                         video_generate|post_production), units*(默认1;
                                         出图=张数,视频=秒), idempotencyKey*(建议
