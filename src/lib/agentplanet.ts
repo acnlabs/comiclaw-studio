@@ -299,10 +299,17 @@ export async function acceptCastingOrder(orderId: string, buyerId: string): Prom
 //
 // 配置(环境变量,复用 Store 用的同一把内部令牌):
 //   AGENTPLANET_INTERNAL_TOKEN   与 Store 内部端点共享的 X-Internal-Token
-//   AGENTPLANET_AGENT_ID         收款方 agent_id,默认 "comiclaw"
+//   CHARGE_PAYEE_AGENT_ID        收款方 agent_id(本 Studio 总包),默认 "comiclaw"
+//                                兼容旧名 AGENTPLANET_AGENT_ID
 //   AGENTPLANET_CHARGE_SOURCE    调用方 source 标识,默认 "comiclaw-studio"
+//
+// 注意:CHARGE_PAYEE_AGENT_ID 是「本服务向 AP 扣款时的收款 Agent」,
+// 不是 AgentPlanet 平台自己的企业 Agent。其他对接方各自配置自己的收款 ID。
 
-const CHARGE_AGENT_ID = () => process.env.AGENTPLANET_AGENT_ID ?? "comiclaw";
+const CHARGE_AGENT_ID = () =>
+  process.env.CHARGE_PAYEE_AGENT_ID ??
+  process.env.AGENTPLANET_AGENT_ID ?? // legacy alias
+  "comiclaw";
 const CHARGE_SOURCE = () => process.env.AGENTPLANET_CHARGE_SOURCE ?? "comiclaw-studio";
 
 export interface WalletChargeSuccess {
