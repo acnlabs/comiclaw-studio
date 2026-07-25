@@ -46,9 +46,16 @@
 
 **曾阻断原因：** 默认/配置用了展示名 `comiclaw` → AP `Agent not found`。收款方应为 **comiclaw-studio**（`90f884c1-…`），不是主工人 ACN id，也不是展示名。
 
-### F. reconcile 兜底 — 保留未专项破坏性测试
+### F. reconcile 兜底 — **通过**（2026-07-25）
 
-`comiclaw-reconcile.timer` 仍启用；本轮未停 listen 造漏推。
+| 项 | 结果 |
+|---|---|
+| 停 `acn-listen` 后建单 | task `ebdca4f0-…` `WRITE_SCRIPT` **open**（无 wake） |
+| `production-worker.sh reconcile` | `open_in_subnet` 列出该 task（title `[WRITE_SCRIPT] reconcile …`） |
+| 补处理 | `show` → `acn tasks accept` → `submit --result …` → **completed** |
+| 恢复 listen | `acn-listen.service` **active**；reconcile 不再列出该 task |
+
+`comiclaw-reconcile.timer` 仍启用。历史 whitelist 探针 `24e1eb48-…`（仅 Aria）仍 open，非本轮资产。
 
 ## 清扫（同日）
 
@@ -68,8 +75,8 @@
 ## 后续（非阻断）
 
 1. ~~身份 / 派单~~：**已定案** — 建单+invite 主工人只用 `comiclaw-studio`（`ACN_CHAT_*`）；客户 cell 不直派；ACN 已废止 `system:task-invite`
-2. 专项：~~白名单~~ / ~~402/幂等~~ / ~~出图前硬闸~~ / ~~开放工人可写~~ / ~~先 accept 竞态~~（均已验）
-3. ~~生产机 skill 同步硬闸~~（2026-07-25 已 scp + 主机上 402 冒烟）
+2. 专项：~~白名单~~ / ~~402/幂等~~ / ~~出图前硬闸~~ / ~~开放工人可写~~ / ~~先 accept 竞态~~ / ~~reconcile 兜底~~（均已验）
+3. ~~生产机 skill 同步硬闸~~；~~#46 合入后生产 admin 路由~~（`subnet-invite` / `tasks/cancel` 已 live）
 4. 中长期：Mode A 公网 `/a2a`；ACN skill 独立渠道同步
 
 ### C′ / D′. 开放工人 + 先 accept（2026-07-25）
