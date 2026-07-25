@@ -36,12 +36,12 @@
 
 | 项 | 结果 |
 |---|---|
-| AgentPlanet 扣款 | **失败**：`POST …/charge` → **502** `Agent not found: comiclaw`（`AGENTPLANET_AGENT_ID` 默认/配置的收款方在 AP 不存在） |
+| AgentPlanet 扣款 | **失败**：`POST …/charge` → **502** `Agent not found: comiclaw`（收款方 env 默认/配置的 agent 在 AP 不存在；现名 `CHARGE_PAYEE_AGENT_ID`） |
 | 402 `INSUFFICIENT_BALANCE` | **未能复现**（到不了钱包余额判断；先被收款方 agent 校验挡住） |
 | 同 key 幂等 SUCCESS | **未能复现**（同上） |
 | 历史 GENERATE_IMAGE `2b94a6b0-…` | Studio 落 asset/`completed`，但 `GenerationChargeRef` 为 **`ERROR` amount=5**（工人未因非 2xx charge 停上游） |
 
-**解除阻断：** 在 Vercel 将 `AGENTPLANET_AGENT_ID` 设为 AgentPlanet 上真实存在的收款 agent（并保证 `SERVICE_CHARGE_ALLOWLIST` 允许 `comiclaw-studio`→该 agent），再复测 402 / 幂等。
+**解除阻断：** 在 Vercel 将 `CHARGE_PAYEE_AGENT_ID` 设为 AgentPlanet 上真实存在的收款 agent（并保证 `SERVICE_CHARGE_ALLOWLIST` 允许 `comiclaw-studio`→该 agent），再复测 402 / 幂等。
 
 ### F. reconcile 兜底 — 保留未专项破坏性测试
 
