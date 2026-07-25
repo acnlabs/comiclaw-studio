@@ -41,7 +41,8 @@
 | 同 key 幂等 | 同 `idempotencyKey` 重试 → **200** `idempotent=true`；未重复扣款 |
 | 402 `INSUFFICIENT_BALANCE` | `units=1000`（quote 5000 > balance 2266）→ **402**；`studio.sh` exit **22**；本地 ref `INSUFFICIENT_BALANCE`；余额未扣 |
 | e2e 探针 owner | `auth0\|e2e-studio-probe` → **502** `Wallet not found`（无钱包，属预期；勿当收款方故障） |
-| 历史 GENERATE_IMAGE `2b94a6b0-…` | 曾 completed 但 charge **ERROR**（工人未停上游）；API/`studio.sh` 现已可正确返回非 2xx；**全链路 GENERATE_IMAGE+402 停出图**仍靠 skill 约定，未再烧上游重跑 |
+| 历史 GENERATE_IMAGE `2b94a6b0-…` | 曾 completed 但 charge **ERROR**（工人未停上游） |
+| 硬闸 `charge-before-generate.sh`（2026-07-25） | **通过**：无钱包 **502** / 大额 **402** → exit 22 + `CHARGE_FAILED`（不得继续上游）；幂等 SUCCESS → exit 0。Skill / worker 已改为优先走此脚本 |
 
 **曾阻断原因：** 默认/配置用了展示名 `comiclaw` → AP `Agent not found`。收款方应为 **comiclaw-studio**（`90f884c1-…`），不是主工人 ACN id，也不是展示名。
 
@@ -67,5 +68,6 @@
 ## 后续（非阻断）
 
 1. ~~身份 / 派单~~：**已定案** — 建单+invite 主工人只用 `comiclaw-studio`（`ACN_CHAT_*`）；客户 cell 不直派；ACN 已废止 `system:task-invite`
-2. 专项：~~白名单~~（已验）；~~402/幂等~~（已验 API + `studio.sh`）；开放工人可写/竞态仍缺第二 key；可选：全链路 `GENERATE_IMAGE` 在 402 时确认未调即梦
-3. 中长期：Mode A 公网 `/a2a`；ACN skill 独立渠道同步
+2. 专项：~~白名单~~（已验）；~~402/幂等~~（已验）；~~出图前硬闸~~（`charge-before-generate.sh` 生产冒烟）；开放工人可写/竞态仍缺第二 key
+3. ~~生产机 skill 同步硬闸~~（2026-07-25 已 scp + 主机上 402 冒烟）
+4. 中长期：Mode A 公网 `/a2a`；ACN skill 独立渠道同步

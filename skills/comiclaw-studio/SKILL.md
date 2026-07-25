@@ -62,15 +62,15 @@ $W reconcile
 ### GENERATE_IMAGE
 
 1. Read `metadata.studio.input` (assetType/name/prompt/…)
-2. **Charge before upstream generation** (Studio price card computes amount from `units`; idempotency key = ACN task id — never change key). `studio.sh` exits non-zero on non-2xx — **verify success before calling Jimeng/upstream**:
+2. **Charge before upstream generation** (Studio price card computes amount from `units`; idempotency key = ACN task id — never change key). Prefer the hard gate script (non-zero exit ⇒ **do not** call Jimeng):
    ```bash
+   G=$S_DIR/charge-before-generate.sh   # same dir as studio.sh
    set +e
-   CHARGE=$($S charge <projectId> "{\"action\":\"asset_generate\",\"units\":1,\"provider\":\"jimeng\",\"idempotencyKey\":\"comiclaw:gen:<acnTaskId>\"}")
+   CHARGE=$("$G" <projectId> <acnTaskId>)
    rc=$?
    set -e
-   submitHint=$(printf '%s' "$CHARGE" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("submitHint") or "")' 2>/dev/null || true)
+   submitHint=$(printf '%s' "$CHARGE" | python3 -c 'import sys,json; raw=sys.stdin.read(); s=raw.find("{"); d=json.loads(raw[s:]); print(d.get("submitHint") or "")' 2>/dev/null || true)
    if [[ $rc -ne 0 ]]; then
-     # 402/other failure: do not generate; body may still contain submitHint
      acn tasks submit <acnTaskId> --result "charge failed; ${submitHint:-see charge body}"
      exit 1
    fi

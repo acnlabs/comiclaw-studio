@@ -132,7 +132,7 @@ PY
 1) acn tasks accept $tid
 2) 读 metadata.studio (project_id / type / input)
 3) WRITE_SCRIPT: studio.sh push-script → set-stage ASSETS → submit
-   GENERATE_IMAGE: studio.sh charge(comiclaw:gen:$tid) → dreamina → upload-file → add-asset → submit
+   GENERATE_IMAGE: charge-before-generate.sh →(仅 0) dreamina → upload-file → add-asset → submit
 4) acn tasks submit $tid --result '...'
 EOF
       fi
@@ -164,9 +164,10 @@ if cmd=="handle":
         print(f"3) 写剧本后: {studio_sh} push-script {pid} '{{\"title\":\"...\",\"content\":\"...\",\"changeLog\":\"ACN task\"}}'")
         print(f"4) {studio_sh} set-stage {pid} ASSETS")
     elif typ=="GENERATE_IMAGE":
-        print(f"3) {studio_sh} charge {pid} '{{\"action\":\"asset_generate\",\"units\":1,\"provider\":\"jimeng\",\"idempotencyKey\":\"comiclaw:gen:{tid}\"}}'")
-        print("   # 非 2xx 不得出图;读响应 submitHint 写入 submit")
-        print("4) dreamina 出图 → upload-file → add-asset")
+        gate = studio_sh.replace("studio.sh", "charge-before-generate.sh")
+        print(f"3) {gate} {pid} {tid}")
+        print("   # 非 0 退出=CHARGE_FAILED: submit 'charge failed; <submitHint>' 并停止;不得出图")
+        print("4) 仅当上一步 exit 0: dreamina 出图 → upload-file → add-asset")
     else:
         print("3) 按 metadata.studio.type 执行对应生产步骤")
     print(f"5) {studio_sh} set-status {pid} ''")

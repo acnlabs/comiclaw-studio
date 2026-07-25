@@ -39,7 +39,7 @@ GENERATE_IMAGE 闭环（2026-07-24）：task `2b94a6b0-…` wake 后约 6min `co
 
 主 comiclaw 上确认：
 
-1. **Skill 已同步**：`skills/comiclaw-studio/` 含 `SKILL.md`、`SKILL.zh-CN.md`、`scripts/studio.sh`、`scripts/production-worker.sh`、`scripts/acn-to-openclaw-wake.sh`（与仓库一致；wake 脚本另装到 `~/.config/comiclaw/`）。
+1. **Skill 已同步**：`skills/comiclaw-studio/` 含 `SKILL.md`、`SKILL.zh-CN.md`、`scripts/studio.sh`、`scripts/production-worker.sh`、`scripts/charge-before-generate.sh`、`scripts/acn-to-openclaw-wake.sh`（与仓库一致；wake 脚本另装到 `~/.config/comiclaw/`）。
 2. **`acn` CLI 已登录为生产 Agent**（`ACN_PROD` / `ACN_PROD_AGENT_ID` 对应身份）。
 3. **常驻 `acn listen --runtime …`**（CLI ≥ 0.14.0；首选实时路径；无需公网入站端口）。切换说明见 [`acn-listen-runtime-cutover.md`](./acn-listen-runtime-cutover.md)。
 4. **环境变量**（skill / shell profile / OpenClaw skill config）：
@@ -169,7 +169,8 @@ acn listen --forward http://127.0.0.1:<local-a2a-port>
 - [x] `POST /charge` units=1 → **201 SUCCESS**（2026-07-25：owner `github\|43027886`；收款方 `CHARGE_PAYEE_AGENT_ID=90f884c1-…`）
 - [x] 余额不足 → **402**，`studio.sh` exit 22 + `submitHint`；余额不扣（`units=1000` quote 5000）
 - [x] 同 key 重试 → **200** `idempotent=true`，不重复扣
-- [ ] 全链路 `GENERATE_IMAGE`：非 2xx charge **不得**调即梦（skill 已写；API 层已可返回 402；未再烧上游专项重跑）
+- [x] 出图前硬闸：`charge-before-generate.sh` 非 2xx → exit 非 0 + `CHARGE_FAILED`（2026-07-25：502 无钱包 / 402 大额；幂等 SUCCESS → 0）
+- [ ] 生产机 skill 目录已含并使用该脚本（同步 `skills/comiclaw-studio/` 整目录后勾选）
 
 ### F. reconcile 兜底
 
