@@ -30,7 +30,7 @@
 |---|---|
 | C 双 invite | task `37b77902-…`：`workerAgentIds=[Aria]` + `includeDefaultWorker=true` → invitee/白名单含 Aria + 主 comiclaw；主工人 ACN 写 Studio **200** |
 | D 排除默认工人 | task `24e1eb48-…`：`includeDefaultWorker=false` + 仅 Aria → 主 comiclaw **不在**白名单；主工人 ACN + `X-Acn-Task-Id` 写 Studio → **403** `not invited/assigned` |
-| 开放工人可写 / 先 accept 竞态 | **未测**（无第二工人 API key） |
+| 开放工人可写 / 先 accept 竞态 | **通过**（2026-07-25）：第二工人用环境 `cursor-acn-dev`（`ACN_API_KEY`）；入网 `comiclaw-internal`（admin `subnet-invite` auto_resolve）；见下表 |
 
 ### E. 扣款路径 — **通过**（2026-07-25 续）
 
@@ -68,6 +68,16 @@
 ## 后续（非阻断）
 
 1. ~~身份 / 派单~~：**已定案** — 建单+invite 主工人只用 `comiclaw-studio`（`ACN_CHAT_*`）；客户 cell 不直派；ACN 已废止 `system:task-invite`
-2. 专项：~~白名单~~（已验）；~~402/幂等~~（已验）；~~出图前硬闸~~（`charge-before-generate.sh` 生产冒烟）；开放工人可写/竞态仍缺第二 key
+2. 专项：~~白名单~~ / ~~402/幂等~~ / ~~出图前硬闸~~ / ~~开放工人可写~~ / ~~先 accept 竞态~~（均已验）
 3. ~~生产机 skill 同步硬闸~~（2026-07-25 已 scp + 主机上 402 冒烟）
 4. 中长期：Mode A 公网 `/a2a`；ACN skill 独立渠道同步
+
+### C′ / D′. 开放工人 + 先 accept（2026-07-25）
+
+第二工人：`cursor-acn-dev`（Cloud Agent 注入的 `ACN_API_KEY` / `ACN_AGENT_ID`）。入网：Preview `POST /api/admin/acn/subnet-invite` → ACN `auto_resolved` join_request。
+
+| 项 | 结果 |
+|---|---|
+| D′ 仅开放工人 | `includeDefaultWorker=false` + `workerAgentIds=[cursor-acn-dev]` → open **accept 200**；Studio PATCH + `X-Acn-Task-Id` **200**；主 comiclaw 同 task 写 → **403** `not invited/assigned` |
+| C′ 先 accept（open） | 双 invite；open accept → assignee=open；main 再 accept → **400** `invalid_request`（`max_participants=1`） |
+| C′ 先 accept（main） | 双 invite；main accept → assignee=main；open 再 accept → **400** `invalid_request` |

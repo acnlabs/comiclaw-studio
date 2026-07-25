@@ -156,13 +156,13 @@ acn listen --forward http://127.0.0.1:<local-a2a-port>
 
 - [x] 建单传 `workerAgentIds: [<open-worker>, …]` 且 `includeDefaultWorker: true`（2026-07-24：双 invite 列表正确）
 - [x] 主 comiclaw 与开放工人均在 `invited_agent_ids` / `worker_agent_ids`
-- [ ] **先 accept 者**成为执行方；另一方再 accept 失败或不再写（缺第二工人 key，未测）
+- [x] **先 accept 者**成为执行方；另一方再 accept → **400**（2026-07-25：`cursor-acn-dev` ↔ 主 comiclaw；双向均验）
 
 ### D. `includeDefaultWorker=false`
 
 - [x] 仅邀请开放工人；主 comiclaw **不在**写白名单（task `24e1eb48-…`）
 - [x] 主 comiclaw 非白名单时 Studio 写 → **403** `not invited/assigned`
-- [ ] 开放工人用自己的 `ACN_API_KEY` + `X-Acn-Task-Id` 可写（缺第二工人 key，未测）
+- [x] 开放工人用自己的 `ACN_API_KEY` + `X-Acn-Task-Id` 可写（2026-07-25：`cursor-acn-dev`；主工人非白名单仍 403）
 
 ### E. 扣款 / 402
 
@@ -188,6 +188,8 @@ acn listen --forward http://127.0.0.1:<local-a2a-port>
 | 出图前已烧上游 | 是否跳过了 `charge` **2xx** 检查（含 402/502） |
 | charge 502 `Agent not found` | Vercel `CHARGE_PAYEE_AGENT_ID` 是否为 comiclaw-studio UUID `90f884c1-…`（勿填展示名）；allowlist `comiclaw-studio:<payee-uuid>` |
 | charge 502 `Wallet not found` | 项目 `ownerUserId` 在 AgentPlanet 是否已有钱包（e2e 探针无钱包属预期） |
+| 开放工人 `not_subnet_member` | 用 `STUDIO_API_KEY` 调 `POST /api/admin/acn/subnet-invite`（slug=`comiclaw-internal`）批准入网 |
+| 冒烟残留 open 单 | `POST /api/admin/acn/tasks/cancel`（creator=`comiclaw-studio`） |
 | 主 comiclaw 写被拒 | 是否 `includeDefaultWorker=false` / 不在 `worker_agent_ids` |
 | 开放工人要官方 key | 拒绝；指引 `comiclaw-studio-worker` |
 
