@@ -174,9 +174,9 @@ acn listen --forward http://127.0.0.1:<local-a2a-port>
 
 ### F. reconcile 兜底
 
-- [ ] 停 listen 片刻，建一单，确认可能漏推
-- [ ] 跑 `reconcile` 能列出该 open 任务
-- [ ] 补 `handle` → accept → 完成 → 恢复 listen
+- [x] 停 listen 后建单漏推（2026-07-25：task `ebdca4f0-…` 保持 open）
+- [x] `production-worker.sh reconcile` 列出该 open 任务
+- [x] `accept` → `submit --result` → **completed** → 恢复 `acn-listen` **active**
 
 ## 日常运维速查
 
