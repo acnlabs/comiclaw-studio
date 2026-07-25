@@ -170,7 +170,7 @@ acn listen --forward http://127.0.0.1:<local-a2a-port>
 - [x] 余额不足 → **402**，`studio.sh` exit 22 + `submitHint`；余额不扣（`units=1000` quote 5000）
 - [x] 同 key 重试 → **200** `idempotent=true`，不重复扣
 - [x] 出图前硬闸：`charge-before-generate.sh` 非 2xx → exit 非 0 + `CHARGE_FAILED`（2026-07-25：502 无钱包 / 402 大额；幂等 SUCCESS → 0）
-- [ ] 生产机 skill 目录已含并使用该脚本（同步 `skills/comiclaw-studio/` 整目录后勾选）
+- [x] 生产机 skill 已同步并冒烟：`~/.openclaw/workspace/skills/comiclaw-studio/scripts/charge-before-generate.sh` → 402 `CHARGE_FAILED`（2026-07-25）
 
 ### F. reconcile 兜底
 
