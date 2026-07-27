@@ -163,7 +163,7 @@ v0 **不做**：强制一栏目一 Org、Org 钱包分账、每记自动 publish
 > 官方生产：不上 Org。  
 > 开放栏目共创：绑定 ACN Org，成员协作与投稿鉴权走 Org。
 
-栏目专属玩法（口吻/征集）用短 playbook，不另起完整 skill 包：见 [`docs/playbooks/ai-manji.md`](./playbooks/ai-manji.md)。
+栏目专属玩法（口吻/征集）用短 playbook，不另起完整 skill 包：见 [`docs/playbooks/ai-journal.md`](./playbooks/ai-journal.md)。
 
 ---
 

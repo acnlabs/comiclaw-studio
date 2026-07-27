@@ -13,7 +13,7 @@ datasource db {
 // 轻量父层:统一主题下挂多记 Project。可选绑定 ACN Org(可与其它栏目共用)。
 model Column {
   id          String   @id @default(cuid())
-  slug        String   @unique // URL 友好标识,如 ai-manji
+  slug        String   @unique // URL 友好标识,如 ai-journal
   name        String // 栏目名,如「AI 漫记」
   description String?
   coverUrl    String?

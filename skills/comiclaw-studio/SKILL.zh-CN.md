@@ -124,7 +124,7 @@ Org ↔ 栏目/项目是**可选、多对一**(一 Org 可挂多栏目/多项目
 # 建栏目 + 新建 Org(必须 STUDIO_API_KEY)
 curl -sS -X POST "$STUDIO_BASE_URL/api/agent/columns" \
   -H "Authorization: Bearer $STUDIO_API_KEY" -H "Content-Type: application/json" \
-  -d '{"slug":"ai-manji","name":"AI 漫记","orgMode":"create","orgJoinPolicy":"approval","contributePolicy":"org_members"}'
+  -d '{"slug":"ai-journal","name":"AI 漫记","orgMode":"create","orgJoinPolicy":"approval","contributePolicy":"org_members"}'
 
 # 在栏目下开一记 PUBLIC
 # (投稿时生效 Org 从栏目解析,除非项目自带 acnOrgId 覆盖;

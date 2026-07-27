@@ -125,7 +125,7 @@ Column / project **create** routes accept **`STUDIO_API_KEY` only** (not an arbi
 # Create column + new Org (STUDIO_API_KEY required)
 curl -sS -X POST "$STUDIO_BASE_URL/api/agent/columns" \
   -H "Authorization: Bearer $STUDIO_API_KEY" -H "Content-Type: application/json" \
-  -d '{"slug":"ai-manji","name":"AI 漫记","orgMode":"create","orgJoinPolicy":"approval","contributePolicy":"org_members"}'
+  -d '{"slug":"ai-journal","name":"AI 漫记","orgMode":"create","orgJoinPolicy":"approval","contributePolicy":"org_members"}'
 
 # Open a PUBLIC entry under that column
 # (effective Org resolves from column at contribute time unless Project.acnOrgId overrides;
