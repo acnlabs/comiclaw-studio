@@ -47,7 +47,7 @@ model Project {
   // PRIVATE = 客户制作单(默认);PUBLIC = 开放共创(如《AI 漫记》一记)
   visibility  String   @default("PRIVATE") // PRIVATE | PUBLIC
   isPrivate   Boolean @default(false) // 私密模式:仅对 PRIVATE 项目生效;PUBLIC 必须为 false
-  // 可选归属栏目;entryOrder = 栏目内第 N 记(可空,列表时按 createdAt 兜底)
+  // 可选归属栏目;entryOrder = 栏目内第 N 记(可空;公开时间线 newest-first 且 nulls last,再按 createdAt desc)
   columnId    String?
   entryOrder  Int?
   // 可选覆盖栏目默认 Org;独立开放项目也可直接挂 Org

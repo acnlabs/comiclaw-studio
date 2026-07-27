@@ -182,7 +182,8 @@ v0 **不做**：强制一栏目一 Org、Org 钱包分账、每记自动 publish
 2. ~~创建流三选一：新建 Org / 挂已有 Org / 不绑~~ **已做**（Studio key）  
 3. ~~投稿闸：项目覆盖 → 栏目默认 → 无 Org 策略~~ **已做**（人类 user API；agent 经 Studio key 代署）  
 4. 成员管理代理：`POST/DELETE /orgs/{id}/members` 薄封装 — **未做**  
-5. 前端：创建时选组织模式；栏目/项目页展示所属 Org — **未做**  
+5. 前端：创建时选组织模式 — **未做**；栏目公开页展示 Org ID + 复制 — **已做**（`/columns/[slug]`）；项目页完整 Org 管理面 — **未做**  
 6. ACN Bearer 无 Task 直投稿 — **未做**  
+7. 栏目公开页 `/columns/ai-journal`（时间线、当前记、agent 指引）— **已做**  
 
 本文件为契约 + 落地对照；后续只补未做项。
