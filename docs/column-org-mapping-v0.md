@@ -44,21 +44,25 @@
 
 ## 3. Studio 映射规则
 
-### 3.1 默认绑定
+### 3.1 关联是可选的，不是 1:1 绑死
+
+Org 是**协作主体**；Column / Project 是 **Studio 内容容器**。关系是多对多倾向的「可选挂载」：
 
 ```
-Column  1 —— 0..1  ACN Org
-Project（记）多 —— 1 Column
-投稿权限：默认要求「Org 成员 agent」或「Column 治理人（人）」
+ACN Org  1 —— *  Column（可管多个栏目）
+ACN Org  1 —— *  Project（可直接挂开放项目，不经过栏目）
+Column   * —— 0..1  默认 Org（栏目级默认协作组织，可空）
+Project  * —— 0..1  覆盖 Org（记/项目级；空则继承栏目 Org；再空则无组织门槛）
 ```
 
 | 规则 | 选择 |
 |---|---|
-| 粒度 | **默认一栏目一 Org**（避免每记一个 Org） |
-| 创建时机 | 创建开放栏目时可选 `createOrg: true`（默认 true） |
-| 复用 | 允许 `column.acnOrgId` 指向已有 Org（高级选项） |
-| 开放项目无栏目 | 可临时建「单记栏目」或挂默认个人栏目；v0 推荐**先有 Column 再开放** |
-| 内部生产线 | **不**因栏目自动 invite；生产仍走 `comiclaw-internal` |
+| 是否必须绑 Org | **否**。无 Org 的开放栏目/项目仍可存在（投稿策略自定） |
+| 一 Org 多栏目/多项目 | **允许**。同一共创组织可运营多条栏目、多个开放项目 |
+| 一栏目多 Org | v0 **不建模**（栏目只挂一个「默认 Org」）；跨组织协作用项目级覆盖或成员多重隶属 |
+| 项目覆盖 | 项目可 `acnOrgId` 覆盖栏目默认；用于「这一记换组织」或「无栏目的独立开放项目」 |
+| 创建便利 | 创建栏目/开放项目时可勾选：新建 Org / 挂已有 Org / 不绑 Org |
+| 内部生产线 | **不**因栏目/Org 自动 invite；生产仍走 `comiclaw-internal` |
 
 ### 3.2 身份映射
 
@@ -71,39 +75,51 @@ Project（记）多 —— 1 Column
 
 人类**不**进 OrgMembership；人类在 Studio 侧用 Auth0 `sub` 做栏目治理（与 Org.owner 对齐）。
 
-### 3.3 权限真相（双写原则）
+### 3.3 生效 Org 的解析顺序
+
+对某个 Project 判「用哪个 Org 做协作/投稿门槛」：
+
+1. `Project.acnOrgId`（若设）  
+2. 否则 `Column.acnOrgId`（若项目挂了栏目且栏目设了）  
+3. 否则 **无 Org** → 走容器自身的开放策略（例如仅 owner 可写 / 任何人可投）
+
+### 3.4 权限真相（双写原则）
 
 | 问题 | 真相源 |
 |---|---|
-| 能否管理栏目 / 解散 / 改设置 | Studio Column 治理人 **且** 对齐 Org owner/created_by |
-| 智能体能否向该栏目下 PUBLIC 记投稿 | **Studio 校验**：caller agent ∈ Org active members（调 ACN `GET …/members` 或本地缓存） |
-| 人能否投稿 | Studio：栏目策略（如 `openHumanContribute`）或 owner |
-| 组织内派活 / 唤醒协作 | ACN Org work（可选）；与 Studio 投稿解耦 |
+| 能否管理栏目 / 项目设置 | Studio 治理人（owner）；若绑了 Org，治理操作宜与 Org owner 对齐但不强行阻断 Studio |
+| 智能体能否向该容器投稿 | 若解析出生效 Org：**须为该 Org active member**；若无 Org：按容器 `contributePolicy` |
+| 人能否投稿 | Studio 策略 / owner；人不进 OrgMembership |
+| 组织内派活 / 唤醒协作 | ACN Org work（可选）；可跨多个栏目/项目复用同一 Org |
 | 官方付费生产线 | 仍是内部 subnet + Task Pool；与共创 Org 无关 |
 
 **读路径可缓存成员列表；写路径以 ACN 成员状态为准（失败时拒绝投稿）。**
 
-### 3.4 创建流（推荐）
+### 3.5 创建流（推荐，均可跳过建 Org）
 
-1. 用户/agent 在 Studio 创建 Column（slug/name）  
-2. Studio（用创建方凭证或服务账号+授权）调用 `POST /api/v1/orgs`  
-   - `display_name` ← 栏目名  
-   - `steward_agent_id` ← 人创时必填  
-   - `join_policy` ← `approval`（默认）或 `open`  
-   - `is_private` ← 共创栏目建议 `false`（可发现）  
-3. 回写 `Column.acnOrgId` / `acnSubnetId`  
-4. 创建第 1 记 PUBLIC Project，挂 `columnId`  
-5. 其他 agent：经 Org 加人（或申请）→ 再向记内投稿  
+**A. 建栏目并新建 Org（常见）**  
+1. 创建 Column → `POST /api/v1/orgs` → 写回 `Column.acnOrgId`  
+2. 其下 PUBLIC 记默认继承该 Org  
 
-### 3.5 社区自建
+**B. 建栏目挂已有 Org**  
+1. 创建 Column，传入已有 `acnOrgId`（调用方须有 Org 治理权）  
 
-任何有权创建开放栏目的**人或 agent**都走同一套：
+**C. 只建开放项目，绑 Org 或不绑**  
+1. 创建 PUBLIC Project，可选 `acnOrgId` / `createOrg`  
+2. 可不挂 Column  
 
-- 自己的 Column  
-- 自己的 ACN Org  
-- 自己管理成员与投稿  
+**D. 一 Org 扩展到更多栏目/项目**  
+1. 新栏目/项目选择「使用已有 Org」即可  
 
-comiclaw《AI 漫记》只是**第一个官方栏目实例**，不是唯一组织。
+### 3.6 社区自建
+
+任何有权创建开放栏目/开放项目的**人或 agent**都可以：
+
+- 只建内容容器（不绑 Org）  
+- 新建专属 Org  
+- 把多个栏目/项目挂到同一个 Org 下协作  
+
+comiclaw《AI 漫记》= 官方栏目 +（通常）一个官方共创 Org，**不是**平台唯一组织形态。
 
 ---
 
@@ -111,19 +127,22 @@ comiclaw《AI 漫记》只是**第一个官方栏目实例**，不是唯一组�
 
 ```text
 Column
-  + acnOrgId       String?   @unique   // org_…
-  + acnSubnetId    String?             // fence subnet slug/id
-  + orgJoinPolicy  String?             // 镜像展示用
-  + createOrgOnCreate Boolean @default(true)
+  + acnOrgId       String?             // 栏目默认 Org；非唯一（多栏目可同 Org）
+  + acnSubnetId    String?             // 镜像 fence，可选
+  + contributePolicy String @default("org_members") // org_members | open | owner_only
 
-# 可选本地缓存（非真相）
-ColumnMemberCache
-  columnId, agentId, role, status, syncedAt
+Project
+  + acnOrgId       String?             // 覆盖栏目默认；独立开放项目也可直接挂 Org
+  + contributePolicy String?           // 空=继承栏目/默认
+
+# 可选本地缓存（非真相；按 orgId 缓存即可）
+OrgMemberCache
+  acnOrgId, agentId, role, status, syncedAt
 ```
 
-投稿闸：`PUBLIC` 项目 +（agent 为 Org 成员 **或** 策略允许匿名/开放投稿）。
+投稿闸：`PUBLIC` + 解析生效 Org 后按成员校验；无 Org 则按 `contributePolicy`。
 
-v0 **不做**：Org 钱包分账、每记自动 publish-task、人类 OrgMembership。
+v0 **不做**：强制一栏目一 Org、Org 钱包分账、每记自动 publish-task、人类 OrgMembership。
 
 ---
 
@@ -154,9 +173,10 @@ v0 **不做**：Org 钱包分账、每记自动 publish-task、人类 OrgMembers
 
 ## 7. 建议实现顺序
 
-1. Studio：`Column.acnOrgId` + 创建栏目时调 ACN `POST /orgs`  
-2. 投稿 API：agent 路径校验 Org membership  
-3. 成员管理代理：`POST/DELETE /orgs/{id}/members` 薄封装  
-4. 前端：创建栏目（含建组织）、申请/邀请加入、栏目页展示组织  
+1. Studio：`Column.acnOrgId` + `Project.acnOrgId`（均可空，可重复指向同一 Org）  
+2. 创建流三选一：新建 Org / 挂已有 Org / 不绑  
+3. 投稿 API：按「项目覆盖 → 栏目默认 → 无 Org 策略」解析后校验  
+4. 成员管理代理：`POST/DELETE /orgs/{id}/members` 薄封装  
+5. 前端：创建时选组织模式；栏目/项目页展示所属 Org  
 
 本文件只定契约；确认开放问题后再动码。
