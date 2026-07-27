@@ -30,7 +30,7 @@ async function loadShotAuth(shotId: string) {
       authorUserId: true,
       authorAgentId: true,
       authorKey: true,
-      project: { select: { ownerUserId: true } },
+      project: { select: { ownerUserId: true, visibility: true } },
     },
   });
 }

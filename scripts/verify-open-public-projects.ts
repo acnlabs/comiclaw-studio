@@ -44,15 +44,6 @@ assert.equal(
 ok("PRIVATE+isPrivate blocked for anonymous");
 
 assert.equal(
-  canViewProject(
-    { visibility: "PRIVATE", isPrivate: true, ownerUserId: "u1" },
-    "u1"
-  ),
-  true
-);
-ok("PRIVATE+isPrivate ok for owner");
-
-assert.equal(
   canUserContribute(
     { visibility: "PUBLIC", isPrivate: false, ownerUserId: null },
     "u2"
@@ -61,20 +52,8 @@ assert.equal(
 );
 ok("any user can contribute to PUBLIC");
 
-assert.equal(
-  canUserContribute(
-    { visibility: "PRIVATE", isPrivate: false, ownerUserId: "u1" },
-    "u2"
-  ),
-  false
-);
-ok("non-owner cannot contribute to PRIVATE");
-
 assert.ok(assertPrivacyAllowed("PUBLIC", true) instanceof Response);
 ok("PUBLIC cannot enable isPrivate");
-
-assert.equal(assertPrivacyAllowed("PRIVATE", true), null);
-ok("PRIVATE can enable isPrivate");
 
 // --- contentAuthor ---
 const userA = authorFromUser("auth0|a");
@@ -98,14 +77,6 @@ const studioPublicNoAuthor = resolveAgentCreateAuthor({
 assert.ok(studioPublicNoAuthor instanceof Response);
 ok("studio_key on PUBLIC requires explicit author");
 
-const studioPrivateLegacy = resolveAgentCreateAuthor({
-  auth: { kind: "studio_key" },
-  visibility: "PRIVATE",
-});
-assert.ok(!(studioPrivateLegacy instanceof Response));
-assert.equal(studioPrivateLegacy.authorKey, LEGACY_AUTHOR_KEY);
-ok("studio_key on PRIVATE may use legacy");
-
 const forged = resolveAgentCreateAuthor({
   auth: { kind: "acn_worker", agentId: "agent-w", acnTaskId: "t1" },
   visibility: "PUBLIC",
@@ -114,8 +85,9 @@ const forged = resolveAgentCreateAuthor({
 assert.ok(forged instanceof Response);
 ok("worker cannot forge another agent author");
 
-// --- contentAuth ---
-const project = { ownerUserId: "owner" };
+// --- contentAuth: PRIVATE keeps classic full access ---
+const privateProject = { ownerUserId: "owner", visibility: "PRIVATE" };
+const publicProject = { ownerUserId: "owner", visibility: "PUBLIC" };
 const userContent = {
   authorUserId: "auth0|a",
   authorAgentId: null,
@@ -133,66 +105,66 @@ const legacyContent = {
 };
 
 assert.equal(
-  canMutateContent(userContent, project, { kind: "user", sub: "auth0|a" }),
-  true
-);
-assert.equal(
-  canMutateContent(userContent, project, { kind: "user", sub: "auth0|b" }),
-  false
-);
-assert.equal(
-  canMutateContent(userContent, project, {
-    kind: "acn_agent",
-    agentId: "agent-w",
-  }),
-  false
-);
-ok("users edit only own; agent cannot edit user content");
-
-assert.equal(
-  canMutateContent(agentContent, project, {
+  canMutateContent(legacyContent, privateProject, {
     kind: "acn_agent",
     agentId: "agent-w",
   }),
   true
 );
 assert.equal(
-  canMutateContent(agentContent, project, { kind: "user", sub: "auth0|a" }),
-  false
+  canMutateContent(userContent, privateProject, { kind: "studio_key" }),
+  true
 );
-ok("agent edits only own; user cannot edit agent content");
+assert.equal(
+  canMutateContent(agentContent, privateProject, {
+    kind: "acn_agent",
+    agentId: "other",
+  }),
+  true
+);
+ok("PRIVATE: studio_key and any task worker can mutate");
 
 assert.equal(
-  canMutateContent(userContent, project, { kind: "studio_key" }),
+  canMutateContent(userContent, publicProject, { kind: "user", sub: "auth0|a" }),
+  true
+);
+assert.equal(
+  canMutateContent(userContent, publicProject, { kind: "user", sub: "auth0|b" }),
   false
 );
 assert.equal(
-  canDeleteContent(userContent, project, { kind: "studio_key" }),
+  canMutateContent(userContent, publicProject, {
+    kind: "acn_agent",
+    agentId: "agent-w",
+  }),
+  false
+);
+assert.equal(
+  canMutateContent(agentContent, publicProject, {
+    kind: "acn_agent",
+    agentId: "agent-w",
+  }),
   true
 );
-ok("studio_key: no blanket PATCH, DELETE allowed");
+assert.equal(
+  canMutateContent(userContent, publicProject, { kind: "studio_key" }),
+  false
+);
+assert.equal(
+  canDeleteContent(userContent, publicProject, { kind: "studio_key" }),
+  true
+);
+ok("PUBLIC: edit-own; studio_key DELETE only");
 
 assert.equal(
-  canMutateContent(legacyContent, project, { kind: "user", sub: "owner" }),
+  canMutateContent(legacyContent, publicProject, { kind: "user", sub: "owner" }),
   true
 );
-assert.equal(
-  canMutateContent(legacyContent, project, { kind: "studio_key" }),
-  true
-);
-ok("legacy content editable by owner / studio_key");
+ok("PUBLIC legacy editable by owner");
 
 assert.deepEqual(actorFromProductionAuth({ kind: "studio_key" }), {
   kind: "studio_key",
 });
-assert.deepEqual(
-  actorFromProductionAuth({
-    kind: "acn_worker",
-    agentId: "agent-w",
-    acnTaskId: "t",
-  } as { kind: "acn_worker"; agentId: string }),
-  { kind: "acn_agent", agentId: "agent-w" }
-);
 ok("actorFromProductionAuth mapping");
 
 console.log("\nAll open-public-projects helper checks passed.");

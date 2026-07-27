@@ -25,7 +25,7 @@ export const POST = withProjectWorkerAuth(
         authorUserId: true,
         authorAgentId: true,
         authorKey: true,
-        project: { select: { ownerUserId: true } },
+        project: { select: { ownerUserId: true, visibility: true } },
       },
     });
     if (!shot) return notFoundJson();

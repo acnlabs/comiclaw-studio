@@ -5,7 +5,8 @@ import { prisma } from "@/lib/db";
 export async function syncProjectToWork(projectId: string) {
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    include: { filmVersions: { orderBy: { version: "desc" }, take: 1 } },
+    // Prefer newest upload by time — version is per-author, not global
+    include: { filmVersions: { orderBy: { createdAt: "desc" }, take: 1 } },
   });
   if (!project) return null;
 

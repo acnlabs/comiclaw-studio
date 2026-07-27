@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/db";
 import { verifyUserToken } from "@/lib/userAuth";
-import { unauthorized, badRequest, notFoundJson } from "@/lib/auth";
+import { unauthorized, badRequest, notFoundJson, forbidden } from "@/lib/auth";
 
 // 登录用户认领项目:持有 shareToken 即视为所有权凭证。
-// 项目无主时绑定到当前用户;已有主人则不变(仍可通过链接查看)。
+// 仅 PRIVATE 客户单可认领;PUBLIC 共创项目禁止抢占 owner。
 export async function POST(req: Request) {
   const sub = await verifyUserToken(req);
   if (!sub) return unauthorized();
@@ -16,9 +16,13 @@ export async function POST(req: Request) {
 
   const project = await prisma.project.findUnique({
     where: { shareToken },
-    select: { id: true, ownerUserId: true },
+    select: { id: true, ownerUserId: true, visibility: true },
   });
   if (!project) return notFoundJson();
+
+  if (project.visibility === "PUBLIC") {
+    return forbidden("PUBLIC projects cannot be claimed via share link");
+  }
 
   if (project.ownerUserId === sub) {
     return Response.json({ claimed: false, alreadyOwned: true });

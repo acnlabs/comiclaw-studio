@@ -30,7 +30,7 @@ export const DELETE = withProjectWorkerAuth(
         authorUserId: true,
         authorAgentId: true,
         authorKey: true,
-        project: { select: { ownerUserId: true } },
+        project: { select: { ownerUserId: true, visibility: true } },
       },
     });
     if (!asset) return notFoundJson();

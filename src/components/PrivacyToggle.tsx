@@ -9,7 +9,11 @@ import { AUTH0_AUDIENCE } from "@/lib/auth0";
 export default function PrivacyToggle({ shareToken }: { shareToken: string }) {
   const { isAuthenticated, isLoading, getAccessTokenSilently } = useAuth0();
   const { t } = useT();
-  const [state, setState] = useState<{ isOwner: boolean; isPrivate: boolean } | null>(null);
+  const [state, setState] = useState<{
+    isOwner: boolean;
+    isPrivate: boolean;
+    visibility?: string;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -29,7 +33,7 @@ export default function PrivacyToggle({ shareToken }: { shareToken: string }) {
     })();
   }, [isAuthenticated, isLoading, getAccessTokenSilently, shareToken]);
 
-  if (!state?.isOwner) return null;
+  if (!state?.isOwner || state.visibility === "PUBLIC") return null;
 
   const toggle = async () => {
     if (busy) return;

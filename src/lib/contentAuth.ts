@@ -13,18 +13,34 @@ export type MutableContent = Pick<
 
 export type ContentProjectOwner = {
   ownerUserId: string | null;
+  /** PRIVATE keeps classic studio/worker full access; PUBLIC is edit-own */
+  visibility: string;
 };
 
+function isPublicProject(project: ContentProjectOwner): boolean {
+  return project.visibility === "PUBLIC";
+}
+
 /**
- * Who may mutate (PATCH) content.
- * studio_key does NOT get blanket PATCH — only matching author or legacy owner.
- * DELETE uses canDeleteContent which allows studio_key for ops.
+ * Who may mutate (PATCH / add versions) content.
+ * - PRIVATE: studio_key + task-bound workers + project owner (pre-open-project behavior)
+ * - PUBLIC: edit-own only; studio_key has no blanket PATCH
  */
 export function canMutateContent(
   content: MutableContent,
   project: ContentProjectOwner,
   actor: ContentAuthActor
 ): boolean {
+  if (!isPublicProject(project)) {
+    if (actor.kind === "studio_key") return true;
+    if (actor.kind === "acn_agent") return true;
+    if (actor.kind === "user") {
+      return Boolean(project.ownerUserId && project.ownerUserId === actor.sub);
+    }
+    return false;
+  }
+
+  // PUBLIC — edit-own
   if (actor.kind === "user") {
     if (content.authorUserId && content.authorUserId === actor.sub) return true;
     if (
@@ -42,7 +58,7 @@ export function canMutateContent(
     );
   }
 
-  // studio_key: no blanket PATCH on authored content
+  // studio_key: no blanket PATCH on PUBLIC authored content
   if (content.authorKey === LEGACY_AUTHOR_KEY) return true;
   return false;
 }

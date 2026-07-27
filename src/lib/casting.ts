@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { emitProjectUpdate } from "@/lib/events";
 import { getCheckout, acceptCastingOrder } from "@/lib/agentplanet";
+import { authorFromUser, LEGACY_AUTHOR_KEY } from "@/lib/contentAuthor";
 import { Prisma, type AgentCharacter } from "@prisma/client";
 
 // 授予选角授权 + 物化角色到项目资产库(免费授予与付费确认共用)。
@@ -23,6 +24,20 @@ export async function grantLicense(args: {
     characterId_projectId: { characterId: character.id, projectId },
   };
 
+  const projectMeta = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { visibility: true },
+  });
+  // PUBLIC: attribute to casting user; PRIVATE: legacy so studio/workers can iterate
+  const author =
+    projectMeta?.visibility === "PUBLIC"
+      ? authorFromUser(sub)
+      : {
+          authorUserId: null as string | null,
+          authorAgentId: null as string | null,
+          authorKey: LEGACY_AUTHOR_KEY,
+        };
+
   const materializeAsset = (tx: Prisma.TransactionClient) =>
     tx.asset.create({
       data: {
@@ -32,9 +47,9 @@ export async function grantLicense(args: {
         description:
           character.tagline ??
           (character.persona ? character.persona.slice(0, 200) : null),
-        authorUserId: sub,
-        authorAgentId: null,
-        authorKey: `user:${sub}`,
+        authorUserId: author.authorUserId,
+        authorAgentId: author.authorAgentId,
+        authorKey: author.authorKey,
         versions: {
           create: {
             version: 1,
