@@ -13,6 +13,7 @@ const MENUS: { href: string; labelKey: MessageKey }[] = [
   { href: "/", labelKey: "nav.recommend" },
   { href: "/series", labelKey: "nav.series" },
   { href: "/characters", labelKey: "nav.characters" },
+  { href: "/columns/ai-manji", labelKey: "nav.manji" },
   { href: "/studio", labelKey: "nav.studio" },
 ];
 

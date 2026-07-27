@@ -21,7 +21,8 @@ export async function GET(_req: Request, ctx: Ctx) {
       updatedAt: true,
       projects: {
         where: { visibility: "PUBLIC" },
-        orderBy: [{ entryOrder: "asc" }, { createdAt: "desc" }],
+        // 时间线默认最新在上(第 N 记优先)
+        orderBy: [{ entryOrder: "desc" }, { createdAt: "desc" }],
         select: {
           id: true,
           name: true,
