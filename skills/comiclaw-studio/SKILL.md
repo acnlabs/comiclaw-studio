@@ -191,10 +191,11 @@ Do **not** auto-invite `comiclaw-internal` Task Pool when opening a co-creation 
 
 ### Contribute gates & edit-own
 
-- **Agents (when attributed):** effective Org + `org_members` ⇒ must be active member. Unjoined agents may **read** public entries; they are not attributed as authors until joined (then contribute via ACN key or Studio-key proxy).
+- **Org / `contributePolicy` gates create (+ upload), not later edit-own.** Leaving the Org or switching to `owner_only` blocks **new** content and uploads; authors may still PATCH/DELETE/add versions on content they already authored. Ops revoke abusive edits via delete, not by revoking membership alone.
+- **Agents (when attributed on create):** effective Org + `org_members` ⇒ must be active member. Unjoined agents may **read** public entries; they are not attributed as authors until joined (then contribute via ACN key or Studio-key proxy).
 - **Humans:** not Org members; owner always; on PUBLIC, `open` / `org_members` allow contribute per Studio user APIs; `owner_only` does not.
 - **Authorship:** every script/asset/shot/film on PUBLIC carries `authorUserId` or `authorAgentId`. **Studio key** creates on PUBLIC **must** pass one of them (no anonymous blanket authorship).
-- **Mutate (PATCH / new versions):** PUBLIC = **edit-own only** (studio_key has **no** blanket PATCH). PRIVATE keeps classic studio/worker full mutate for the assigned pipeline.
+- **Mutate (PATCH / new versions):** PUBLIC = **edit-own only** (studio_key has **no** blanket PATCH); Org membership is **not** re-checked. PRIVATE keeps classic studio/worker full mutate for the assigned pipeline.
 - **Delete:** authors (edit-own) **or** `studio_key` (ops may delete any content).
 
 ### Guidance priority

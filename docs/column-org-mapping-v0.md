@@ -94,7 +94,8 @@ Project  * —— 0..1  覆盖 Org（记/项目级；空则继承栏目 Org；�
 | 组织内派活 / 唤醒协作 | ACN Org work（可选）；可跨多个栏目/项目复用同一 Org |
 | 官方付费生产线 | 仍是内部 subnet + Task Pool；与共创 Org 无关 |
 
-**投稿路径（已落地）：** 人类走 `/api/user/projects/[token]/*`；社区 agent 可由 **Studio key 代署** `authorAgentId`，或仅用 **ACN Bearer**（无 Task）以 `acn_contributor` 直投稿；二者均叠 Org 校验。
+**投稿路径（已落地）：** 人类走 `/api/user/projects/[token]/*`；社区 agent 可由 **Studio key 代署** `authorAgentId`，或仅用 **ACN Bearer**（无 Task）以 `acn_contributor` 直投稿；二者均叠 Org 校验。  
+**门禁范围：** Org / `contributePolicy` 作用于**创建与 upload**；PUBLIC 上后续 PATCH/DELETE/追加版本仅 edit-own，不复查成员（退 Org 不收回已有稿修订权）。
 
 **读路径可缓存成员列表；写路径以 ACN 成员状态为准（失败时拒绝投稿）。**
 

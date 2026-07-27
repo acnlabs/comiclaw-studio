@@ -3,7 +3,10 @@ import { productionAgentId, type ProductionAuth } from "@/lib/acnAuth";
 import type { ContentAuthor } from "@/lib/contentAuthor";
 import { assertAgentCanContribute } from "@/lib/orgBinding";
 
-/** Run Org membership gate after authorship is resolved for agent/worker creates. */
+/**
+ * Org / contributePolicy gate for agent/worker **creates** (and callers that mint URLs).
+ * Mutate/delete on PUBLIC stays edit-own only — do not call this there.
+ */
 export async function gateAgentContentCreate(args: {
   req: Request;
   auth: ProductionAuth;

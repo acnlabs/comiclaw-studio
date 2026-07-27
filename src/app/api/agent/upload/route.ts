@@ -42,20 +42,20 @@ export async function POST(req: Request) {
     });
     if (auth instanceof Response) return auth;
 
-    if (auth.kind === "acn_contributor") {
-      const project = await prisma.project.findUnique({
-        where: { id: projectId },
-        select: { visibility: true },
-      });
-      if (!project) return badRequest("Project not found");
-      const gated = await assertAgentCanContribute({
-        projectId,
-        projectVisibility: project.visibility,
-        agentId: identity.agentId,
-        bearer: extractBearer(req) ?? undefined,
-      });
-      if (gated) return gated;
-    }
+    // Align with content create: Org / contributePolicy gate for both
+    // acn_contributor and task-bound acn_worker (before a public URL exists).
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { visibility: true },
+    });
+    if (!project) return badRequest("Project not found");
+    const gated = await assertAgentCanContribute({
+      projectId,
+      projectVisibility: project.visibility,
+      agentId: identity.agentId,
+      bearer: extractBearer(req) ?? undefined,
+    });
+    if (gated) return gated;
   }
 
   const contentType = req.headers.get("content-type") ?? "";
