@@ -45,6 +45,27 @@ const authorFields = {
   authorAgentId: optionalStr,
 };
 
+const slugSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(80)
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "slug must be lowercase kebab-case");
+
+export const createColumnSchema = z.object({
+  slug: slugSchema,
+  name: nonEmpty.max(200),
+  description: optionalStr,
+  coverUrl: optionalStr,
+});
+
+export const updateColumnSchema = z.object({
+  slug: slugSchema.optional(),
+  name: nonEmpty.max(200).optional(),
+  description: optionalStr,
+  coverUrl: optionalStr,
+});
+
 export const createProjectSchema = z.object({
   name: nonEmpty.max(200),
   clientName: optionalStr,
@@ -54,6 +75,8 @@ export const createProjectSchema = z.object({
   // 客户的 AgentPlanet 账号(Auth0 sub);传入后项目直接归属该用户
   ownerUserId: optionalStr,
   visibility: ProjectVisibilityEnum.optional(),
+  columnId: optionalStr,
+  entryOrder: z.number().int().positive().optional().nullable(),
 });
 
 export const updateProjectSchema = z.object({
@@ -65,6 +88,8 @@ export const updateProjectSchema = z.object({
   currentStage: StageEnum.optional(),
   statusNote: z.string().max(200).optional().nullable(), // 实时状态,空字符串表示清除
   visibility: ProjectVisibilityEnum.optional(),
+  columnId: optionalStr,
+  entryOrder: z.number().int().positive().optional().nullable(),
 });
 
 export const scriptVersionSchema = z.object({

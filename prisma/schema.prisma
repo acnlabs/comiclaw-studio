@@ -8,6 +8,23 @@ datasource db {
   directUrl = env("DIRECT_URL")         // Direct URL — used by prisma migrate at build time
 }
 
+// ---------- 栏目(连续主题容器,如《AI 漫记》) ----------
+
+// 轻量父层:统一主题下挂多记 Project。不做分账/复杂权限。
+model Column {
+  id          String   @id @default(cuid())
+  slug        String   @unique // URL 友好标识,如 ai-manji
+  name        String // 栏目名,如「AI 漫记」
+  description String?
+  coverUrl    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  projects Project[]
+
+  @@index([updatedAt])
+}
+
 // ---------- 项目 ----------
 
 // 工作流固定五阶段:剧本 -> 资产 -> 分镜 -> 成片 -> 发行
@@ -24,11 +41,15 @@ model Project {
   // PRIVATE = 客户制作单(默认);PUBLIC = 开放共创(如《AI 漫记》一记)
   visibility  String   @default("PRIVATE") // PRIVATE | PUBLIC
   isPrivate   Boolean @default(false) // 私密模式:仅对 PRIVATE 项目生效;PUBLIC 必须为 false
+  // 可选归属栏目;entryOrder = 栏目内第 N 记(可空,列表时按 createdAt 兜底)
+  columnId    String?
+  entryOrder  Int?
   statusNote  String? // 实时状态(agent 推送,如「正在生成分镜 3/9…」),阶段完成后清空
   currentStage String  @default("SCRIPT") // SCRIPT | ASSETS | STORYBOARD | FILM | RELEASE | DONE
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  column            Column? @relation(fields: [columnId], references: [id], onDelete: SetNull)
   scriptVersions ScriptVersion[]
   assets         Asset[]
   shots          Shot[]
@@ -42,6 +63,8 @@ model Project {
 
   @@index([ownerUserId])
   @@index([visibility, updatedAt])
+  @@index([columnId, entryOrder])
+  @@unique([columnId, entryOrder])
 }
 
 // ---------- ACN 生产任务映射(编排在 ACN,Studio 只记指针) ----------

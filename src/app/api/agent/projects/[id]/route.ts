@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { emitProjectUpdate } from "@/lib/events";
 import { withAgentAuth, withProjectWorkerAuth, parseBody } from "@/lib/api";
-import { notFoundJson, forbidden } from "@/lib/auth";
+import { notFoundJson, forbidden, badRequest } from "@/lib/auth";
 import { updateProjectSchema } from "@/lib/schemas";
 import type { ProductionAuth } from "@/lib/acnAuth";
 
@@ -56,6 +56,8 @@ export const PATCH = withProjectWorkerAuth(async (req, ctx: Ctx, auth: Productio
       "description",
       "coverUrl",
       "visibility",
+      "columnId",
+      "entryOrder",
     ] as const;
     for (const k of forbiddenKeys) {
       if (body[k] !== undefined) {
@@ -66,11 +68,26 @@ export const PATCH = withProjectWorkerAuth(async (req, ctx: Ctx, auth: Productio
 
   const exists = await prisma.project.findUnique({
     where: { id },
-    select: { id: true, visibility: true },
+    select: { id: true, visibility: true, columnId: true },
   });
   if (!exists) return notFoundJson();
 
   const nextVisibility = body.visibility ?? exists.visibility;
+  const nextColumnId =
+    body.columnId === undefined
+      ? exists.columnId
+      : body.columnId?.trim() || null;
+
+  if (body.columnId !== undefined && nextColumnId) {
+    const column = await prisma.column.findUnique({
+      where: { id: nextColumnId },
+      select: { id: true },
+    });
+    if (!column) return notFoundJson("Column not found");
+  }
+  if (body.entryOrder != null && !nextColumnId) {
+    return badRequest("entryOrder requires columnId");
+  }
 
   const project = await prisma.project.update({
     where: { id },
@@ -82,6 +99,8 @@ export const PATCH = withProjectWorkerAuth(async (req, ctx: Ctx, auth: Productio
       coverUrl: body.coverUrl === undefined ? undefined : body.coverUrl,
       currentStage: body.currentStage ?? undefined,
       visibility: body.visibility ?? undefined,
+      columnId: body.columnId === undefined ? undefined : nextColumnId,
+      entryOrder: body.entryOrder === undefined ? undefined : body.entryOrder,
       ...(nextVisibility === "PUBLIC" ? { isPrivate: false } : {}),
       statusNote:
         body.statusNote === undefined

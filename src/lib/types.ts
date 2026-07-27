@@ -127,6 +127,8 @@ export interface ProjectData {
   description: string | null;
   coverUrl: string | null;
   visibility?: string;
+  columnId?: string | null;
+  entryOrder?: number | null;
   currentStage: string;
   statusNote: string | null;
   updatedAt: string;
@@ -135,4 +137,13 @@ export interface ProjectData {
   shots: ShotData[];
   filmVersions: FilmVersionData[];
   releases: ReleaseData[];
+}
+
+export interface ColumnData {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  coverUrl: string | null;
+  updatedAt: string;
 }
