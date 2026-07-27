@@ -95,7 +95,7 @@ async function defaultProjectIdFromParams(ctx: unknown): Promise<string | null> 
   return id?.trim() || null;
 }
 
-function mapError(err: unknown): Response {
+export function mapError(err: unknown): Response {
   if (err instanceof ZodError) {
     const msg = err.issues
       .map((i) => `${i.path.join(".") || "body"}: ${i.message}`)
@@ -116,6 +116,19 @@ function mapError(err: unknown): Response {
   }
   console.error("[api] unhandled error:", err);
   return serverError();
+}
+
+/** User/public routes that don't use withAgentAuth wrappers */
+export function withRouteErrors<Ctx>(
+  handler: (req: Request, ctx: Ctx) => Promise<Response>
+): (req: Request, ctx: Ctx) => Promise<Response> {
+  return async (req, ctx) => {
+    try {
+      return await handler(req, ctx);
+    } catch (err) {
+      return mapError(err);
+    }
+  };
 }
 
 // 带重试的操作:并发下版本号唯一约束冲突(P2002)时自动重试

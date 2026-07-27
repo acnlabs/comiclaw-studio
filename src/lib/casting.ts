@@ -32,6 +32,9 @@ export async function grantLicense(args: {
         description:
           character.tagline ??
           (character.persona ? character.persona.slice(0, 200) : null),
+        authorUserId: sub,
+        authorAgentId: null,
+        authorKey: `user:${sub}`,
         versions: {
           create: {
             version: 1,

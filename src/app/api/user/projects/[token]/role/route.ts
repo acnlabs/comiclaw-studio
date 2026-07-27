@@ -12,12 +12,13 @@ export async function GET(req: Request, ctx: Ctx) {
   const { token } = await ctx.params;
   const project = await prisma.project.findUnique({
     where: { shareToken: token },
-    select: { ownerUserId: true, isPrivate: true },
+    select: { ownerUserId: true, isPrivate: true, visibility: true },
   });
   if (!project) return notFoundJson();
 
   return Response.json({
     isOwner: project.ownerUserId === sub,
     isPrivate: project.isPrivate,
+    visibility: project.visibility,
   });
 }

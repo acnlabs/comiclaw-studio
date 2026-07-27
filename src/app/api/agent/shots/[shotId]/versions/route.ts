@@ -3,20 +3,39 @@ import { emitProjectUpdate } from "@/lib/events";
 import { withProjectWorkerAuth, parseBody, withRetry } from "@/lib/api";
 import { notFoundJson } from "@/lib/auth";
 import { shotVersionSchema } from "@/lib/schemas";
+import {
+  actorFromProductionAuth,
+  assertCanMutateContent,
+} from "@/lib/contentAuth";
+import type { ProductionAuth } from "@/lib/acnAuth";
 
 type Ctx = { params: Promise<{ shotId: string }> };
 
 // 推送分镜新版画面(版本号自动递增,并发安全)
 export const POST = withProjectWorkerAuth(
-  async (req, ctx: Ctx) => {
+  async (req, ctx: Ctx, auth: ProductionAuth) => {
     const { shotId } = await ctx.params;
     const body = await parseBody(req, shotVersionSchema);
 
     const shot = await prisma.shot.findUnique({
       where: { id: shotId },
-      select: { id: true, projectId: true },
+      select: {
+        id: true,
+        projectId: true,
+        authorUserId: true,
+        authorAgentId: true,
+        authorKey: true,
+        project: { select: { ownerUserId: true } },
+      },
     });
     if (!shot) return notFoundJson();
+
+    const denied = assertCanMutateContent(
+      shot,
+      shot.project,
+      actorFromProductionAuth(auth)
+    );
+    if (denied) return denied;
 
     const created = await withRetry(async () => {
       const latest = await prisma.shotVersion.findFirst({

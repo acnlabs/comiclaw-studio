@@ -3,16 +3,29 @@ import { emitProjectUpdate } from "@/lib/events";
 import { withProjectWorkerAuth, parseBody } from "@/lib/api";
 import { notFoundJson } from "@/lib/auth";
 import { createAssetSchema } from "@/lib/schemas";
+import { resolveAgentCreateAuthor } from "@/lib/contentAuthor";
+import type { ProductionAuth } from "@/lib/acnAuth";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 // 创建资产(可携带首版设定图)
-export const POST = withProjectWorkerAuth(async (req, ctx: Ctx) => {
+export const POST = withProjectWorkerAuth(async (req, ctx: Ctx, auth: ProductionAuth) => {
   const { id } = await ctx.params;
   const body = await parseBody(req, createAssetSchema);
 
-  const project = await prisma.project.findUnique({ where: { id }, select: { id: true } });
+  const project = await prisma.project.findUnique({
+    where: { id },
+    select: { id: true, visibility: true },
+  });
   if (!project) return notFoundJson();
+
+  const author = resolveAgentCreateAuthor({
+    auth,
+    visibility: project.visibility,
+    authorUserId: body.authorUserId,
+    authorAgentId: body.authorAgentId,
+  });
+  if (author instanceof Response) return author;
 
   const asset = await prisma.asset.create({
     data: {
@@ -20,6 +33,9 @@ export const POST = withProjectWorkerAuth(async (req, ctx: Ctx) => {
       type: body.type,
       name: body.name,
       description: body.description ?? null,
+      authorUserId: author.authorUserId,
+      authorAgentId: author.authorAgentId,
+      authorKey: author.authorKey,
       versions: body.imageUrl
         ? {
             create: {

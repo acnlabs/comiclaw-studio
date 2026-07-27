@@ -37,6 +37,13 @@ export const AssetTypeEnum = z.enum(["CHARACTER", "SCENE", "PROP"]);
 export const MediaTypeEnum = z.enum(["IMAGE", "VIDEO"]);
 export const ReleaseStatusEnum = z.enum(["PENDING", "PUBLISHED"]);
 export const WorkKindEnum = z.enum(["VIDEO", "SERIES"]);
+export const ProjectVisibilityEnum = z.enum(["PRIVATE", "PUBLIC"]);
+
+/** Optional authorship for studio_key creates; workers ignore and sign as themselves */
+const authorFields = {
+  authorUserId: optionalStr,
+  authorAgentId: optionalStr,
+};
 
 export const createProjectSchema = z.object({
   name: nonEmpty.max(200),
@@ -46,6 +53,7 @@ export const createProjectSchema = z.object({
   coverUrl: optionalStr,
   // 客户的 AgentPlanet 账号(Auth0 sub);传入后项目直接归属该用户
   ownerUserId: optionalStr,
+  visibility: ProjectVisibilityEnum.optional(),
 });
 
 export const updateProjectSchema = z.object({
@@ -56,6 +64,7 @@ export const updateProjectSchema = z.object({
   coverUrl: optionalStr,
   currentStage: StageEnum.optional(),
   statusNote: z.string().max(200).optional().nullable(), // 实时状态,空字符串表示清除
+  visibility: ProjectVisibilityEnum.optional(),
 });
 
 export const scriptVersionSchema = z.object({
@@ -63,6 +72,7 @@ export const scriptVersionSchema = z.object({
   title: optionalStr,
   logline: optionalStr,
   changeLog: optionalStr,
+  ...authorFields,
 });
 
 export const createAssetSchema = z.object({
@@ -72,6 +82,7 @@ export const createAssetSchema = z.object({
   imageUrl: optionalStr,
   audioUrl: optionalStr, // 角色音色试听(声音样本)
   notes: optionalStr,
+  ...authorFields,
 });
 
 export const assetVersionSchema = z.object({
@@ -81,7 +92,7 @@ export const assetVersionSchema = z.object({
 });
 
 export const createShotSchema = z.object({
-  order: z.number().int().positive(),
+  order: z.number().int().positive().optional(), // 省略则按作者自动分配下一镜号
   title: optionalStr,
   duration: z.number().positive().optional().nullable(),
   dialogue: optionalStr,
@@ -90,6 +101,7 @@ export const createShotSchema = z.object({
   mediaUrl: optionalStr,
   mediaType: MediaTypeEnum.optional(),
   assetIds: z.array(z.string()).optional(),
+  ...authorFields,
 });
 
 export const updateShotSchema = z.object({
@@ -111,6 +123,8 @@ export const filmVersionSchema = z.object({
   videoUrl: url,
   duration: z.number().positive().optional().nullable(),
   notes: optionalStr,
+  basedOnFilmVersionId: optionalStr,
+  ...authorFields,
 });
 
 export const createReleaseSchema = z.object({

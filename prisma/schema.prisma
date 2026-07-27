@@ -21,7 +21,9 @@ model Project {
   description String?
   coverUrl    String? // 项目封面图
   ownerUserId String? // 客户的 AgentPlanet 账号(Auth0 sub,如 auth0|xxx);登录自动认领或 agent 创建时传入
-  isPrivate   Boolean @default(false) // 私密模式:开启后仅主人(和管理员)可查看
+  // PRIVATE = 客户制作单(默认);PUBLIC = 开放共创(如《AI 漫记》一记)
+  visibility  String   @default("PRIVATE") // PRIVATE | PUBLIC
+  isPrivate   Boolean @default(false) // 私密模式:仅对 PRIVATE 项目生效;PUBLIC 必须为 false
   statusNote  String? // 实时状态(agent 推送,如「正在生成分镜 3/9…」),阶段完成后清空
   currentStage String  @default("SCRIPT") // SCRIPT | ASSETS | STORYBOARD | FILM | RELEASE | DONE
   createdAt   DateTime @default(now())
@@ -39,6 +41,7 @@ model Project {
   acnTaskRefs       AcnTaskRef[]
 
   @@index([ownerUserId])
+  @@index([visibility, updatedAt])
 }
 
 // ---------- ACN 生产任务映射(编排在 ACN,Studio 只记指针) ----------
@@ -66,16 +69,22 @@ model AcnTaskRef {
 model ScriptVersion {
   id        String   @id @default(cuid())
   projectId String
-  version   Int // 从 1 递增
+  version   Int // 同一 authorKey 下从 1 递增
   title     String?
   logline   String? // 一句话梗概
   content   String // 剧本正文(Markdown,分场)
   changeLog String? // 本版改动说明
+  // 作者:人类 user:<sub> / agent agent:<id> / 遗留 legacy
+  authorUserId  String?
+  authorAgentId String?
+  authorKey     String   @default("legacy")
   createdAt DateTime @default(now())
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  @@unique([projectId, version])
+  @@unique([projectId, authorKey, version])
+  @@index([authorUserId])
+  @@index([authorAgentId])
 }
 
 // ---------- 资产(角色/场景/道具) ----------
@@ -86,12 +95,19 @@ model Asset {
   type        String // CHARACTER | SCENE | PROP
   name        String
   description String?
+  authorUserId  String?
+  authorAgentId String?
+  authorKey     String   @default("legacy")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   project  Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
   versions AssetVersion[]
   shotRefs ShotAsset[]
+
+  @@index([projectId, authorKey])
+  @@index([authorUserId])
+  @@index([authorAgentId])
 }
 
 model AssetVersion {
@@ -113,13 +129,16 @@ model AssetVersion {
 model Shot {
   id              String   @id @default(cuid())
   projectId       String
-  order           Int // 镜头序号,从 1 开始
+  order           Int // 同一 authorKey 下镜头序号,从 1 开始
   title           String? // 镜头名,如「开场:LOGO 浮现」
   duration        Float? // 时长(秒)
   dialogue        String? // 台词 / 旁白
   action          String? // 画面描述
   prompt          String? // 生成提示词(输入侧,供专业用户查看与追溯)
   selectedVersion Int? // 客户选定的候选版本(抽卡选片)
+  authorUserId    String?
+  authorAgentId   String?
+  authorKey       String   @default("legacy")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -127,7 +146,9 @@ model Shot {
   versions  ShotVersion[]
   assetRefs ShotAsset[]
 
-  @@unique([projectId, order])
+  @@unique([projectId, authorKey, order])
+  @@index([authorUserId])
+  @@index([authorAgentId])
 }
 
 model ShotVersion {
@@ -160,16 +181,26 @@ model ShotAsset {
 model FilmVersion {
   id        String   @id @default(cuid())
   projectId String
-  version   Int
+  version   Int // 同一 authorKey 下从 1 递增
   videoUrl  String
   duration  Float? // 秒
   notes     String? // 本版剪辑说明
+  authorUserId  String?
+  authorAgentId String?
+  authorKey     String   @default("legacy")
+  // 二创:基于同项目内另一成片(不修改原作)
+  basedOnFilmVersionId String?
   createdAt DateTime @default(now())
 
-  project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  comments Comment[]
+  project            Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  basedOnFilmVersion FilmVersion?  @relation("FilmDerivative", fields: [basedOnFilmVersionId], references: [id], onDelete: SetNull)
+  derivatives        FilmVersion[] @relation("FilmDerivative")
+  comments           Comment[]
 
-  @@unique([projectId, version])
+  @@unique([projectId, authorKey, version])
+  @@index([authorUserId])
+  @@index([authorAgentId])
+  @@index([basedOnFilmVersionId])
 }
 
 // ---------- 时间码批注 ----------

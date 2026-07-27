@@ -1,32 +1,55 @@
 import { prisma } from "@/lib/db";
 import { emitProjectUpdate } from "@/lib/events";
 import { withProjectWorkerAuth, parseBody, withRetry } from "@/lib/api";
-import { notFoundJson } from "@/lib/auth";
+import { notFoundJson, badRequest } from "@/lib/auth";
 import { filmVersionSchema } from "@/lib/schemas";
+import { resolveAgentCreateAuthor } from "@/lib/contentAuthor";
+import { nextFilmVersion } from "@/lib/contentVersioning";
+import type { ProductionAuth } from "@/lib/acnAuth";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-// 推送成片新版本(版本号自动递增,并发安全)
-export const POST = withProjectWorkerAuth(async (req, ctx: Ctx) => {
+// 推送成片新版本(按 authorKey 版本号递增)
+export const POST = withProjectWorkerAuth(async (req, ctx: Ctx, auth: ProductionAuth) => {
   const { id } = await ctx.params;
   const body = await parseBody(req, filmVersionSchema);
 
-  const project = await prisma.project.findUnique({ where: { id }, select: { id: true } });
+  const project = await prisma.project.findUnique({
+    where: { id },
+    select: { id: true, visibility: true },
+  });
   if (!project) return notFoundJson();
 
-  const created = await withRetry(async () => {
-    const latest = await prisma.filmVersion.findFirst({
-      where: { projectId: id },
-      orderBy: { version: "desc" },
-      select: { version: true },
+  const author = resolveAgentCreateAuthor({
+    auth,
+    visibility: project.visibility,
+    authorUserId: body.authorUserId,
+    authorAgentId: body.authorAgentId,
+  });
+  if (author instanceof Response) return author;
+
+  const basedOnId = body.basedOnFilmVersionId?.trim() || null;
+  if (basedOnId) {
+    const base = await prisma.filmVersion.findFirst({
+      where: { id: basedOnId, projectId: id },
+      select: { id: true },
     });
+    if (!base) return badRequest("basedOnFilmVersionId must belong to this project");
+  }
+
+  const created = await withRetry(async () => {
+    const version = await nextFilmVersion(id, author.authorKey);
     return prisma.filmVersion.create({
       data: {
         projectId: id,
-        version: (latest?.version ?? 0) + 1,
+        version,
         videoUrl: body.videoUrl,
         duration: body.duration ?? null,
         notes: body.notes ?? null,
+        authorUserId: author.authorUserId,
+        authorAgentId: author.authorAgentId,
+        authorKey: author.authorKey,
+        basedOnFilmVersionId: basedOnId,
       },
     });
   });

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { verifyUserToken } from "@/lib/userAuth";
 import { emitProjectUpdate } from "@/lib/events";
 import { unauthorized, badRequest, notFoundJson } from "@/lib/auth";
+import { assertCanViewProject } from "@/lib/projectAccess";
 
 // 登录用户对成片版本发表时间码批注
 export async function POST(req: Request) {
@@ -20,13 +21,22 @@ export async function POST(req: Request) {
 
   const film = await prisma.filmVersion.findUnique({
     where: { id: filmVersionId },
-    select: { id: true, project: { select: { id: true, shareToken: true, isPrivate: true, ownerUserId: true } } },
+    select: {
+      id: true,
+      project: {
+        select: {
+          id: true,
+          shareToken: true,
+          isPrivate: true,
+          ownerUserId: true,
+          visibility: true,
+        },
+      },
+    },
   });
   if (!film || film.project.shareToken !== shareToken) return notFoundJson();
-  // 私密项目仅主人可批注
-  if (film.project.isPrivate && film.project.ownerUserId !== sub) {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const denied = assertCanViewProject(film.project, sub);
+  if (denied) return denied;
 
   const comment = await prisma.comment.create({
     data: {

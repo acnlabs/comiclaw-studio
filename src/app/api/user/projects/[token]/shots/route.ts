@@ -1,37 +1,25 @@
 import { prisma } from "@/lib/db";
 import { emitProjectUpdate } from "@/lib/events";
-import { withProjectWorkerAuth, parseBody, withRetry } from "@/lib/api";
-import { notFoundJson, badRequest, conflict } from "@/lib/auth";
+import { parseBody, withRetry, withRouteErrors } from "@/lib/api";
+import { badRequest, conflict } from "@/lib/auth";
 import { createShotSchema } from "@/lib/schemas";
-import { resolveAgentCreateAuthor } from "@/lib/contentAuthor";
 import { nextShotOrder } from "@/lib/contentVersioning";
-import type { ProductionAuth } from "@/lib/acnAuth";
+import { requireUserContributor } from "@/lib/userContribute";
 
-type Ctx = { params: Promise<{ id: string }> };
+type Ctx = { params: Promise<{ token: string }> };
 
-// 创建分镜(可携带首版画面与资产引用)
-export const POST = withProjectWorkerAuth(async (req, ctx: Ctx, auth: ProductionAuth) => {
-  const { id } = await ctx.params;
+export const POST = withRouteErrors(async (req: Request, ctx: Ctx) => {
+  const { token } = await ctx.params;
+  const gate = await requireUserContributor(req, token);
+  if (gate instanceof Response) return gate;
+
   const body = await parseBody(req, createShotSchema);
-
-  const project = await prisma.project.findUnique({
-    where: { id },
-    select: { id: true, visibility: true },
-  });
-  if (!project) return notFoundJson();
-
-  const author = resolveAgentCreateAuthor({
-    auth,
-    visibility: project.visibility,
-    authorUserId: body.authorUserId,
-    authorAgentId: body.authorAgentId,
-  });
-  if (author instanceof Response) return author;
+  const { project, author } = gate;
 
   const assetIds = body.assetIds ?? [];
   if (assetIds.length > 0) {
     const count = await prisma.asset.count({
-      where: { id: { in: assetIds }, projectId: id },
+      where: { id: { in: assetIds }, projectId: project.id },
     });
     if (count !== new Set(assetIds).size) {
       return badRequest("Some assetIds do not belong to this project");
@@ -42,7 +30,7 @@ export const POST = withProjectWorkerAuth(async (req, ctx: Ctx, auth: Production
     const dup = await prisma.shot.findUnique({
       where: {
         projectId_authorKey_order: {
-          projectId: id,
+          projectId: project.id,
           authorKey: author.authorKey,
           order: body.order,
         },
@@ -53,10 +41,10 @@ export const POST = withProjectWorkerAuth(async (req, ctx: Ctx, auth: Production
   }
 
   const shot = await withRetry(async () => {
-    const order = body.order ?? (await nextShotOrder(id, author.authorKey));
+    const order = body.order ?? (await nextShotOrder(project.id, author.authorKey));
     return prisma.shot.create({
       data: {
-        projectId: id,
+        projectId: project.id,
         order,
         title: body.title ?? null,
         duration: body.duration ?? null,
@@ -82,6 +70,6 @@ export const POST = withProjectWorkerAuth(async (req, ctx: Ctx, auth: Production
     });
   });
 
-  emitProjectUpdate(id, "shot.created");
+  emitProjectUpdate(project.id, "shot.created");
   return Response.json({ shot }, { status: 201 });
 });

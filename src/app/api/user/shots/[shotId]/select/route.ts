@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { verifyUserToken } from "@/lib/userAuth";
 import { emitProjectUpdate } from "@/lib/events";
 import { unauthorized, badRequest, notFoundJson } from "@/lib/auth";
+import { assertCanViewProject } from "@/lib/projectAccess";
 
 type Ctx = { params: Promise<{ shotId: string }> };
 
@@ -20,15 +21,22 @@ export async function POST(req: Request, ctx: Ctx) {
     where: { id: shotId },
     select: {
       id: true,
-      project: { select: { id: true, shareToken: true, isPrivate: true, ownerUserId: true } },
+      project: {
+        select: {
+          id: true,
+          shareToken: true,
+          isPrivate: true,
+          ownerUserId: true,
+          visibility: true,
+        },
+      },
       versions: { where: { version }, select: { id: true } },
     },
   });
   if (!shot || shot.project.shareToken !== shareToken) return notFoundJson();
   if (shot.versions.length === 0) return badRequest(`Version ${version} does not exist`);
-  if (shot.project.isPrivate && shot.project.ownerUserId !== sub) {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const denied = assertCanViewProject(shot.project, sub);
+  if (denied) return denied;
 
   await prisma.shot.update({ where: { id: shotId }, data: { selectedVersion: version } });
   emitProjectUpdate(shot.project.id, "shot.selected");

@@ -5,6 +5,7 @@ import { createProjectSchema } from "@/lib/schemas";
 // 创建项目
 export const POST = withAgentAuth(async (req) => {
   const body = await parseBody(req, createProjectSchema);
+  const visibility = body.visibility ?? "PRIVATE";
   const project = await prisma.project.create({
     data: {
       name: body.name,
@@ -13,6 +14,8 @@ export const POST = withAgentAuth(async (req) => {
       description: body.description ?? null,
       coverUrl: body.coverUrl ?? null,
       ownerUserId: body.ownerUserId ?? null,
+      visibility,
+      ...(visibility === "PUBLIC" ? { isPrivate: false } : {}),
     },
   });
   return Response.json(
@@ -20,14 +23,21 @@ export const POST = withAgentAuth(async (req) => {
       id: project.id,
       shareToken: project.shareToken,
       sharePath: `/p/${project.shareToken}`,
+      visibility: project.visibility,
     },
     { status: 201 }
   );
 });
 
 // 项目列表
-export const GET = withAgentAuth(async () => {
+export const GET = withAgentAuth(async (req) => {
+  const url = new URL(req.url);
+  const visibility = url.searchParams.get("visibility");
   const projects = await prisma.project.findMany({
+    where:
+      visibility === "PUBLIC" || visibility === "PRIVATE"
+        ? { visibility }
+        : undefined,
     orderBy: { updatedAt: "desc" },
     select: {
       id: true,
@@ -36,6 +46,7 @@ export const GET = withAgentAuth(async () => {
       agentName: true,
       currentStage: true,
       shareToken: true,
+      visibility: true,
       updatedAt: true,
     },
   });

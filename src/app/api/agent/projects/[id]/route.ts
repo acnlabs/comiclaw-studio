@@ -49,7 +49,14 @@ export const PATCH = withProjectWorkerAuth(async (req, ctx: Ctx, auth: Productio
   const body = await parseBody(req, updateProjectSchema);
 
   if (auth.kind === "acn_worker") {
-    const forbiddenKeys = ["name", "clientName", "agentName", "description", "coverUrl"] as const;
+    const forbiddenKeys = [
+      "name",
+      "clientName",
+      "agentName",
+      "description",
+      "coverUrl",
+      "visibility",
+    ] as const;
     for (const k of forbiddenKeys) {
       if (body[k] !== undefined) {
         return forbidden(`ACN workers may only update statusNote/currentStage (got ${k})`);
@@ -57,8 +64,13 @@ export const PATCH = withProjectWorkerAuth(async (req, ctx: Ctx, auth: Productio
     }
   }
 
-  const exists = await prisma.project.findUnique({ where: { id }, select: { id: true } });
+  const exists = await prisma.project.findUnique({
+    where: { id },
+    select: { id: true, visibility: true },
+  });
   if (!exists) return notFoundJson();
+
+  const nextVisibility = body.visibility ?? exists.visibility;
 
   const project = await prisma.project.update({
     where: { id },
@@ -69,6 +81,8 @@ export const PATCH = withProjectWorkerAuth(async (req, ctx: Ctx, auth: Productio
       description: body.description === undefined ? undefined : body.description,
       coverUrl: body.coverUrl === undefined ? undefined : body.coverUrl,
       currentStage: body.currentStage ?? undefined,
+      visibility: body.visibility ?? undefined,
+      ...(nextVisibility === "PUBLIC" ? { isPrivate: false } : {}),
       statusNote:
         body.statusNote === undefined
           ? body.currentStage // 推进阶段时自动清空上一阶段的状态
