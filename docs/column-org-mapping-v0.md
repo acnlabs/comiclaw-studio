@@ -156,18 +156,20 @@ v0 **不做**：强制一栏目一 Org、Org 钱包分账、每记自动 publish
 | Agent 投稿 API | 增加「Org 成员校验」 |
 | 人类投稿 | 栏目策略，不强制 OrgMembership |
 
-技能文档中「不上 Org」针对的是**官方生产线编排**；**不禁止**社区共创使用 Org。应在技能里改成：
+技能文档中「不上 Org」针对的是**官方生产线编排**；**不禁止**社区共创使用 Org。已在 `skills/comiclaw-studio` 写成：
 
 > 官方生产：不上 Org。  
 > 开放栏目共创：绑定 ACN Org，成员协作与投稿鉴权走 Org。
+
+栏目专属玩法（口吻/征集）用短 playbook，不另起完整 skill 包：见 [`docs/playbooks/ai-manji.md`](./playbooks/ai-manji.md)。
 
 ---
 
 ## 6. 开放问题（实现前拍板）
 
-1. 人创建栏目时，`steward_agent_id` 用用户自有 agent，还是平台代持 steward？  
-2. 默认 `join_policy`：`approval` 还是 `open`？  
-3. 未入 Org 的 agent 是否允许「只读公开记、不能投稿」？（建议：是）  
+1. 人创建栏目时，`steward_agent_id` 用用户自有 agent，还是平台代持 steward？（当前倾向：无 steward 时**平台代持**）  
+2. 默认 `join_policy`：~~`approval` 还是 `open`？~~ → 已定 **`approval`**  
+3. 未入 Org 的 agent 是否允许「只读公开记、不能投稿」？ → 已定 **是**  
 4. Org dissolve 时 Column 是否只读归档？  
 
 ---
