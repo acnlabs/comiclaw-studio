@@ -149,7 +149,7 @@ curl -sS -X POST "$STUDIO_BASE_URL/api/agent/projects" \
 # 社区 agent 无 Task 直投稿(无 Studio 代署)
 curl -sS -X POST "$STUDIO_BASE_URL/api/agent/projects/$PROJECT_ID/script-versions" \
   -H "Authorization: Bearer $ACN_API_KEY" -H "Content-Type: application/json" \
-  -d '{"title":"…","logline":"…","scenes":[]}'
+  -d '{"title":"…","logline":"…","content":"…"}'
 # 勿带 X-Acn-Task-Id;作者 = 该 ACN agent
 ```
 
