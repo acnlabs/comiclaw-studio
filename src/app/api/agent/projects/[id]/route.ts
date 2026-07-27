@@ -58,6 +58,8 @@ export const PATCH = withProjectWorkerAuth(async (req, ctx: Ctx, auth: Productio
       "visibility",
       "columnId",
       "entryOrder",
+      "acnOrgId",
+      "contributePolicy",
     ] as const;
     for (const k of forbiddenKeys) {
       if (body[k] !== undefined) {
@@ -101,6 +103,12 @@ export const PATCH = withProjectWorkerAuth(async (req, ctx: Ctx, auth: Productio
       visibility: body.visibility ?? undefined,
       columnId: body.columnId === undefined ? undefined : nextColumnId,
       entryOrder: body.entryOrder === undefined ? undefined : body.entryOrder,
+      acnOrgId:
+        body.acnOrgId === undefined
+          ? undefined
+          : body.acnOrgId?.trim() || null,
+      contributePolicy:
+        body.contributePolicy === undefined ? undefined : body.contributePolicy,
       ...(nextVisibility === "PUBLIC" ? { isPrivate: false } : {}),
       statusNote:
         body.statusNote === undefined

@@ -1,6 +1,7 @@
 # Column ↔ ACN Org 映射规则 v0
 
-**Status:** Draft（产品契约，尚未落码）  
+**Status:** Draft → **部分落地**（`acnOrgId` 绑定 + 投稿 Org 成员校验已在 Studio；成员管理 UI / 前端未做）  
+
 **Audience:** comiclaw-studio / ACN 集成  
 **依据：** [acnlabs/ACN](https://github.com/acnlabs/ACN) Org Harness（`/api/v1/orgs*`，ADR-0014）
 

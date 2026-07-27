@@ -14,6 +14,9 @@ export async function GET(_req: Request, ctx: Ctx) {
       name: true,
       description: true,
       coverUrl: true,
+      acnOrgId: true,
+      acnSubnetId: true,
+      contributePolicy: true,
       createdAt: true,
       updatedAt: true,
       projects: {
@@ -26,6 +29,8 @@ export async function GET(_req: Request, ctx: Ctx) {
           coverUrl: true,
           shareToken: true,
           entryOrder: true,
+          acnOrgId: true,
+          contributePolicy: true,
           agentName: true,
           updatedAt: true,
           createdAt: true,

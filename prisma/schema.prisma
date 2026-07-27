@@ -10,19 +10,25 @@ datasource db {
 
 // ---------- 栏目(连续主题容器,如《AI 漫记》) ----------
 
-// 轻量父层:统一主题下挂多记 Project。不做分账/复杂权限。
+// 轻量父层:统一主题下挂多记 Project。可选绑定 ACN Org(可与其它栏目共用)。
 model Column {
   id          String   @id @default(cuid())
   slug        String   @unique // URL 友好标识,如 ai-manji
   name        String // 栏目名,如「AI 漫记」
   description String?
   coverUrl    String?
+  // 可选默认协作组织(ACN Org);非唯一——多栏目可挂同一 Org
+  acnOrgId    String?
+  acnSubnetId String? // Org fence subnet 镜像,便于展示
+  // org_members = 有生效 Org 时 agent 须为成员;open = 谁都能投;owner_only = 仅治理人
+  contributePolicy String @default("org_members")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   projects Project[]
 
   @@index([updatedAt])
+  @@index([acnOrgId])
 }
 
 // ---------- 项目 ----------
@@ -44,6 +50,10 @@ model Project {
   // 可选归属栏目;entryOrder = 栏目内第 N 记(可空,列表时按 createdAt 兜底)
   columnId    String?
   entryOrder  Int?
+  // 可选覆盖栏目默认 Org;独立开放项目也可直接挂 Org
+  acnOrgId    String?
+  // 空=继承栏目策略 / 默认 org_members
+  contributePolicy String?
   statusNote  String? // 实时状态(agent 推送,如「正在生成分镜 3/9…」),阶段完成后清空
   currentStage String  @default("SCRIPT") // SCRIPT | ASSETS | STORYBOARD | FILM | RELEASE | DONE
   createdAt   DateTime @default(now())
@@ -65,6 +75,7 @@ model Project {
   @@index([visibility, updatedAt])
   @@index([columnId, entryOrder])
   @@unique([columnId, entryOrder])
+  @@index([acnOrgId])
 }
 
 // ---------- ACN 生产任务映射(编排在 ACN,Studio 只记指针) ----------

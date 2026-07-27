@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { withAgentAuth, parseBody, withRetry } from "@/lib/api";
 import { badRequest, notFoundJson } from "@/lib/auth";
 import { createProjectSchema } from "@/lib/schemas";
+import { resolveOrgBindOnCreate } from "@/lib/orgBinding";
 
 async function nextEntryOrder(columnId: string): Promise<number> {
   const latest = await prisma.project.findFirst({
@@ -12,7 +13,7 @@ async function nextEntryOrder(columnId: string): Promise<number> {
   return (latest?.entryOrder ?? 0) + 1;
 }
 
-// 创建项目
+// 创建项目;可选新建/挂载 ACN Org(可覆盖栏目默认)
 export const POST = withAgentAuth(async (req) => {
   const body = await parseBody(req, createProjectSchema);
   const visibility = body.visibility ?? "PRIVATE";
@@ -26,6 +27,24 @@ export const POST = withAgentAuth(async (req) => {
     if (!column) return notFoundJson("Column not found");
   } else if (body.entryOrder != null) {
     return badRequest("entryOrder requires columnId");
+  }
+
+  const wantsOrgBind =
+    body.orgMode != null || Boolean(body.acnOrgId?.trim());
+  let acnOrgId: string | null = null;
+  let bindSubnet: string | null = null;
+
+  if (wantsOrgBind) {
+    const bind = await resolveOrgBindOnCreate({
+      mode: body.orgMode,
+      acnOrgId: body.acnOrgId,
+      displayName: body.name,
+      stewardAgentId: body.stewardAgentId,
+      joinPolicy: body.orgJoinPolicy,
+    });
+    if (bind instanceof Response) return bind;
+    acnOrgId = bind.acnOrgId;
+    bindSubnet = bind.acnSubnetId;
   }
 
   const project = await withRetry(async () => {
@@ -47,6 +66,8 @@ export const POST = withAgentAuth(async (req) => {
         visibility,
         columnId,
         entryOrder,
+        acnOrgId,
+        contributePolicy: body.contributePolicy ?? null,
         ...(visibility === "PUBLIC" ? { isPrivate: false } : {}),
       },
     });
@@ -60,6 +81,9 @@ export const POST = withAgentAuth(async (req) => {
       visibility: project.visibility,
       columnId: project.columnId,
       entryOrder: project.entryOrder,
+      acnOrgId: project.acnOrgId,
+      acnSubnetId: bindSubnet,
+      contributePolicy: project.contributePolicy,
     },
     { status: 201 }
   );
@@ -88,6 +112,8 @@ export const GET = withAgentAuth(async (req) => {
       visibility: true,
       columnId: true,
       entryOrder: true,
+      acnOrgId: true,
+      contributePolicy: true,
       updatedAt: true,
     },
   });

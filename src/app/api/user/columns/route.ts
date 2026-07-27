@@ -14,6 +14,8 @@ export async function GET() {
       name: true,
       description: true,
       coverUrl: true,
+      acnOrgId: true,
+      contributePolicy: true,
       updatedAt: true,
       _count: {
         select: { projects: { where: { visibility: "PUBLIC" } } },
@@ -28,6 +30,8 @@ export async function GET() {
       name: c.name,
       description: c.description,
       coverUrl: c.coverUrl,
+      acnOrgId: c.acnOrgId,
+      contributePolicy: c.contributePolicy,
       entryCount: c._count.projects,
       updatedAt: c.updatedAt,
     })),

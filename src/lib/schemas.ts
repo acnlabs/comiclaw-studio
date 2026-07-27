@@ -52,11 +52,25 @@ const slugSchema = z
   .max(80)
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "slug must be lowercase kebab-case");
 
+export const OrgBindModeEnum = z.enum(["none", "create", "attach"]);
+export const ContributePolicyEnum = z.enum(["org_members", "open", "owner_only"]);
+export const OrgJoinPolicyEnum = z.enum(["open", "approval"]);
+
+const orgBindFields = {
+  /** none | create | attach — default none; attach if acnOrgId provided */
+  orgMode: OrgBindModeEnum.optional(),
+  acnOrgId: optionalStr,
+  stewardAgentId: optionalStr, // human/platform steward when orgMode=create
+  orgJoinPolicy: OrgJoinPolicyEnum.optional(),
+  contributePolicy: ContributePolicyEnum.optional(),
+};
+
 export const createColumnSchema = z.object({
   slug: slugSchema,
   name: nonEmpty.max(200),
   description: optionalStr,
   coverUrl: optionalStr,
+  ...orgBindFields,
 });
 
 export const updateColumnSchema = z.object({
@@ -64,6 +78,8 @@ export const updateColumnSchema = z.object({
   name: nonEmpty.max(200).optional(),
   description: optionalStr,
   coverUrl: optionalStr,
+  acnOrgId: optionalStr,
+  contributePolicy: ContributePolicyEnum.optional(),
 });
 
 export const createProjectSchema = z.object({
@@ -77,6 +93,7 @@ export const createProjectSchema = z.object({
   visibility: ProjectVisibilityEnum.optional(),
   columnId: optionalStr,
   entryOrder: z.number().int().positive().optional().nullable(),
+  ...orgBindFields,
 });
 
 export const updateProjectSchema = z.object({
@@ -90,6 +107,8 @@ export const updateProjectSchema = z.object({
   visibility: ProjectVisibilityEnum.optional(),
   columnId: optionalStr,
   entryOrder: z.number().int().positive().optional().nullable(),
+  acnOrgId: optionalStr,
+  contributePolicy: ContributePolicyEnum.optional(),
 });
 
 export const scriptVersionSchema = z.object({

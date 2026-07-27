@@ -19,6 +19,7 @@ import {
   resolveAgentCreateAuthor,
   LEGACY_AUTHOR_KEY,
 } from "../src/lib/contentAuthor";
+import { assertHumanContributePolicy } from "../src/lib/orgBinding";
 
 function ok(label: string) {
   console.log(`✓ ${label}`);
@@ -166,5 +167,34 @@ assert.deepEqual(actorFromProductionAuth({ kind: "studio_key" }), {
   kind: "studio_key",
 });
 ok("actorFromProductionAuth mapping");
+
+// --- human contribute policy ---
+assert.equal(
+  assertHumanContributePolicy({
+    effective: {
+      acnOrgId: "org_x",
+      contributePolicy: "owner_only",
+      source: "column",
+    },
+    project: { visibility: "PUBLIC", ownerUserId: "owner" },
+    sub: "other",
+  }) instanceof Response,
+  true
+);
+ok("owner_only blocks non-owner humans");
+
+assert.equal(
+  assertHumanContributePolicy({
+    effective: {
+      acnOrgId: "org_x",
+      contributePolicy: "org_members",
+      source: "column",
+    },
+    project: { visibility: "PUBLIC", ownerUserId: "owner" },
+    sub: "other",
+  }),
+  null
+);
+ok("org_members allows humans via Studio visibility (not OrgMembership)");
 
 console.log("\nAll open-public-projects helper checks passed.");

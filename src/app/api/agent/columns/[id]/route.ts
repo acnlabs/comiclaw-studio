@@ -20,6 +20,8 @@ export const GET = withAgentAuth(async (_req, ctx: Ctx) => {
           entryOrder: true,
           coverUrl: true,
           currentStage: true,
+          acnOrgId: true,
+          contributePolicy: true,
           updatedAt: true,
         },
       },
@@ -45,6 +47,11 @@ export const PATCH = withAgentAuth(async (req, ctx: Ctx) => {
       name: body.name ?? undefined,
       description: body.description === undefined ? undefined : body.description,
       coverUrl: body.coverUrl === undefined ? undefined : body.coverUrl,
+      acnOrgId:
+        body.acnOrgId === undefined
+          ? undefined
+          : body.acnOrgId?.trim() || null,
+      contributePolicy: body.contributePolicy ?? undefined,
     },
   });
   return Response.json({ column });

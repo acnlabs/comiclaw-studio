@@ -5,6 +5,7 @@ import { notFoundJson } from "@/lib/auth";
 import { scriptVersionSchema } from "@/lib/schemas";
 import { resolveAgentCreateAuthor } from "@/lib/contentAuthor";
 import { nextScriptVersion } from "@/lib/contentVersioning";
+import { gateAgentContentCreate } from "@/lib/contributeGate";
 import type { ProductionAuth } from "@/lib/acnAuth";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -27,6 +28,15 @@ export const POST = withProjectWorkerAuth(async (req, ctx: Ctx, auth: Production
     authorAgentId: body.authorAgentId,
   });
   if (author instanceof Response) return author;
+
+  const gated = await gateAgentContentCreate({
+    req,
+    auth,
+    projectId: id,
+    projectVisibility: project.visibility,
+    author,
+  });
+  if (gated) return gated;
 
   const created = await withRetry(async () => {
     const version = await nextScriptVersion(id, author.authorKey);

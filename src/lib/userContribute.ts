@@ -3,6 +3,10 @@ import { notFoundJson, unauthorized } from "@/lib/auth";
 import { verifyUserToken } from "@/lib/userAuth";
 import { assertCanUserContribute } from "@/lib/projectAccess";
 import { authorFromUser, type ContentAuthor } from "@/lib/contentAuthor";
+import {
+  assertHumanContributePolicy,
+  resolveEffectiveOrg,
+} from "@/lib/orgBinding";
 
 export type ContributeProject = {
   id: string;
@@ -36,6 +40,14 @@ export async function requireUserContributor(
 
   const denied = assertCanUserContribute(project, sub);
   if (denied) return denied;
+
+  const effective = await resolveEffectiveOrg(project.id);
+  const policyDenied = assertHumanContributePolicy({
+    effective,
+    project,
+    sub,
+  });
+  if (policyDenied) return policyDenied;
 
   return { sub, project, author: authorFromUser(sub) };
 }
