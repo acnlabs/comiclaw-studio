@@ -21,8 +21,11 @@ export async function GET(_req: Request, ctx: Ctx) {
       updatedAt: true,
       projects: {
         where: { visibility: "PUBLIC" },
-        // 时间线默认最新在上(第 N 记优先)
-        orderBy: [{ entryOrder: "desc" }, { createdAt: "desc" }],
+        // 时间线最新在上; entryOrder 空值沉底,与栏目页一致
+        orderBy: [
+          { entryOrder: { sort: "desc", nulls: "last" } },
+          { createdAt: "desc" },
+        ],
         select: {
           id: true,
           name: true,
@@ -32,7 +35,6 @@ export async function GET(_req: Request, ctx: Ctx) {
           entryOrder: true,
           acnOrgId: true,
           contributePolicy: true,
-          agentName: true,
           updatedAt: true,
           createdAt: true,
         },

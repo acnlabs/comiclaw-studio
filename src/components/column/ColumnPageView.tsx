@@ -1,12 +1,11 @@
-"use client";
-
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { Noto_Serif_SC } from "next/font/google";
-import { useT } from "@/components/LocaleProvider";
-import { CHAT_OPEN_EVENT } from "@/components/ChatWidget";
-import { useAuth0 } from "@auth0/auth0-react";
-import { usePathname } from "next/navigation";
+import { getLocale } from "@/lib/locale";
+import { translate } from "@/lib/i18n";
+import { fmtDate } from "@/lib/format";
+import { safeMediaUrl } from "@/lib/columnTimeline";
+import ColumnAgentCta from "@/components/column/ColumnAgentCta";
+import CopyOrgButton from "@/components/column/CopyOrgButton";
 
 const display = Noto_Serif_SC({
   subsets: ["latin"],
@@ -21,7 +20,6 @@ export type ColumnEntry = {
   coverUrl: string | null;
   shareToken: string;
   entryOrder: number | null;
-  agentName: string | null;
   createdAt: string;
 };
 
@@ -31,63 +29,39 @@ export type ColumnViewData = {
   description: string | null;
   coverUrl: string | null;
   acnOrgId: string | null;
+  /** Already newest-first from server; view does not re-sort. */
   entries: ColumnEntry[];
 };
 
-export default function ColumnPageView({ column }: { column: ColumnViewData }) {
-  const { t } = useT();
-  const pathname = usePathname();
-  const { isAuthenticated, loginWithRedirect } = useAuth0();
-  const [copied, setCopied] = useState(false);
+export default async function ColumnPageView({
+  column,
+}: {
+  column: ColumnViewData;
+}) {
+  const locale = await getLocale();
+  const t = (key: Parameters<typeof translate>[1], params?: Record<string, string | number>) =>
+    translate(locale, key, params);
 
-  const timeline = [...column.entries].sort((a, b) => {
-    const ao = a.entryOrder ?? 0;
-    const bo = b.entryOrder ?? 0;
-    if (ao !== bo) return bo - ao;
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  });
+  const timeline = column.entries;
   const current = timeline[0] ?? null;
-
-  useEffect(() => {
-    if (!copied) return;
-    const id = window.setTimeout(() => setCopied(false), 1600);
-    return () => window.clearTimeout(id);
-  }, [copied]);
-
-  function openAgentHelp() {
-    if (isAuthenticated) {
-      window.dispatchEvent(new Event(CHAT_OPEN_EVENT));
-      return;
-    }
-    void loginWithRedirect({ appState: { returnTo: pathname || `/columns/${column.slug}` } });
-  }
-
-  async function copyOrg() {
-    if (!column.acnOrgId) return;
-    try {
-      await navigator.clipboard.writeText(column.acnOrgId);
-      setCopied(true);
-    } catch {
-      // ignore
-    }
-  }
+  const heroCover = safeMediaUrl(column.coverUrl);
+  const currentCover = current ? safeMediaUrl(current.coverUrl) : null;
 
   return (
     <main className="relative flex-1 overflow-x-hidden">
-      {/* Hero — full-bleed brand plane */}
       <section className="relative isolate min-h-[min(92vh,880px)] overflow-hidden">
+        <div aria-hidden className="absolute inset-0 column-hero-bg" />
+        {heroCover ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={heroCover}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover opacity-45"
+          />
+        ) : null}
         <div
           aria-hidden
-          className="absolute inset-0 column-hero-bg"
-          style={
-            column.coverUrl
-              ? {
-                  backgroundImage: `linear-gradient(105deg, rgba(8,8,12,0.92) 18%, rgba(8,8,12,0.55) 55%, rgba(8,8,12,0.78)), url(${column.coverUrl})`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
-                }
-              : undefined
-          }
+          className="absolute inset-0 bg-gradient-to-r from-[#08080c]/95 via-[#08080c]/70 to-[#08080c]/85"
         />
         <div aria-hidden className="column-hero-grain absolute inset-0 opacity-[0.35]" />
 
@@ -112,18 +86,14 @@ export default function ColumnPageView({ column }: { column: ColumnViewData }) {
                 {t("column.ctaCurrent")}
               </a>
             ) : null}
-            <button
-              type="button"
-              onClick={openAgentHelp}
-              className="inline-flex items-center rounded-md border border-zinc-500/60 bg-zinc-950/30 px-5 py-2.5 text-sm font-medium text-zinc-100 backdrop-blur transition hover:border-accent/50 hover:text-accent"
-            >
-              {t("column.ctaAgent")}
-            </button>
+            <ColumnAgentCta
+              label={t("column.ctaAgent")}
+              returnPath={`/columns/${column.slug}`}
+            />
           </div>
         </div>
       </section>
 
-      {/* Current entry */}
       <section
         id="current-entry"
         className="relative border-t border-zinc-800/80 bg-gradient-to-b from-[#101018] to-[#0b0b10] px-5 py-16 sm:px-8"
@@ -136,7 +106,9 @@ export default function ColumnPageView({ column }: { column: ColumnViewData }) {
             <div className="mt-6 grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
               <div>
                 {current.entryOrder != null ? (
-                  <p className="text-sm text-accent">{t("column.entryN", { n: current.entryOrder })}</p>
+                  <p className="text-sm text-accent">
+                    {t("column.entryN", { n: current.entryOrder })}
+                  </p>
                 ) : null}
                 <h2
                   className={`${display.className} mt-2 text-3xl font-semibold tracking-tight text-zinc-50 sm:text-4xl`}
@@ -155,10 +127,10 @@ export default function ColumnPageView({ column }: { column: ColumnViewData }) {
                   {t("column.openEntry")} →
                 </Link>
               </div>
-              {current.coverUrl ? (
+              {currentCover ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={current.coverUrl}
+                  src={currentCover}
                   alt=""
                   className="column-cover-float aspect-[16/10] w-full object-cover"
                 />
@@ -175,7 +147,6 @@ export default function ColumnPageView({ column }: { column: ColumnViewData }) {
         </div>
       </section>
 
-      {/* Timeline — newest first, not a card grid */}
       <section className="border-t border-zinc-800/80 px-5 py-16 sm:px-8">
         <div className="mx-auto w-full max-w-5xl">
           <h2 className={`${display.className} text-2xl font-semibold text-zinc-50`}>
@@ -187,16 +158,19 @@ export default function ColumnPageView({ column }: { column: ColumnViewData }) {
             <ol className="column-timeline relative mt-10 space-y-0">
               {timeline.map((entry, i) => {
                 const isCurrent = current?.id === entry.id;
+                const delay = Math.min(0.05 + i * 0.05, 0.45);
                 return (
                   <li
                     key={entry.id}
                     className="column-timeline-item relative grid grid-cols-[28px_1fr] gap-4 py-5 sm:grid-cols-[36px_1fr]"
-                    style={{ animationDelay: `${0.05 + i * 0.06}s` }}
+                    style={{ animationDelay: `${delay}s` }}
                   >
                     <div className="relative flex justify-center">
                       <span
                         className={`mt-1.5 h-2.5 w-2.5 rounded-full ${
-                          isCurrent ? "bg-accent shadow-[0_0_0_4px_rgba(245,184,61,0.18)]" : "bg-zinc-600"
+                          isCurrent
+                            ? "bg-accent ring-2 ring-accent/35 ring-offset-2 ring-offset-[#0b0b10]"
+                            : "bg-zinc-600"
                         }`}
                       />
                     </div>
@@ -211,7 +185,7 @@ export default function ColumnPageView({ column }: { column: ColumnViewData }) {
                           </span>
                         ) : null}
                         <span className="text-xs text-zinc-600">
-                          {new Date(entry.createdAt).toLocaleDateString()}
+                          {fmtDate(entry.createdAt, locale)}
                         </span>
                       </div>
                       <p
@@ -233,41 +207,39 @@ export default function ColumnPageView({ column }: { column: ColumnViewData }) {
         </div>
       </section>
 
-      {/* One purpose: how agents join */}
       <section className="border-t border-zinc-800/80 px-5 py-16 sm:px-8">
-        <div className="mx-auto grid w-full max-w-5xl gap-12 lg:grid-cols-2">
-          <div>
-            <h2 className={`${display.className} text-2xl font-semibold text-zinc-50`}>
-              {t("column.modesTitle")}
-            </h2>
-            <p className="mt-4 max-w-md text-sm leading-relaxed text-zinc-400">
-              {t("column.modesBody")}
-            </p>
-          </div>
-          <div>
-            <h2 className={`${display.className} text-2xl font-semibold text-zinc-50`}>
-              {t("column.agentGuideTitle")}
-            </h2>
-            <p className="mt-4 max-w-md text-sm leading-relaxed text-zinc-400">
-              {t("column.agentGuideBody")}
-            </p>
-            {column.acnOrgId ? (
-              <div className="mt-5 flex flex-wrap items-center gap-3">
-                <code className="rounded-md bg-zinc-900 px-3 py-1.5 text-xs text-zinc-300">
-                  {t("column.agentGuideOrg", { id: column.acnOrgId })}
-                </code>
-                <button
-                  type="button"
-                  onClick={copyOrg}
-                  className="text-xs font-medium text-accent underline-offset-4 hover:underline"
-                >
-                  {copied ? t("column.copied") : t("column.copyOrg")}
-                </button>
-              </div>
-            ) : (
-              <p className="mt-5 text-xs text-zinc-600">{t("column.agentGuideNoOrg")}</p>
-            )}
-          </div>
+        <div className="mx-auto w-full max-w-5xl">
+          <h2 className={`${display.className} text-2xl font-semibold text-zinc-50`}>
+            {t("column.modesTitle")}
+          </h2>
+          <p className="mt-4 max-w-md text-sm leading-relaxed text-zinc-400">
+            {t("column.modesBody")}
+          </p>
+        </div>
+      </section>
+
+      <section className="border-t border-zinc-800/80 px-5 py-16 sm:px-8">
+        <div className="mx-auto w-full max-w-5xl">
+          <h2 className={`${display.className} text-2xl font-semibold text-zinc-50`}>
+            {t("column.agentGuideTitle")}
+          </h2>
+          <p className="mt-4 max-w-md text-sm leading-relaxed text-zinc-400">
+            {t("column.agentGuideBody")}
+          </p>
+          {column.acnOrgId ? (
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              <code className="rounded-md bg-zinc-900 px-3 py-1.5 text-xs text-zinc-300">
+                {t("column.agentGuideOrg", { id: column.acnOrgId })}
+              </code>
+              <CopyOrgButton
+                orgId={column.acnOrgId}
+                copyLabel={t("column.copyOrg")}
+                copiedLabel={t("column.copied")}
+              />
+            </div>
+          ) : (
+            <p className="mt-5 text-xs text-zinc-600">{t("column.agentGuideNoOrg")}</p>
+          )}
         </div>
       </section>
     </main>

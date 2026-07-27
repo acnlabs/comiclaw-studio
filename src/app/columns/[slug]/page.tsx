@@ -3,11 +3,17 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getLocale } from "@/lib/locale";
 import { translate } from "@/lib/i18n";
+import { compareEntriesNewestFirst } from "@/lib/columnTimeline";
 import ColumnPageView from "@/components/column/ColumnPageView";
 
 export const dynamic = "force-dynamic";
 
 type Ctx = { params: Promise<{ slug: string }> };
+
+const entryOrderNewestFirst = [
+  { entryOrder: { sort: "desc" as const, nulls: "last" as const } },
+  { createdAt: "desc" as const },
+];
 
 async function loadColumn(slug: string) {
   return prisma.column.findUnique({
@@ -20,7 +26,7 @@ async function loadColumn(slug: string) {
       acnOrgId: true,
       projects: {
         where: { visibility: "PUBLIC" },
-        orderBy: [{ entryOrder: "desc" }, { createdAt: "desc" }],
+        orderBy: entryOrderNewestFirst,
         select: {
           id: true,
           name: true,
@@ -28,7 +34,6 @@ async function loadColumn(slug: string) {
           coverUrl: true,
           shareToken: true,
           entryOrder: true,
-          agentName: true,
           createdAt: true,
         },
       },
@@ -56,6 +61,18 @@ export default async function ColumnPage(props: Ctx) {
   const column = await loadColumn(slug);
   if (!column) notFound();
 
+  const entries = [...column.projects]
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      description: p.description,
+      coverUrl: p.coverUrl,
+      shareToken: p.shareToken,
+      entryOrder: p.entryOrder,
+      createdAt: p.createdAt.toISOString(),
+    }))
+    .sort(compareEntriesNewestFirst);
+
   return (
     <ColumnPageView
       column={{
@@ -64,16 +81,7 @@ export default async function ColumnPage(props: Ctx) {
         description: column.description,
         coverUrl: column.coverUrl,
         acnOrgId: column.acnOrgId,
-        entries: column.projects.map((p) => ({
-          id: p.id,
-          name: p.name,
-          description: p.description,
-          coverUrl: p.coverUrl,
-          shareToken: p.shareToken,
-          entryOrder: p.entryOrder,
-          agentName: p.agentName,
-          createdAt: p.createdAt.toISOString(),
-        })),
+        entries,
       }}
     />
   );
