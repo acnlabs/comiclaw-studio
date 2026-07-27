@@ -23,7 +23,11 @@ export type AcnOrg = {
   org_id: string;
   display_name: string;
   subnet_id?: string;
-  fencing?: { subnet_id?: string };
+  fencing?: {
+    subnet_id?: string;
+    join_policy?: "open" | "approval" | string;
+  };
+  join_policy?: "open" | "approval" | string;
   status?: string;
 };
 
@@ -159,6 +163,28 @@ export async function addAcnOrgMember(args: {
   return (await res.json()) as AcnOrgMember;
 }
 
+export async function removeAcnOrgMember(args: {
+  orgId: string;
+  agentId: string;
+  bearer?: string;
+}): Promise<void> {
+  const res = await orgFetch(
+    `/api/v1/orgs/${encodeURIComponent(args.orgId)}/members/${encodeURIComponent(args.agentId)}`,
+    { method: "DELETE" },
+    args.bearer
+  );
+  if (!res.ok && res.status !== 404) {
+    throw new Error(`ACN remove org member failed: ${await readError(res)}`);
+  }
+}
+
 export function orgSubnetId(org: AcnOrg): string | null {
   return org.subnet_id || org.fencing?.subnet_id || null;
+}
+
+export function orgJoinPolicy(org: AcnOrg): "open" | "approval" {
+  const raw = (org.join_policy || org.fencing?.join_policy || "approval")
+    .toString()
+    .toLowerCase();
+  return raw === "open" ? "open" : "approval";
 }

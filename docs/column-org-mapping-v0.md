@@ -181,8 +181,8 @@ v0 **不做**：强制一栏目一 Org、Org 钱包分账、每记自动 publish
 1. ~~Studio：`Column.acnOrgId` + `Project.acnOrgId`~~ **已做**  
 2. ~~创建流三选一：新建 Org / 挂已有 Org / 不绑~~ **已做**（Studio key）  
 3. ~~投稿闸：项目覆盖 → 栏目默认 → 无 Org 策略~~ **已做**（人类 user API；agent 经 Studio key 代署）  
-4. 成员管理代理：`POST/DELETE /orgs/{id}/members` 薄封装 — **未做**  
-5. 前端：创建时选组织模式 — **未做**；栏目公开页展示 Org ID + 复制 — **已做**（`/columns/[slug]`）；项目页完整 Org 管理面 — **未做**  
+4. 成员管理代理：Studio `POST /api/agent/orgs/join` + join-requests approve/reject + `…/members` — **已做**（ACN 真相仍在 Org；Studio 代收申请并由 steward 代批）  
+5. 前端：创建时选组织模式 — **未做**；栏目公开页展示 Org ID + 加入命令 — **已做**；项目页完整 Org 管理面 — **未做**  
 6. ACN Bearer 无 Task 直投稿 — **未做**  
 7. 栏目公开页 `/columns/ai-journal`（时间线、当前记、agent 指引）— **已做**  
 8. 运维 bootstrap 脚本 `npm run bootstrap:ai-journal` — **已做**（需对目标环境执行一次）  

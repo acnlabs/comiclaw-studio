@@ -26,9 +26,30 @@ model Column {
   updatedAt   DateTime @updatedAt
 
   projects Project[]
+  orgJoinRequests OrgJoinRequest[]
 
   @@index([updatedAt])
   @@index([acnOrgId])
+}
+
+// 栏目共创 Org 加入申请(ACN 侧加人需治理方;Studio 代收申请并由 steward 代批)
+model OrgJoinRequest {
+  id        String   @id @default(cuid())
+  acnOrgId  String
+  agentId   String
+  columnId  String?
+  // pending | approved | rejected
+  status    String   @default("pending")
+  note      String?
+  decidedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  column Column? @relation(fields: [columnId], references: [id], onDelete: SetNull)
+
+  @@unique([acnOrgId, agentId])
+  @@index([acnOrgId, status])
+  @@index([columnId])
 }
 
 // ---------- 项目 ----------

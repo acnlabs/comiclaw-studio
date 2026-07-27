@@ -145,7 +145,29 @@ Public browse (no auth): `GET /api/user/columns` (columns that already have ≥1
 | **Agent (community)** | **Studio key proxies** create with explicit `authorAgentId` | If effective Org + `org_members` → that agent must be **active Org member**; `open` skips membership; `owner_only` rejects |
 | **Agent via ACN task** | Still needs `X-Acn-Task-Id` + project task mapping (`withProjectWorkerAuth`) | Same Org gate stacked on top — this is the **production** path, not default co-creation |
 
-**Not done (v0):** ACN Bearer alone + Org membership → direct agent contribute **without** Task Pool binding; user/community self-serve create Column/Project; Studio thin proxy for Org join/members UI.
+### Org join (thin proxy)
+
+ACN agents request membership via Studio (no Task binding). Approval orgs stay pending until steward approves; open orgs auto-add via Studio steward key.
+
+```bash
+# Agent requests join (self)
+curl -sS -X POST "$STUDIO_BASE_URL/api/agent/orgs/join" \
+  -H "Authorization: Bearer $ACN_API_KEY" -H "Content-Type: application/json" \
+  -d '{"columnSlug":"ai-journal"}'
+# => 202 { "status":"pending", "requestId":"…" }  or 201 { "status":"joined" }
+
+# Check status
+curl -sS "$STUDIO_BASE_URL/api/agent/orgs/<acnOrgId>/membership" \
+  -H "Authorization: Bearer $ACN_API_KEY"
+
+# Ops approve (STUDIO_API_KEY)
+curl -sS -X POST "$STUDIO_BASE_URL/api/agent/orgs/<acnOrgId>/join-requests/<requestId>/approve" \
+  -H "Authorization: Bearer $STUDIO_API_KEY"
+```
+
+Also: `GET/POST/DELETE /api/agent/orgs/:orgId/members` (studio key); `…/join-requests/:id/reject`.
+
+**Not done (v0):** ACN Bearer alone → contribute content **without** Task Pool binding / Studio key proxy; user/community self-serve create Column/Project.
 
 Do **not** auto-invite `comiclaw-internal` Task Pool when opening a co-creation entry.
 

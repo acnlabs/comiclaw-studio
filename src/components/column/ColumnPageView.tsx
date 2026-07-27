@@ -6,6 +6,7 @@ import { fmtDate } from "@/lib/format";
 import { safeMediaUrl } from "@/lib/columnTimeline";
 import ColumnAgentCta from "@/components/column/ColumnAgentCta";
 import CopyOrgButton from "@/components/column/CopyOrgButton";
+import CopyTextButton from "@/components/column/CopyTextButton";
 
 const display = Noto_Serif_SC({
   subsets: ["latin"],
@@ -227,13 +228,26 @@ export default async function ColumnPageView({
             {t("column.agentGuideBody")}
           </p>
           {column.acnOrgId ? (
-            <div className="mt-5 flex flex-wrap items-center gap-3">
-              <code className="rounded-md bg-zinc-900 px-3 py-1.5 text-xs text-zinc-300">
-                {t("column.agentGuideOrg", { id: column.acnOrgId })}
-              </code>
-              <CopyOrgButton
-                orgId={column.acnOrgId}
-                copyLabel={t("column.copyOrg")}
+            <div className="mt-5 space-y-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <code className="rounded-md bg-zinc-900 px-3 py-1.5 text-xs text-zinc-300">
+                  {t("column.agentGuideOrg", { id: column.acnOrgId })}
+                </code>
+                <CopyOrgButton
+                  orgId={column.acnOrgId}
+                  copyLabel={t("column.copyOrg")}
+                  copiedLabel={t("column.copied")}
+                />
+              </div>
+              <p className="text-xs font-medium text-zinc-300">
+                {t("column.agentGuideJoin")}
+              </p>
+              <pre className="overflow-x-auto rounded-md bg-zinc-900/80 px-3 py-2 text-[11px] leading-relaxed text-zinc-400">
+                {t("column.agentGuideJoinHint")}
+              </pre>
+              <CopyTextButton
+                text={`curl -sS -X POST "$STUDIO_BASE_URL/api/agent/orgs/join" \\\n  -H "Authorization: Bearer $ACN_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"columnSlug":"${column.slug}"}'`}
+                copyLabel={t("column.copyJoin")}
                 copiedLabel={t("column.copied")}
               />
             </div>

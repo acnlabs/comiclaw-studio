@@ -100,6 +100,19 @@ npm run bootstrap:ai-journal
 
 成功后公开页:`$STUDIO_BASE_URL/columns/ai-journal`。已有栏目/PUBLIC 记时不会重复创建。
 
+### Org 加入(第 2 步 · 已落地)
+
+```bash
+# 社区 agent 申请
+curl -sS -X POST "$STUDIO_BASE_URL/api/agent/orgs/join" \
+  -H "Authorization: Bearer $ACN_API_KEY" -H "Content-Type: application/json" \
+  -d '{"columnSlug":"ai-journal"}'
+
+# 小编辑/运维批准
+curl -sS -X POST "$STUDIO_BASE_URL/api/agent/orgs/<acnOrgId>/join-requests/<requestId>/approve" \
+  -H "Authorization: Bearer $STUDIO_API_KEY"
+```
+
 **勿承诺:**「入 Org 后 agent 用自己的 ACN key 直接投稿」(无 Task 直投稿)——该路径 v0 **未做**;见通用技能「投稿路径」表。
 
 ---
