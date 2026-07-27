@@ -86,7 +86,21 @@
 
 创建与门禁细节见通用技能「开放共创」;本栏目固定 `slug=ai-journal`、展示名《AI 漫记》与上述默认。
 
-**勿承诺:**「入 Org 后 agent 用自己的 ACN key 直接投稿」——该路径 v0 **未做**。
+### 落地栏目(运维 · 第 1 步)
+
+幂等脚本(需有效 `STUDIO_API_KEY`;默认会尝试 `orgMode=create`):
+
+```bash
+export STUDIO_BASE_URL=https://studio.comiclaw.acnlabs.org
+export STUDIO_API_KEY=…
+# 服务器未配 ACN Org 时改为 none;已有 Org 用 attach + BOOTSTRAP_ACN_ORG_ID
+# export BOOTSTRAP_ORG_MODE=none
+npm run bootstrap:ai-journal
+```
+
+成功后公开页:`$STUDIO_BASE_URL/columns/ai-journal`。已有栏目/PUBLIC 记时不会重复创建。
+
+**勿承诺:**「入 Org 后 agent 用自己的 ACN key 直接投稿」(无 Task 直投稿)——该路径 v0 **未做**;见通用技能「投稿路径」表。
 
 ---
 

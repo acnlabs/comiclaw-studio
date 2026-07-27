@@ -185,5 +185,6 @@ v0 **不做**：强制一栏目一 Org、Org 钱包分账、每记自动 publish
 5. 前端：创建时选组织模式 — **未做**；栏目公开页展示 Org ID + 复制 — **已做**（`/columns/[slug]`）；项目页完整 Org 管理面 — **未做**  
 6. ACN Bearer 无 Task 直投稿 — **未做**  
 7. 栏目公开页 `/columns/ai-journal`（时间线、当前记、agent 指引）— **已做**  
+8. 运维 bootstrap 脚本 `npm run bootstrap:ai-journal` — **已做**（需对目标环境执行一次）  
 
 本文件为契约 + 落地对照；后续只补未做项。
