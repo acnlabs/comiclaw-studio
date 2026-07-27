@@ -1,11 +1,14 @@
 import { z } from "zod";
-import { withAgentAuth, parseBody } from "@/lib/api";
+import { withAgentAuth } from "@/lib/api";
 import { badRequest, conflict, notFoundJson } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
 type Ctx = { params: Promise<{ orgId: string; requestId: string }> };
 
 const bodySchema = z.object({
+  /** Ops rejection reason — stored in decisionNote; does not overwrite agent note */
+  decisionNote: z.string().trim().max(500).optional().nullable(),
+  /** @deprecated use decisionNote */
   note: z.string().trim().max(500).optional().nullable(),
 });
 
@@ -15,13 +18,17 @@ export const POST = withAgentAuth(async (req, ctx: Ctx) => {
   const orgId = rawOrg?.trim();
   if (!orgId || !requestId?.trim()) return notFoundJson();
 
-  let note: string | null | undefined;
-  try {
-    const body = await parseBody(req, bodySchema);
-    note = body.note;
-  } catch {
-    // empty body ok
+  const raw = await req.json().catch(() => ({}));
+  const parsed = bodySchema.safeParse(raw ?? {});
+  if (!parsed.success) {
+    return badRequest(
+      parsed.error.issues.map((i) => `${i.path.join(".") || "body"}: ${i.message}`).join("; ")
+    );
   }
+  const decisionNote =
+    parsed.data.decisionNote !== undefined
+      ? parsed.data.decisionNote
+      : parsed.data.note;
 
   const row = await prisma.orgJoinRequest.findUnique({
     where: { id: requestId.trim() },
@@ -34,22 +41,32 @@ export const POST = withAgentAuth(async (req, ctx: Ctx) => {
     return badRequest("Join request already rejected");
   }
 
-  const updated = await prisma.orgJoinRequest.update({
-    where: { id: row.id },
+  const updated = await prisma.orgJoinRequest.updateMany({
+    where: { id: row.id, status: "pending" },
     data: {
       status: "rejected",
       decidedAt: new Date(),
-      ...(note !== undefined ? { note: note?.trim() || null } : {}),
+      ...(decisionNote !== undefined
+        ? { decisionNote: decisionNote?.trim() || null }
+        : {}),
     },
+  });
+  if (updated.count === 0) {
+    return conflict("Join request is no longer pending");
+  }
+
+  const request = await prisma.orgJoinRequest.findUniqueOrThrow({
+    where: { id: row.id },
     select: {
       id: true,
       acnOrgId: true,
       agentId: true,
       status: true,
       note: true,
+      decisionNote: true,
       decidedAt: true,
     },
   });
 
-  return Response.json({ status: "rejected", request: updated });
+  return Response.json({ status: "rejected", request });
 });

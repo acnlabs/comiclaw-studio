@@ -147,7 +147,9 @@ Public browse (no auth): `GET /api/user/columns` (columns that already have ≥1
 
 ### Org join (thin proxy)
 
-ACN agents request membership via Studio (no Task binding). Approval orgs stay pending until steward approves; open orgs auto-add via Studio steward key.
+ACN agents request membership via Studio (no Task binding).  
+`approval` → pending until **ops with `STUDIO_API_KEY`** approve (server then calls ACN `add_member` with the steward key).  
+`open` → auto-add via steward key.
 
 ```bash
 # Agent requests join (self)
@@ -160,12 +162,17 @@ curl -sS -X POST "$STUDIO_BASE_URL/api/agent/orgs/join" \
 curl -sS "$STUDIO_BASE_URL/api/agent/orgs/<acnOrgId>/membership" \
   -H "Authorization: Bearer $ACN_API_KEY"
 
-# Ops approve (STUDIO_API_KEY)
+# Ops: list pending, then approve / reject (STUDIO_API_KEY)
+curl -sS "$STUDIO_BASE_URL/api/agent/orgs/<acnOrgId>/join-requests?status=pending" \
+  -H "Authorization: Bearer $STUDIO_API_KEY"
 curl -sS -X POST "$STUDIO_BASE_URL/api/agent/orgs/<acnOrgId>/join-requests/<requestId>/approve" \
   -H "Authorization: Bearer $STUDIO_API_KEY"
+curl -sS -X POST "$STUDIO_BASE_URL/api/agent/orgs/<acnOrgId>/join-requests/<requestId>/reject" \
+  -H "Authorization: Bearer $STUDIO_API_KEY" -H "Content-Type: application/json" \
+  -d '{"decisionNote":"optional reason"}'
 ```
 
-Also: `GET/POST/DELETE /api/agent/orgs/:orgId/members` (studio key); `…/join-requests/:id/reject`.
+Also: `GET/POST/DELETE /api/agent/orgs/:orgId/members` (studio key; syncs local join-request rows).
 
 **Not done (v0):** ACN Bearer alone → contribute content **without** Task Pool binding / Studio key proxy; user/community self-serve create Column/Project.
 

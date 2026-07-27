@@ -48,8 +48,48 @@ export async function resolveOrgTarget(args: {
   return { acnOrgId: orgId!, columnId: null, columnSlug: null };
 }
 
+/** Mark local join-request row approved after a successful ACN add (or already-member). */
+export async function syncJoinRequestApproved(args: {
+  acnOrgId: string;
+  agentId: string;
+  columnId?: string | null;
+}): Promise<void> {
+  await prisma.orgJoinRequest.upsert({
+    where: {
+      acnOrgId_agentId: {
+        acnOrgId: args.acnOrgId,
+        agentId: args.agentId,
+      },
+    },
+    create: {
+      acnOrgId: args.acnOrgId,
+      agentId: args.agentId,
+      columnId: args.columnId ?? null,
+      status: "approved",
+      decidedAt: new Date(),
+    },
+    update: {
+      status: "approved",
+      decidedAt: new Date(),
+      ...(args.columnId !== undefined ? { columnId: args.columnId } : {}),
+    },
+  });
+}
+
+/** Clear local join-request after member removed so agent can re-apply cleanly. */
+export async function syncJoinRequestRemoved(args: {
+  acnOrgId: string;
+  agentId: string;
+}): Promise<void> {
+  await prisma.orgJoinRequest.deleteMany({
+    where: { acnOrgId: args.acnOrgId, agentId: args.agentId },
+  });
+}
+
 export async function approveJoinRequest(args: {
   requestId: string;
+  /** Path orgId — validated before any ACN side effect */
+  expectedOrgId: string;
   role?: string;
 }): Promise<
   | {
@@ -59,6 +99,7 @@ export async function approveJoinRequest(args: {
         agentId: string;
         status: string;
         columnId: string | null;
+        decisionNote: string | null;
       };
       member: Awaited<ReturnType<typeof addAcnOrgMember>>;
     }
@@ -68,14 +109,17 @@ export async function approveJoinRequest(args: {
     return badRequest("ACN Org is not configured on server");
   }
 
+  const expectedOrgId = args.expectedOrgId.trim();
   const row = await prisma.orgJoinRequest.findUnique({
     where: { id: args.requestId },
   });
-  if (!row) return notFoundJson("Join request not found");
+  if (!row || row.acnOrgId !== expectedOrgId) {
+    return notFoundJson("Join request not found");
+  }
   if (row.status === "approved") {
     return conflict("Join request already approved");
   }
-  if (row.status === "rejected") {
+  if (row.status !== "pending") {
     return badRequest("Join request was rejected; agent must request again");
   }
 
@@ -97,15 +141,23 @@ export async function approveJoinRequest(args: {
       });
     }
 
-    const request = await prisma.orgJoinRequest.update({
-      where: { id: row.id },
+    const updated = await prisma.orgJoinRequest.updateMany({
+      where: { id: row.id, status: "pending" },
       data: { status: "approved", decidedAt: new Date() },
+    });
+    if (updated.count === 0) {
+      return conflict("Join request is no longer pending");
+    }
+
+    const request = await prisma.orgJoinRequest.findUniqueOrThrow({
+      where: { id: row.id },
       select: {
         id: true,
         acnOrgId: true,
         agentId: true,
         status: true,
         columnId: true,
+        decisionNote: true,
       },
     });
     return { request, member };
@@ -113,15 +165,22 @@ export async function approveJoinRequest(args: {
     console.error("[orgJoin] approve failed", err);
     const msg = err instanceof Error ? err.message : String(err);
     if (msg.includes("already_member") || msg.includes("already in org")) {
-      const request = await prisma.orgJoinRequest.update({
-        where: { id: row.id },
+      const updated = await prisma.orgJoinRequest.updateMany({
+        where: { id: row.id, status: "pending" },
         data: { status: "approved", decidedAt: new Date() },
+      });
+      if (updated.count === 0) {
+        return conflict("Join request is no longer pending");
+      }
+      const request = await prisma.orgJoinRequest.findUniqueOrThrow({
+        where: { id: row.id },
         select: {
           id: true,
           acnOrgId: true,
           agentId: true,
           status: true,
           columnId: true,
+          decisionNote: true,
         },
       });
       return {
@@ -142,7 +201,6 @@ export async function requestOrgJoin(args: {
   target: ResolvedOrgTarget;
   agentId: string;
   note?: string | null;
-  /** Studio key may force-add without pending when true and policy open — handled below */
 }): Promise<Response | Record<string, unknown>> {
   if (!acnOrgConfigured()) {
     return badRequest("ACN Org is not configured on server");
@@ -185,7 +243,6 @@ export async function requestOrgJoin(args: {
       };
     }
 
-    // open: steward auto-adds; approval: upsert pending
     if (policy === "open") {
       try {
         await addAcnOrgMember({
@@ -199,28 +256,22 @@ export async function requestOrgJoin(args: {
           throw err;
         }
       }
-      await prisma.orgJoinRequest.upsert({
-        where: {
-          acnOrgId_agentId: {
-            acnOrgId: args.target.acnOrgId,
-            agentId,
-          },
-        },
-        create: {
-          acnOrgId: args.target.acnOrgId,
-          agentId,
-          columnId: args.target.columnId,
-          status: "approved",
-          note: args.note?.trim() || null,
-          decidedAt: new Date(),
-        },
-        update: {
-          columnId: args.target.columnId ?? undefined,
-          status: "approved",
-          note: args.note?.trim() || undefined,
-          decidedAt: new Date(),
-        },
+      await syncJoinRequestApproved({
+        acnOrgId: args.target.acnOrgId,
+        agentId,
+        columnId: args.target.columnId,
       });
+      if (args.note?.trim()) {
+        await prisma.orgJoinRequest.update({
+          where: {
+            acnOrgId_agentId: {
+              acnOrgId: args.target.acnOrgId,
+              agentId,
+            },
+          },
+          data: { note: args.note.trim() },
+        });
+      }
       return {
         status: "joined",
         acnOrgId: args.target.acnOrgId,
@@ -249,6 +300,7 @@ export async function requestOrgJoin(args: {
         status: "pending",
         note: args.note?.trim() || undefined,
         decidedAt: null,
+        decisionNote: null,
       },
     });
 

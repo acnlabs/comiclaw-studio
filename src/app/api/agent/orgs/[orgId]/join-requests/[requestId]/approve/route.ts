@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { withAgentAuth } from "@/lib/api";
-import { notFoundJson } from "@/lib/auth";
+import { badRequest, notFoundJson } from "@/lib/auth";
 import { approveJoinRequest } from "@/lib/orgJoin";
 
 type Ctx = { params: Promise<{ orgId: string; requestId: string }> };
@@ -17,14 +17,19 @@ export const POST = withAgentAuth(async (req, ctx: Ctx) => {
 
   const raw = await req.json().catch(() => ({}));
   const parsed = bodySchema.safeParse(raw ?? {});
-  const role = parsed.success ? parsed.data.role : undefined;
+  if (!parsed.success) {
+    return badRequest(
+      parsed.error.issues.map((i) => `${i.path.join(".") || "body"}: ${i.message}`).join("; ")
+    );
+  }
 
+  // expectedOrgId checked inside before any ACN side effect
   const row = await approveJoinRequest({
     requestId: requestId.trim(),
-    role,
+    expectedOrgId: orgId,
+    role: parsed.data.role,
   });
   if (row instanceof Response) return row;
-  if (row.request.acnOrgId !== orgId) return notFoundJson("Join request not found");
 
   return Response.json({
     status: "approved",

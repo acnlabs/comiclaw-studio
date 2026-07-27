@@ -31,6 +31,7 @@ export const GET = withAgentAuth(async (req, ctx: Ctx) => {
       agentId: r.agentId,
       status: r.status,
       note: r.note,
+      decisionNote: r.decisionNote,
       columnId: r.columnId,
       columnSlug: r.column?.slug ?? null,
       columnName: r.column?.name ?? null,

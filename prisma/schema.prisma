@@ -32,7 +32,7 @@ model Column {
   @@index([acnOrgId])
 }
 
-// 栏目共创 Org 加入申请(ACN 侧加人需治理方;Studio 代收申请并由 steward 代批)
+// 栏目共创 Org 加入申请(ACN 侧加人需治理方;Studio 代收申请,运维用 Studio key 批准后由 steward key 调 ACN)
 model OrgJoinRequest {
   id        String   @id @default(cuid())
   acnOrgId  String
@@ -40,7 +40,8 @@ model OrgJoinRequest {
   columnId  String?
   // pending | approved | rejected
   status    String   @default("pending")
-  note      String?
+  note      String? // agent 申请备注(勿被拒绝理由覆盖)
+  decisionNote String? // 运维批准/拒绝附言
   decidedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

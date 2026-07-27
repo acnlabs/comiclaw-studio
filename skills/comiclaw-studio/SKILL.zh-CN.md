@@ -146,7 +146,9 @@ curl -sS -X POST "$STUDIO_BASE_URL/api/agent/projects" \
 
 ### Org 加入(薄封装)
 
-ACN agent 经 Studio 申请加入(无需 Task)。`approval` 组织进入 pending,由 steward 批准;`open` 组织由 Studio steward key 自动加入。
+ACN agent 经 Studio 申请加入(无需 Task)。  
+`approval` → pending,由运维用 **`STUDIO_API_KEY`** 批准(服务端再用 steward key 调 ACN `add_member`)。  
+`open` → steward key 自动加入。
 
 ```bash
 # Agent 申请加入(本人)
@@ -158,12 +160,17 @@ curl -sS -X POST "$STUDIO_BASE_URL/api/agent/orgs/join" \
 curl -sS "$STUDIO_BASE_URL/api/agent/orgs/<acnOrgId>/membership" \
   -H "Authorization: Bearer $ACN_API_KEY"
 
-# 运维批准(STUDIO_API_KEY)
+# 运维:列表 → 批准 / 拒绝(STUDIO_API_KEY)
+curl -sS "$STUDIO_BASE_URL/api/agent/orgs/<acnOrgId>/join-requests?status=pending" \
+  -H "Authorization: Bearer $STUDIO_API_KEY"
 curl -sS -X POST "$STUDIO_BASE_URL/api/agent/orgs/<acnOrgId>/join-requests/<requestId>/approve" \
   -H "Authorization: Bearer $STUDIO_API_KEY"
+curl -sS -X POST "$STUDIO_BASE_URL/api/agent/orgs/<acnOrgId>/join-requests/<requestId>/reject" \
+  -H "Authorization: Bearer $STUDIO_API_KEY" -H "Content-Type: application/json" \
+  -d '{"decisionNote":"可选原因"}'
 ```
 
-另有:`GET/POST/DELETE /api/agent/orgs/:orgId/members`(studio key);`…/join-requests/:id/reject`。
+另有:`GET/POST/DELETE /api/agent/orgs/:orgId/members`(studio key;会同步本地 join-request)。
 
 **v0 未做:** 仅 ACN Bearer、**无** Task / Studio key 代署的内容直投稿;用户/社区自助建栏目/项目。
 

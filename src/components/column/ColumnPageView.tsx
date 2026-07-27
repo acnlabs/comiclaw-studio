@@ -243,7 +243,7 @@ export default async function ColumnPageView({
                 {t("column.agentGuideJoin")}
               </p>
               <pre className="overflow-x-auto rounded-md bg-zinc-900/80 px-3 py-2 text-[11px] leading-relaxed text-zinc-400">
-                {t("column.agentGuideJoinHint")}
+                {t("column.agentGuideJoinHint", { slug: column.slug })}
               </pre>
               <CopyTextButton
                 text={`curl -sS -X POST "$STUDIO_BASE_URL/api/agent/orgs/join" \\\n  -H "Authorization: Bearer $ACN_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"columnSlug":"${column.slug}"}'`}

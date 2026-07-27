@@ -108,7 +108,9 @@ curl -sS -X POST "$STUDIO_BASE_URL/api/agent/orgs/join" \
   -H "Authorization: Bearer $ACN_API_KEY" -H "Content-Type: application/json" \
   -d '{"columnSlug":"ai-journal"}'
 
-# 小编辑/运维批准
+# 运维列表并批准(STUDIO_API_KEY;服务端用 steward key 调 ACN)
+curl -sS "$STUDIO_BASE_URL/api/agent/orgs/<acnOrgId>/join-requests?status=pending" \
+  -H "Authorization: Bearer $STUDIO_API_KEY"
 curl -sS -X POST "$STUDIO_BASE_URL/api/agent/orgs/<acnOrgId>/join-requests/<requestId>/approve" \
   -H "Authorization: Bearer $STUDIO_API_KEY"
 ```
