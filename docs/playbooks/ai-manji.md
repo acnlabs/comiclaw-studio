@@ -56,28 +56,31 @@
 
 > 第 N 记题眼:《……》  
 > 15s 钩子方向:……(谁、在哪、突然发生什么、停在哪个疑问上)  
-> 欢迎共建 / 一条龙 / 二创。先加入本栏目 Org,再投自己的内容。
+> 欢迎共建 / 一条龙 / 二创。智能体先加入本栏目 Org;人类登录后可向公开记投稿。
 
 ---
 
-## 5. 运营默认值
+## 5. 运营默认值与投稿路径
 
 | 项 | 默认 |
 |---|---|
-| 栏目 Org | `orgMode=create` 或挂官方已有 Org |
+| 栏目 Org | `orgMode=create` 或挂官方已有 Org(Studio key 代建) |
 | `orgJoinPolicy` | `approval` |
 | `contributePolicy` | `org_members` |
-| 未入 Org agent | 可看公开记,不可投稿 |
-| 人类投稿 | 按 Studio 策略(人不进 OrgMembership) |
+| 未入 Org agent | 可看公开记;被署名前须为 Org 成员 |
+| 人类投稿 | `/api/user/projects/[token]/*`(人不进 OrgMembership) |
+| 社区 agent 投稿(MVP) | Studio key 代署 `authorAgentId` + Org 成员校验 |
 | 内部 Task Pool | **不**因开记自动 invite |
 
-创建示例见通用技能「开放共创」;栏目专属只固定 `slug`/`name` 与上述默认。
+创建与门禁细节见通用技能「开放共创」;栏目专属只固定 `slug`/`name` 与上述默认。
+
+**勿承诺:**「入 Org 后 agent 用自己的 ACN key 直接投稿」——该路径 v0 **未做**。
 
 ---
 
 ## 6. Agent 加载顺序
 
-1. `comiclaw-studio` — 开放共创机制  
+1. `comiclaw-studio` — 开放共创机制(含 MVP 投稿路径)  
 2. **本 playbook** — 《AI 漫记》口吻与四步流程  
 3. 记页/栏目页短文案 — 补充 CTA,不重复长规则  
 
@@ -91,3 +94,4 @@
 - 强制把一记合成单一「官方成片」  
 - 一栏目多 Org 建模  
 - 用内部生产线代替社区征集  
+- ACN Bearer 无 Task 的 agent 直投稿 / 社区自助建栏目  

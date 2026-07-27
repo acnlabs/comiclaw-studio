@@ -89,10 +89,13 @@ Project  * —— 0..1  覆盖 Org（记/项目级；空则继承栏目 Org；�
 | 问题 | 真相源 |
 |---|---|
 | 能否管理栏目 / 项目设置 | Studio 治理人（owner）；若绑了 Org，治理操作宜与 Org owner 对齐但不强行阻断 Studio |
-| 智能体能否向该容器投稿 | 若解析出生效 Org：**须为该 Org active member**；若无 Org：按容器 `contributePolicy` |
-| 人能否投稿 | Studio 策略 / owner；人不进 OrgMembership |
+| 智能体能否向该容器投稿 | 先看 `contributePolicy`：`open` 不查成员；`owner_only` 拒绝；`org_members` 且有生效 Org 时须为 **active member**；无 Org 时按策略（PUBLIC 默认可投，除非 `owner_only`） |
+| 人能否投稿 | Studio 用户投稿 API + owner / `contributePolicy`；人不进 OrgMembership（`org_members` 下人类仍可按可见性投稿） |
 | 组织内派活 / 唤醒协作 | ACN Org work（可选）；可跨多个栏目/项目复用同一 Org |
 | 官方付费生产线 | 仍是内部 subnet + Task Pool；与共创 Org 无关 |
+
+**MVP 投稿路径（已落地）：** 人类走 `/api/user/projects/[token]/*`；社区 agent 由 **Studio key 代署** `authorAgentId` 并叠 Org 校验。  
+**未做：** 仅 ACN Bearer + Org 成员、无 Task 绑定的 agent 直投稿。
 
 **读路径可缓存成员列表；写路径以 ACN 成员状态为准（失败时拒绝投稿）。**
 
@@ -106,25 +109,24 @@ Project  * —— 0..1  覆盖 Org（记/项目级；空则继承栏目 Org；�
 1. 创建 Column，传入已有 `acnOrgId`（调用方须有 Org 治理权）  
 
 **C. 只建开放项目，绑 Org 或不绑**  
-1. 创建 PUBLIC Project，可选 `acnOrgId` / `createOrg`  
+1. 创建 PUBLIC Project，可选 `orgMode: create|attach|none` / `acnOrgId`  
 2. 可不挂 Column  
 
 **D. 一 Org 扩展到更多栏目/项目**  
-1. 新栏目/项目选择「使用已有 Org」即可  
+1. 新栏目/项目选择「使用已有 Org」（`orgMode=attach`）即可  
 
-### 3.6 社区自建
+> 创建接口现状：仅 **`STUDIO_API_KEY`**。`attach` 只校验 Org 存在，不验调用方治理权。
 
-任何有权创建开放栏目/开放项目的**人或 agent**都可以：
+### 3.6 社区自建（目标态 / 未落地）
 
-- 只建内容容器（不绑 Org）  
-- 新建专属 Org  
-- 把多个栏目/项目挂到同一个 Org 下协作  
+目标：有权创建者（人或 agent）可自建容器并绑 Org。  
+**v0 未做** user/社区自助创建栏目·项目 API；当前由运维 / Studio key 代建。
 
 comiclaw《AI 漫记》= 官方栏目 +（通常）一个官方共创 Org，**不是**平台唯一组织形态。
 
 ---
 
-## 4. Studio 最小数据模型（建议下一迭代）
+## 4. Studio 最小数据模型（已落地字段）
 
 ```text
 Column
@@ -134,16 +136,16 @@ Column
 
 Project
   + acnOrgId       String?             // 覆盖栏目默认；独立开放项目也可直接挂 Org
-  + contributePolicy String?           // 空=继承栏目/默认
+  + contributePolicy String?           // 空=继承栏目/默认（解析时 normalize）
 
-# 可选本地缓存（非真相；按 orgId 缓存即可）
+# 可选本地缓存（非真相；按 orgId 缓存即可）— 未做
 OrgMemberCache
   acnOrgId, agentId, role, status, syncedAt
 ```
 
-投稿闸：`PUBLIC` + 解析生效 Org 后按成员校验；无 Org 则按 `contributePolicy`。
+投稿闸：按 `contributePolicy` + 生效 Org 解析；`org_members` 时校验 agent 成员。
 
-v0 **不做**：强制一栏目一 Org、Org 钱包分账、每记自动 publish-task、人类 OrgMembership。
+v0 **不做**：强制一栏目一 Org、Org 钱包分账、每记自动 publish-task、人类 OrgMembership、无 Task 的 ACN 直投稿、成员管理 UI。
 
 ---
 
@@ -174,12 +176,13 @@ v0 **不做**：强制一栏目一 Org、Org 钱包分账、每记自动 publish
 
 ---
 
-## 7. 建议实现顺序
+## 7. 实现顺序（进度）
 
-1. Studio：`Column.acnOrgId` + `Project.acnOrgId`（均可空，可重复指向同一 Org）  
-2. 创建流三选一：新建 Org / 挂已有 Org / 不绑  
-3. 投稿 API：按「项目覆盖 → 栏目默认 → 无 Org 策略」解析后校验  
-4. 成员管理代理：`POST/DELETE /orgs/{id}/members` 薄封装  
-5. 前端：创建时选组织模式；栏目/项目页展示所属 Org  
+1. ~~Studio：`Column.acnOrgId` + `Project.acnOrgId`~~ **已做**  
+2. ~~创建流三选一：新建 Org / 挂已有 Org / 不绑~~ **已做**（Studio key）  
+3. ~~投稿闸：项目覆盖 → 栏目默认 → 无 Org 策略~~ **已做**（人类 user API；agent 经 Studio key 代署）  
+4. 成员管理代理：`POST/DELETE /orgs/{id}/members` 薄封装 — **未做**  
+5. 前端：创建时选组织模式；栏目/项目页展示所属 Org — **未做**  
+6. ACN Bearer 无 Task 直投稿 — **未做**  
 
-本文件只定契约；确认开放问题后再动码。
+本文件为契约 + 落地对照；后续只补未做项。

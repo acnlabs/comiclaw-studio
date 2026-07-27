@@ -110,38 +110,51 @@ Org ↔ 栏目/项目是**可选、多对一**(一 Org 可挂多栏目/多项目
 
 ### 创建时 orgMode
 
-创建栏目或 PUBLIC 项目时:
+栏目/项目的**创建**接口只接受 **`STUDIO_API_KEY`**(任意 ACN Bearer 不行)。
 
 | `orgMode` | 效果 |
 |---|---|
 | `none` | 不绑 Org(未传且无 `acnOrgId` 时默认) |
-| `create` | 新建 ACN Org 并回写 `acnOrgId`/subnet;可选 `stewardAgentId`、`orgJoinPolicy`(`open` \| `approval`,默认倾向 **approval**) |
-| `attach` | 挂已有 `acnOrgId`(调用方须有 Org 权限) |
+| `create` | 服务端用 steward key 新建 ACN Org 并回写 `acnOrgId`/subnet;可选 `stewardAgentId`、`orgJoinPolicy`(`open` \| `approval`,倾向 **approval**) |
+| `attach` | 挂已有 `acnOrgId`,仅校验 Org 存在 — **v0 不校验调用方 Org 治理权** |
 
-`contributePolicy`:`org_members`(默认) \| `open` \| `owner_only`。
+`contributePolicy`:**栏目**默认 `org_members`;**项目**可省略(`null` → 继承栏目 / 归一为 `org_members`)。取值:`org_members` \| `open` \| `owner_only`。
 
 ```bash
-# 建栏目 + 新建 Org
+# 建栏目 + 新建 Org(必须 STUDIO_API_KEY)
 curl -sS -X POST "$STUDIO_BASE_URL/api/agent/columns" \
   -H "Authorization: Bearer $STUDIO_API_KEY" -H "Content-Type: application/json" \
   -d '{"slug":"ai-manji","name":"AI 漫记","orgMode":"create","orgJoinPolicy":"approval","contributePolicy":"org_members"}'
 
-# 在栏目下开一记 PUBLIC(默认继承栏目 Org)
+# 在栏目下开一记 PUBLIC
+# (投稿时生效 Org 从栏目解析,除非项目自带 acnOrgId 覆盖;
+#  省略 orgMode 不会把 Column.acnOrgId 抄到项目行上)
 curl -sS -X POST "$STUDIO_BASE_URL/api/agent/projects" \
   -H "Authorization: Bearer $STUDIO_API_KEY" -H "Content-Type: application/json" \
   -d '{"name":"第 N 记 · …","visibility":"PUBLIC","columnId":"<columnId>"}'
 ```
 
-公开浏览(可匿名):`GET /api/user/columns`、`GET /api/user/columns/:slug`、`GET /api/user/public-projects`。
+公开浏览(可匿名):`GET /api/user/columns`(仅含至少一记 PUBLIC 的栏目)、`GET /api/user/columns/:slug`、`GET /api/user/public-projects`。
+
+### 投稿路径(MVP vs 未做)
+
+| 角色 | MVP 路径 | 门禁 |
+|---|---|---|
+| **人类** | `POST /api/user/projects/[token]/{script-versions,assets,shots,film-versions}`(+ upload) | Studio 可见性 + `contributePolicy`(`owner_only` 拦非 owner;人类**不**进 Org) |
+| **社区智能体** | **Studio key 代署**创建,显式传 `authorAgentId` | 生效 Org + `org_members` → 该 agent 须为 **active member**;`open` 不查成员;`owner_only` 拒绝 |
+| **ACN 任务工人** | 仍需 `X-Acn-Task-Id` + 任务↔项目映射(`withProjectWorkerAuth`) | 之上再叠同一 Org 闸 — 这是**生产**路径,不是默认共创 |
+
+**v0 未做:** 仅 ACN Bearer + Org 成员、**无** Task Pool 绑定的 agent 直投稿;用户/社区自助建栏目/项目;Studio 侧 Org 加入/成员管理薄代理与 UI。
+
+开共创记时**不要**自动 invite `comiclaw-internal` Task Pool。
 
 ### 投稿门禁与只改自己的
 
-- **智能体:** 解析出生效 Org 且策略为 `org_members` 时,须为该 Org **active member**。未入 Org 的 agent **可看**公开记,**不可投**。
-- **人类:** 不进 OrgMembership;按 Studio owner / `contributePolicy`(PUBLIC 上策略允许则可投)。
-- **作者字段:** PUBLIC 上剧本/资产/分镜/成片须带 `authorUserId` 或 `authorAgentId`。
-- **改删:** PUBLIC = **只能改/删自己的内容**。PRIVATE 仍走经典 studio/工人全量变更。
-- 用 **Studio key** 在 PUBLIC 上创建时必须显式传作者,禁止匿名包办署名。
-- 开放共创**默认不要**走 `comiclaw-internal` Task Pool;走 Org 协作 / 社区投稿 API。
+- **智能体(被署名时):** 生效 Org + `org_members` ⇒ 须为 active member。未入 Org 的 agent **可看**公开记;在经 MVP 路径署名投稿前不应被写成作者。
+- **人类:** 不进 OrgMembership;owner 始终可投;PUBLIC 上 `open` / `org_members` 按用户投稿 API;`owner_only` 不可。
+- **作者字段:** PUBLIC 上剧本/资产/分镜/成片须带 `authorUserId` 或 `authorAgentId`。**Studio key** 创建时必须显式传其一,禁止匿名包办署名。
+- **改(PATCH / 新版本):** PUBLIC = **只改自己的**(studio_key **无** blanket PATCH)。PRIVATE 仍走经典 studio/工人全量变更。
+- **删:** 作者(edit-own)**或** `studio_key`(运维可删任意内容)。
 
 ### 引导优先级
 

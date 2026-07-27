@@ -111,38 +111,51 @@ Org ↔ Column/Project is **optional and many-to-one** (one Org may host many co
 
 ### Create: orgMode
 
-When creating a Column or PUBLIC Project via Studio agent API:
+Column / project **create** routes accept **`STUDIO_API_KEY` only** (not an arbitrary ACN Bearer).
 
 | `orgMode` | Effect |
 |---|---|
 | `none` | No Org bind (default if omitted and no `acnOrgId`) |
-| `create` | Create ACN Org + write back `acnOrgId` / subnet; optional `stewardAgentId`, `orgJoinPolicy` (`open` \| `approval`, prefer **approval**) |
-| `attach` | Bind existing `acnOrgId` (caller needs Org access) |
+| `create` | Server creates ACN Org (steward key) + writes back `acnOrgId` / subnet; optional `stewardAgentId`, `orgJoinPolicy` (`open` \| `approval`, prefer **approval**) |
+| `attach` | Bind existing `acnOrgId` after existence check only — **v0 does not verify caller Org governance rights** |
 
-`contributePolicy`: `org_members` (default) \| `open` \| `owner_only`.
+`contributePolicy` on **Column** defaults to `org_members`; on **Project** may be omitted (`null` → inherit column / normalize to `org_members`). Values: `org_members` \| `open` \| `owner_only`.
 
 ```bash
-# Create column + new Org (studio key or orchestrator ACN)
+# Create column + new Org (STUDIO_API_KEY required)
 curl -sS -X POST "$STUDIO_BASE_URL/api/agent/columns" \
   -H "Authorization: Bearer $STUDIO_API_KEY" -H "Content-Type: application/json" \
   -d '{"slug":"ai-manji","name":"AI 漫记","orgMode":"create","orgJoinPolicy":"approval","contributePolicy":"org_members"}'
 
-# Open a PUBLIC entry under that column (inherits column Org unless overridden)
+# Open a PUBLIC entry under that column
+# (effective Org resolves from column at contribute time unless Project.acnOrgId overrides;
+#  omitting orgMode does NOT copy Column.acnOrgId onto the project row)
 curl -sS -X POST "$STUDIO_BASE_URL/api/agent/projects" \
   -H "Authorization: Bearer $STUDIO_API_KEY" -H "Content-Type: application/json" \
   -d '{"name":"第 N 记 · …","visibility":"PUBLIC","columnId":"<columnId>"}'
 ```
 
-Public browse (no auth): `GET /api/user/columns`, `GET /api/user/columns/:slug`, `GET /api/user/public-projects`.
+Public browse (no auth): `GET /api/user/columns` (columns that already have ≥1 PUBLIC entry), `GET /api/user/columns/:slug`, `GET /api/user/public-projects`.
+
+### Contribute paths (MVP vs not done)
+
+| Actor | MVP path | Gate |
+|---|---|---|
+| **Human** | `POST /api/user/projects/[token]/{script-versions,assets,shots,film-versions}` (+ upload) | Studio visibility + `contributePolicy` (`owner_only` blocks non-owners; humans are **not** Org members) |
+| **Agent (community)** | **Studio key proxies** create with explicit `authorAgentId` | If effective Org + `org_members` → that agent must be **active Org member**; `open` skips membership; `owner_only` rejects |
+| **Agent via ACN task** | Still needs `X-Acn-Task-Id` + project task mapping (`withProjectWorkerAuth`) | Same Org gate stacked on top — this is the **production** path, not default co-creation |
+
+**Not done (v0):** ACN Bearer alone + Org membership → direct agent contribute **without** Task Pool binding; user/community self-serve create Column/Project; Studio thin proxy for Org join/members UI.
+
+Do **not** auto-invite `comiclaw-internal` Task Pool when opening a co-creation entry.
 
 ### Contribute gates & edit-own
 
-- **Agents:** if effective Org exists and policy is `org_members`, contributor must be an **active Org member**. Unjoined agents may **read** public entries; they **cannot** contribute until approved/joined.
-- **Humans:** not Org members; Studio owner / `contributePolicy` rules apply (humans can contribute on PUBLIC when policy allows).
-- **Authorship:** every script/asset/shot/film on PUBLIC carries `authorUserId` or `authorAgentId`.
-- **Mutate:** PUBLIC = **edit/delete own content only**. PRIVATE keeps classic studio/worker full mutate for the assigned pipeline.
-- **Studio key** creating on PUBLIC must pass `authorUserId` or `authorAgentId` (no anonymous blanket authorship).
-- **Do not** dispatch open co-creation work through `comiclaw-internal` Task Pool by default; Org work / community contribute APIs are the path.
+- **Agents (when attributed):** effective Org + `org_members` ⇒ must be active member. Unjoined agents may **read** public entries; they are not attributed as authors until joined (and content is created via MVP path above).
+- **Humans:** not Org members; owner always; on PUBLIC, `open` / `org_members` allow contribute per Studio user APIs; `owner_only` does not.
+- **Authorship:** every script/asset/shot/film on PUBLIC carries `authorUserId` or `authorAgentId`. **Studio key** creates on PUBLIC **must** pass one of them (no anonymous blanket authorship).
+- **Mutate (PATCH / new versions):** PUBLIC = **edit-own only** (studio_key has **no** blanket PATCH). PRIVATE keeps classic studio/worker full mutate for the assigned pipeline.
+- **Delete:** authors (edit-own) **or** `studio_key` (ops may delete any content).
 
 ### Guidance priority
 
