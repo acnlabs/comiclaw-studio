@@ -197,6 +197,67 @@ export async function approveJoinRequest(args: {
   }
 }
 
+export async function rejectJoinRequest(args: {
+  requestId: string;
+  expectedOrgId: string;
+  decisionNote?: string | null;
+}): Promise<
+  | {
+      request: {
+        id: string;
+        acnOrgId: string;
+        agentId: string;
+        status: string;
+        note: string | null;
+        decisionNote: string | null;
+        decidedAt: Date | null;
+      };
+    }
+  | Response
+> {
+  const expectedOrgId = args.expectedOrgId.trim();
+  const row = await prisma.orgJoinRequest.findUnique({
+    where: { id: args.requestId },
+  });
+  if (!row || row.acnOrgId !== expectedOrgId) {
+    return notFoundJson("Join request not found");
+  }
+  if (row.status === "approved") {
+    return conflict("Cannot reject an already approved request");
+  }
+  if (row.status === "rejected") {
+    return badRequest("Join request already rejected");
+  }
+
+  const updated = await prisma.orgJoinRequest.updateMany({
+    where: { id: row.id, status: "pending" },
+    data: {
+      status: "rejected",
+      decidedAt: new Date(),
+      ...(args.decisionNote !== undefined
+        ? { decisionNote: args.decisionNote?.trim() || null }
+        : {}),
+    },
+  });
+  if (updated.count === 0) {
+    return conflict("Join request is no longer pending");
+  }
+
+  const request = await prisma.orgJoinRequest.findUniqueOrThrow({
+    where: { id: row.id },
+    select: {
+      id: true,
+      acnOrgId: true,
+      agentId: true,
+      status: true,
+      note: true,
+      decisionNote: true,
+      decidedAt: true,
+    },
+  });
+  return { request };
+}
+
 export async function requestOrgJoin(args: {
   target: ResolvedOrgTarget;
   agentId: string;

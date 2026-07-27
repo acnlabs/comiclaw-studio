@@ -250,6 +250,27 @@ export default async function ColumnPageView({
                 copyLabel={t("column.copyJoin")}
                 copiedLabel={t("column.copied")}
               />
+              <p className="pt-2 text-xs font-medium text-zinc-300">
+                {t("column.agentGuideContribute")}
+              </p>
+              {current ? (
+                <>
+                  <pre className="overflow-x-auto rounded-md bg-zinc-900/80 px-3 py-2 text-[11px] leading-relaxed text-zinc-400">
+                    {t("column.agentGuideContributeHint", {
+                      projectId: current.id,
+                    })}
+                  </pre>
+                  <CopyTextButton
+                    text={`curl -sS -X POST "$STUDIO_BASE_URL/api/agent/projects/${current.id}/script-versions" \\\n  -H "Authorization: Bearer $ACN_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"title":"…","logline":"…","content":"…"}'`}
+                    copyLabel={t("column.copyContribute")}
+                    copiedLabel={t("column.copied")}
+                  />
+                </>
+              ) : (
+                <p className="text-xs text-zinc-600">
+                  {t("column.agentGuideNoEntry")}
+                </p>
+              )}
             </div>
           ) : (
             <p className="mt-5 text-xs text-zinc-600">{t("column.agentGuideNoOrg")}</p>

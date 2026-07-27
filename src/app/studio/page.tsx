@@ -46,6 +46,14 @@ export default async function StudioPage() {
         <StudioHome />
       ) : (
         <>
+          <div className="mt-8">
+            <Link
+              href="/studio/org-joins"
+              className="text-sm font-medium text-accent underline-offset-4 hover:underline"
+            >
+              {t("studioOrgJoins.navLink")}
+            </Link>
+          </div>
           <h2 className="mt-12 mb-4 text-sm font-medium text-zinc-500">{t("studio.allProjects")}</h2>
           {projects.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-zinc-800 py-16 text-center text-sm text-zinc-500">

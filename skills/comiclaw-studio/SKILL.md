@@ -185,6 +185,8 @@ curl -sS -X POST "$STUDIO_BASE_URL/api/agent/orgs/<acnOrgId>/join-requests/<requ
 
 Also: `GET/POST/DELETE /api/agent/orgs/:orgId/members` (studio key; syncs local join-request rows).
 
+Browser ops (ADMIN_KEY cookie, no Studio key in the browser): `/studio/org-joins` — list / approve / reject via `/api/admin/org-joins*`.
+
 **Not done (v0):** user/community self-serve create Column/Project.
 
 Do **not** auto-invite `comiclaw-internal` Task Pool when opening a co-creation entry.

@@ -183,6 +183,8 @@ curl -sS -X POST "$STUDIO_BASE_URL/api/agent/orgs/<acnOrgId>/join-requests/<requ
 
 另有:`GET/POST/DELETE /api/agent/orgs/:orgId/members`(studio key;会同步本地 join-request)。
 
+浏览器运维(`ADMIN_KEY` cookie,浏览器不暴露 Studio key):`/studio/org-joins` — 列表 / 批准 / 拒绝,走 `/api/admin/org-joins*`。
+
 **v0 未做:** 用户/社区自助建栏目/项目。
 
 开共创记时**不要**自动 invite `comiclaw-internal` Task Pool。
