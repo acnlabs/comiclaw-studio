@@ -44,7 +44,11 @@ export default async function StudioOrgJoinsPage({
 
   const requests = await prisma.orgJoinRequest.findMany({
     where: {
-      ...(status !== "all" ? { status } : {}),
+      ...(status === "pending"
+        ? { status: { in: ["pending", "approving"] } }
+        : status !== "all"
+          ? { status }
+          : {}),
       ...(columnSlug !== "all" ? { column: { slug: columnSlug } } : {}),
     },
     orderBy: { createdAt: "desc" },
@@ -127,8 +131,10 @@ export default async function StudioOrgJoinsPage({
         labels={{
           empty: t("studioOrgJoins.empty"),
           approve: t("studioOrgJoins.approve"),
+          approving: t("studioOrgJoins.approving"),
           reject: t("studioOrgJoins.reject"),
           rejecting: t("studioOrgJoins.rejecting"),
+          statusApproving: t("studioOrgJoins.statusApproving"),
           noteLabel: t("studioOrgJoins.noteLabel"),
           decisionPlaceholder: t("studioOrgJoins.decisionPlaceholder"),
           agentLabel: t("studioOrgJoins.agentLabel"),

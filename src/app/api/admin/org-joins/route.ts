@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { withAdminSession } from "@/lib/adminSession";
+import { Prisma } from "@prisma/client";
 
 /** List Org join requests for browser ops (ADMIN_KEY cookie). */
 export const GET = withAdminSession(async (req) => {
@@ -7,11 +8,19 @@ export const GET = withAdminSession(async (req) => {
   const status = url.searchParams.get("status")?.trim() || "pending";
   const columnSlug = url.searchParams.get("columnSlug")?.trim() || null;
 
+  const where: Prisma.OrgJoinRequestWhereInput = {};
+  if (status === "pending") {
+    // Include in-flight claims so ops can retry approve
+    where.status = { in: ["pending", "approving"] };
+  } else if (status && status !== "all") {
+    where.status = status;
+  }
+  if (columnSlug && columnSlug !== "all") {
+    where.column = { slug: columnSlug };
+  }
+
   const requests = await prisma.orgJoinRequest.findMany({
-    where: {
-      ...(status && status !== "all" ? { status } : {}),
-      ...(columnSlug ? { column: { slug: columnSlug } } : {}),
-    },
+    where,
     orderBy: { createdAt: "desc" },
     take: 100,
     include: {

@@ -38,7 +38,7 @@ model OrgJoinRequest {
   acnOrgId  String
   agentId   String
   columnId  String?
-  // pending | approved | rejected
+  // pending | approving | approved | rejected
   status    String   @default("pending")
   note      String? // agent 申请备注(勿被拒绝理由覆盖)
   decisionNote String? // 运维批准/拒绝附言

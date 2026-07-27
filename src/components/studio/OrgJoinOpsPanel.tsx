@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 
 export type OrgJoinRequestRow = {
   id: string;
@@ -18,8 +18,10 @@ export type OrgJoinRequestRow = {
 type Labels = {
   empty: string;
   approve: string;
+  approving: string;
   reject: string;
   rejecting: string;
+  statusApproving: string;
   noteLabel: string;
   decisionPlaceholder: string;
   agentLabel: string;
@@ -36,7 +38,11 @@ export default function OrgJoinOpsPanel({
   labels: Labels;
 }) {
   const router = useRouter();
+  const inFlight = useRef(false);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<"approve" | "reject" | null>(
+    null
+  );
   const [error, setError] = useState<string | null>(null);
   const [rejectNotes, setRejectNotes] = useState<Record<string, string>>({});
   const [isPending, startTransition] = useTransition();
@@ -46,8 +52,11 @@ export default function OrgJoinOpsPanel({
     action: "approve" | "reject",
     decisionNote?: string
   ) => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setError(null);
     setPendingId(id);
+    setPendingAction(action);
     try {
       const res = await fetch(`/api/admin/org-joins/${id}/${action}`, {
         method: "POST",
@@ -67,7 +76,9 @@ export default function OrgJoinOpsPanel({
     } catch {
       setError(labels.errorGeneric);
     } finally {
+      inFlight.current = false;
       setPendingId(null);
+      setPendingAction(null);
     }
   };
 
@@ -84,7 +95,8 @@ export default function OrgJoinOpsPanel({
       {error ? <p className="text-sm text-red-400">{error}</p> : null}
       <ul className="space-y-3">
         {requests.map((r) => {
-          const busy = pendingId === r.id || isPending;
+          const rowBusy = pendingId === r.id || isPending;
+          const claimInFlight = r.status === "approving";
           return (
             <li
               key={r.id}
@@ -95,6 +107,11 @@ export default function OrgJoinOpsPanel({
                   <p className="font-medium text-zinc-100">
                     {labels.agentLabel}:{" "}
                     <span className="font-mono text-accent">{r.agentId}</span>
+                    {claimInFlight ? (
+                      <span className="ml-2 text-xs font-normal text-amber-400">
+                        {labels.statusApproving}
+                      </span>
+                    ) : null}
                   </p>
                   <p className="text-xs text-zinc-500">
                     {labels.columnLabel}:{" "}
@@ -116,11 +133,13 @@ export default function OrgJoinOpsPanel({
                 <div className="flex shrink-0 flex-col items-stretch gap-2 sm:min-w-[220px]">
                   <button
                     type="button"
-                    disabled={busy}
+                    disabled={rowBusy || inFlight.current}
                     onClick={() => void act(r.id, "approve")}
                     className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:opacity-90 disabled:opacity-50"
                   >
-                    {labels.approve}
+                    {pendingId === r.id && pendingAction === "approve"
+                      ? labels.approving
+                      : labels.approve}
                   </button>
                   <input
                     type="text"
@@ -131,18 +150,19 @@ export default function OrgJoinOpsPanel({
                         [r.id]: e.target.value,
                       }))
                     }
+                    disabled={claimInFlight || rowBusy}
                     placeholder={labels.decisionPlaceholder}
-                    className="rounded-md border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-200 outline-none focus:border-accent"
+                    className="rounded-md border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-200 outline-none focus:border-accent disabled:opacity-50"
                   />
                   <button
                     type="button"
-                    disabled={busy}
+                    disabled={claimInFlight || rowBusy || inFlight.current}
                     onClick={() =>
                       void act(r.id, "reject", rejectNotes[r.id]?.trim())
                     }
                     className="rounded-md border border-zinc-600 px-4 py-2 text-sm text-zinc-300 transition hover:border-zinc-400 hover:text-zinc-100 disabled:opacity-50"
                   >
-                    {busy && pendingId === r.id
+                    {pendingId === r.id && pendingAction === "reject"
                       ? labels.rejecting
                       : labels.reject}
                   </button>

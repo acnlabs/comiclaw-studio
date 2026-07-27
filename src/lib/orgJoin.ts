@@ -5,8 +5,15 @@ import {
   getAcnOrg,
   isAgentOrgMember,
   orgJoinPolicy,
+  removeAcnOrgMember,
 } from "@/lib/acnOrg";
 import { badRequest, conflict, notFoundJson, serverError } from "@/lib/auth";
+
+/** Local join-request lifecycle: pending → approving → approved | rejected */
+const JOIN_PENDING = "pending";
+const JOIN_APPROVING = "approving";
+const JOIN_APPROVED = "approved";
+const JOIN_REJECTED = "rejected";
 
 export type ResolvedOrgTarget = {
   acnOrgId: string;
@@ -86,6 +93,26 @@ export async function syncJoinRequestRemoved(args: {
   });
 }
 
+async function loadApprovedJoinRequest(id: string) {
+  return prisma.orgJoinRequest.findUniqueOrThrow({
+    where: { id },
+    select: {
+      id: true,
+      acnOrgId: true,
+      agentId: true,
+      status: true,
+      columnId: true,
+      decisionNote: true,
+    },
+  });
+}
+
+/**
+ * Approve join: claim pending→approving before any ACN side effect so reject
+ * cannot race; finalize approving→approved after add. Retries resume from
+ * approving. If finalize fails after a fresh add, compensate by removing the
+ * ACN member and reverting to pending.
+ */
 export async function approveJoinRequest(args: {
   requestId: string;
   /** Path orgId — validated before any ACN side effect */
@@ -110,19 +137,33 @@ export async function approveJoinRequest(args: {
   }
 
   const expectedOrgId = args.expectedOrgId.trim();
+  const role = args.role ?? "worker";
   const row = await prisma.orgJoinRequest.findUnique({
     where: { id: args.requestId },
   });
   if (!row || row.acnOrgId !== expectedOrgId) {
     return notFoundJson("Join request not found");
   }
-  if (row.status === "approved") {
+  if (row.status === JOIN_APPROVED) {
     return conflict("Join request already approved");
   }
-  if (row.status !== "pending") {
+  if (row.status === JOIN_REJECTED) {
     return badRequest("Join request was rejected; agent must request again");
   }
 
+  if (row.status === JOIN_PENDING) {
+    const claimed = await prisma.orgJoinRequest.updateMany({
+      where: { id: row.id, status: JOIN_PENDING },
+      data: { status: JOIN_APPROVING },
+    });
+    if (claimed.count === 0) {
+      return conflict("Join request is no longer pending");
+    }
+  } else if (row.status !== JOIN_APPROVING) {
+    return badRequest(`Join request status '${row.status}' cannot be approved`);
+  }
+
+  let addedFresh = false;
   try {
     const already = await isAgentOrgMember(row.acnOrgId, row.agentId);
     let member: Awaited<ReturnType<typeof addAcnOrgMember>>;
@@ -130,69 +171,61 @@ export async function approveJoinRequest(args: {
       member = {
         org_id: row.acnOrgId,
         agent_id: row.agentId,
-        role: args.role ?? "worker",
+        role,
         status: "active",
       };
     } else {
       member = await addAcnOrgMember({
         orgId: row.acnOrgId,
         agentId: row.agentId,
-        role: args.role ?? "worker",
+        role,
       });
+      addedFresh = true;
     }
 
-    const updated = await prisma.orgJoinRequest.updateMany({
-      where: { id: row.id, status: "pending" },
-      data: { status: "approved", decidedAt: new Date() },
+    const finalized = await prisma.orgJoinRequest.updateMany({
+      where: { id: row.id, status: JOIN_APPROVING },
+      data: { status: JOIN_APPROVED, decidedAt: new Date() },
     });
-    if (updated.count === 0) {
-      return conflict("Join request is no longer pending");
+    if (finalized.count === 0) {
+      if (addedFresh) {
+        await removeAcnOrgMember({
+          orgId: row.acnOrgId,
+          agentId: row.agentId,
+        }).catch((err) =>
+          console.error("[orgJoin] compensate remove after lost claim", err)
+        );
+      }
+      return conflict("Join request is no longer approving");
     }
 
-    const request = await prisma.orgJoinRequest.findUniqueOrThrow({
-      where: { id: row.id },
-      select: {
-        id: true,
-        acnOrgId: true,
-        agentId: true,
-        status: true,
-        columnId: true,
-        decisionNote: true,
-      },
-    });
-    return { request, member };
+    return { request: await loadApprovedJoinRequest(row.id), member };
   } catch (err) {
     console.error("[orgJoin] approve failed", err);
     const msg = err instanceof Error ? err.message : String(err);
     if (msg.includes("already_member") || msg.includes("already in org")) {
-      const updated = await prisma.orgJoinRequest.updateMany({
-        where: { id: row.id, status: "pending" },
-        data: { status: "approved", decidedAt: new Date() },
+      const finalized = await prisma.orgJoinRequest.updateMany({
+        where: { id: row.id, status: JOIN_APPROVING },
+        data: { status: JOIN_APPROVED, decidedAt: new Date() },
       });
-      if (updated.count === 0) {
-        return conflict("Join request is no longer pending");
+      if (finalized.count === 0) {
+        return conflict("Join request is no longer approving");
       }
-      const request = await prisma.orgJoinRequest.findUniqueOrThrow({
-        where: { id: row.id },
-        select: {
-          id: true,
-          acnOrgId: true,
-          agentId: true,
-          status: true,
-          columnId: true,
-          decisionNote: true,
-        },
-      });
       return {
-        request,
+        request: await loadApprovedJoinRequest(row.id),
         member: {
           org_id: row.acnOrgId,
           agent_id: row.agentId,
-          role: args.role ?? "worker",
+          role,
           status: "active",
         },
       };
     }
+
+    await prisma.orgJoinRequest.updateMany({
+      where: { id: row.id, status: JOIN_APPROVING },
+      data: { status: JOIN_PENDING },
+    });
     return serverError(`Failed to add ACN Org member: ${msg}`);
   }
 }
@@ -222,17 +255,20 @@ export async function rejectJoinRequest(args: {
   if (!row || row.acnOrgId !== expectedOrgId) {
     return notFoundJson("Join request not found");
   }
-  if (row.status === "approved") {
+  if (row.status === JOIN_APPROVED) {
     return conflict("Cannot reject an already approved request");
   }
-  if (row.status === "rejected") {
+  if (row.status === JOIN_APPROVING) {
+    return conflict("Approval in progress; retry reject later if it fails");
+  }
+  if (row.status === JOIN_REJECTED) {
     return badRequest("Join request already rejected");
   }
 
   const updated = await prisma.orgJoinRequest.updateMany({
-    where: { id: row.id, status: "pending" },
+    where: { id: row.id, status: JOIN_PENDING },
     data: {
-      status: "rejected",
+      status: JOIN_REJECTED,
       decidedAt: new Date(),
       ...(args.decisionNote !== undefined
         ? { decisionNote: args.decisionNote?.trim() || null }
