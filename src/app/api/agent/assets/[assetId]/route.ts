@@ -46,5 +46,5 @@ export const DELETE = withProjectWorkerAuth(
     emitProjectUpdate(asset.projectId, "asset.deleted");
     return Response.json({ deleted: true });
   },
-  { getProjectId }
+  { getProjectId, allowPublicContribute: true }
 );

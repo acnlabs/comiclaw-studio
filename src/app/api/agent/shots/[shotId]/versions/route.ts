@@ -58,6 +58,7 @@ export const POST = withProjectWorkerAuth(
     return Response.json({ shotVersion: created }, { status: 201 });
   },
   {
+    allowPublicContribute: true,
     getProjectId: async (_req, ctx) => {
       const { shotId } = await ctx.params;
       const shot = await prisma.shot.findUnique({

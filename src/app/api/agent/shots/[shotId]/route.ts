@@ -76,7 +76,7 @@ export const PATCH = withProjectWorkerAuth(
     emitProjectUpdate(shot.projectId, "shot.updated");
     return Response.json({ shot: updated });
   },
-  { getProjectId: shotProjectId }
+  { getProjectId: shotProjectId, allowPublicContribute: true }
 );
 
 export const DELETE = withProjectWorkerAuth(
@@ -96,5 +96,5 @@ export const DELETE = withProjectWorkerAuth(
     emitProjectUpdate(shot.projectId, "shot.deleted");
     return Response.json({ deleted: true });
   },
-  { getProjectId: shotProjectId }
+  { getProjectId: shotProjectId, allowPublicContribute: true }
 );

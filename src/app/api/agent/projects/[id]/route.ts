@@ -30,7 +30,7 @@ export const GET = withProjectWorkerAuth(
     if (!project) return notFoundJson();
     return Response.json({ project });
   },
-  { access: "read" }
+  { access: "read", allowPublicContribute: true }
 );
 
 // 删除项目:仅官方 STUDIO_API_KEY
@@ -48,6 +48,9 @@ export const PATCH = withProjectWorkerAuth(async (req, ctx: Ctx, auth: Productio
   const { id } = await ctx.params;
   const body = await parseBody(req, updateProjectSchema);
 
+  if (auth.kind === "acn_contributor") {
+    return forbidden("ACN contributors cannot update project settings");
+  }
   if (auth.kind === "acn_worker") {
     const forbiddenKeys = [
       "name",

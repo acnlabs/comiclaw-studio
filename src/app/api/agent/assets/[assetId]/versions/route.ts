@@ -58,6 +58,7 @@ export const POST = withProjectWorkerAuth(
     return Response.json({ assetVersion: created }, { status: 201 });
   },
   {
+    allowPublicContribute: true,
     getProjectId: async (_req, ctx) => {
       const { assetId } = await ctx.params;
       const asset = await prisma.asset.findUnique({

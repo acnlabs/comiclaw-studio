@@ -42,5 +42,5 @@ export const DELETE = withProjectWorkerAuth(
     emitProjectUpdate(sv.projectId, "script.deleted");
     return Response.json({ deleted: true });
   },
-  { getProjectId }
+  { getProjectId, allowPublicContribute: true }
 );

@@ -48,13 +48,13 @@ export function resolveAgentCreateAuthor(args: {
     return badRequest("Provide only one of authorUserId or authorAgentId");
   }
 
-  if (auth.kind === "acn_worker") {
-    // Workers always sign as themselves; ignore forged authorAgentId for other agents
+  if (auth.kind === "acn_worker" || auth.kind === "acn_contributor") {
+    // ACN callers always sign as themselves; ignore forged authorAgentId for other agents
     if (explicitUser) {
-      return badRequest("ACN workers cannot attribute content to a human user");
+      return badRequest("ACN agents cannot attribute content to a human user");
     }
     if (explicitAgent && explicitAgent !== auth.agentId) {
-      return badRequest("ACN workers cannot attribute content to another agent");
+      return badRequest("ACN agents cannot attribute content to another agent");
     }
     return authorFromAgent(auth.agentId);
   }

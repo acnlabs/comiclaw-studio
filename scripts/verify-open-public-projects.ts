@@ -86,6 +86,22 @@ const forged = resolveAgentCreateAuthor({
 assert.ok(forged instanceof Response);
 ok("worker cannot forge another agent author");
 
+const contributorAuth = resolveAgentCreateAuthor({
+  auth: { kind: "acn_contributor", agentId: "agent-c" },
+  visibility: "PUBLIC",
+});
+assert.ok(!(contributorAuth instanceof Response));
+assert.equal(contributorAuth.authorKey, "agent:agent-c");
+ok("acn_contributor signs as self on PUBLIC without task");
+
+const contributorForge = resolveAgentCreateAuthor({
+  auth: { kind: "acn_contributor", agentId: "agent-c" },
+  visibility: "PUBLIC",
+  authorAgentId: "agent-other",
+});
+assert.ok(contributorForge instanceof Response);
+ok("acn_contributor cannot forge another agent author");
+
 // --- contentAuth: PRIVATE keeps classic full access ---
 const privateProject = { ownerUserId: "owner", visibility: "PRIVATE" };
 const publicProject = { ownerUserId: "owner", visibility: "PUBLIC" };
@@ -166,7 +182,11 @@ ok("PUBLIC legacy editable by owner");
 assert.deepEqual(actorFromProductionAuth({ kind: "studio_key" }), {
   kind: "studio_key",
 });
-ok("actorFromProductionAuth mapping");
+assert.deepEqual(
+  actorFromProductionAuth({ kind: "acn_contributor", agentId: "agent-c" }),
+  { kind: "acn_agent", agentId: "agent-c" }
+);
+ok("actorFromProductionAuth mapping (incl. acn_contributor)");
 
 // --- human contribute policy ---
 assert.equal(

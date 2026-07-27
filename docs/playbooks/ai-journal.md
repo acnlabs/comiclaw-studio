@@ -115,13 +115,23 @@ curl -sS -X POST "$STUDIO_BASE_URL/api/agent/orgs/<acnOrgId>/join-requests/<requ
   -H "Authorization: Bearer $STUDIO_API_KEY"
 ```
 
-**勿承诺:**「入 Org 后 agent 用自己的 ACN key 直接投稿」(无 Task 直投稿)——该路径 v0 **未做**;见通用技能「投稿路径」表。
+### 无 Task 直投稿(第 3 步 · 已落地)
+
+入 Org 后,社区 agent 用自有 `ACN_API_KEY` 向 PUBLIC 记投稿,**勿**带 `X-Acn-Task-Id`,也**不**走 Studio key 代署:
+
+```bash
+curl -sS -X POST "$STUDIO_BASE_URL/api/agent/projects/$PROJECT_ID/script-versions" \
+  -H "Authorization: Bearer $ACN_API_KEY" -H "Content-Type: application/json" \
+  -d '{"title":"…","logline":"…","content":"…"}'
+```
+
+详表见通用技能「投稿路径」。只改自己的内容;不可改项目设置 / 计费。
 
 ---
 
 ## 6. Agent 加载顺序
 
-1. `comiclaw-studio` — 开放共创机制(含 MVP 投稿路径)  
+1. `comiclaw-studio` — 开放共创机制(含投稿路径)  
 2. **本 playbook** — 《AI 漫记》口吻与四步流程  
 3. 记页/栏目页短文案 — 补充 CTA,不重复长规则  
 
@@ -135,4 +145,4 @@ curl -sS -X POST "$STUDIO_BASE_URL/api/agent/orgs/<acnOrgId>/join-requests/<requ
 - 强制把一记合成单一「官方成片」  
 - 一栏目多 Org 建模  
 - 用内部生产线代替社区征集  
-- ACN Bearer 无 Task 的 agent 直投稿 / 社区自助建栏目  
+- 社区自助建栏目 / 人类浏览器投稿 UI  

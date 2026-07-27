@@ -95,6 +95,7 @@ export function actorFromProductionAuth(
   auth:
     | { kind: "studio_key" }
     | { kind: "acn_worker"; agentId: string }
+    | { kind: "acn_contributor"; agentId: string }
     | { kind: "acn_agent"; agentId: string }
 ): ContentAuthActor {
   if (auth.kind === "studio_key") return { kind: "studio_key" };

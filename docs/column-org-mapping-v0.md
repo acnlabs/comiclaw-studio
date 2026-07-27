@@ -1,6 +1,6 @@
 # Column ↔ ACN Org 映射规则 v0
 
-**Status:** Draft → **部分落地**（`acnOrgId` 绑定 + 投稿 Org 成员校验已在 Studio；人类 user 投稿 / Studio key 代署 agent；成员管理 UI、无 Task 的 ACN 直投稿未做）  
+**Status:** Draft → **部分落地**（`acnOrgId` 绑定 + 投稿 Org 成员校验已在 Studio；人类 user 投稿 / Studio key 代署 / ACN 无 Task 直投稿已做；成员管理 UI、社区自助建栏目未做）  
 
 **Audience:** comiclaw-studio / ACN 集成  
 **依据：** [acnlabs/ACN](https://github.com/acnlabs/ACN) Org Harness（`/api/v1/orgs*`，ADR-0014）
@@ -94,8 +94,7 @@ Project  * —— 0..1  覆盖 Org（记/项目级；空则继承栏目 Org；�
 | 组织内派活 / 唤醒协作 | ACN Org work（可选）；可跨多个栏目/项目复用同一 Org |
 | 官方付费生产线 | 仍是内部 subnet + Task Pool；与共创 Org 无关 |
 
-**MVP 投稿路径（已落地）：** 人类走 `/api/user/projects/[token]/*`；社区 agent 由 **Studio key 代署** `authorAgentId` 并叠 Org 校验。  
-**未做：** 仅 ACN Bearer + Org 成员、无 Task 绑定的 agent 直投稿。
+**投稿路径（已落地）：** 人类走 `/api/user/projects/[token]/*`；社区 agent 可由 **Studio key 代署** `authorAgentId`，或仅用 **ACN Bearer**（无 Task）以 `acn_contributor` 直投稿；二者均叠 Org 校验。
 
 **读路径可缓存成员列表；写路径以 ACN 成员状态为准（失败时拒绝投稿）。**
 
@@ -145,7 +144,7 @@ OrgMemberCache
 
 投稿闸：按 `contributePolicy` + 生效 Org 解析；`org_members` 时校验 agent 成员。
 
-v0 **不做**：强制一栏目一 Org、Org 钱包分账、每记自动 publish-task、人类 OrgMembership、无 Task 的 ACN 直投稿、成员管理 UI。
+v0 **不做**：强制一栏目一 Org、Org 钱包分账、每记自动 publish-task、人类 OrgMembership、成员管理 UI、社区自助建栏目。
 
 ---
 
@@ -183,7 +182,7 @@ v0 **不做**：强制一栏目一 Org、Org 钱包分账、每记自动 publish
 3. ~~投稿闸：项目覆盖 → 栏目默认 → 无 Org 策略~~ **已做**（人类 user API；agent 经 Studio key 代署）  
 4. 成员管理代理：Studio `POST /api/agent/orgs/join` + join-requests approve/reject + `…/members` — **已做**（ACN 真相仍在 Org；Studio 代收申请并由 steward 代批）  
 5. 前端：创建时选组织模式 — **未做**；栏目公开页展示 Org ID + 加入命令 — **已做**；项目页完整 Org 管理面 — **未做**  
-6. ACN Bearer 无 Task 直投稿 — **未做**  
+6. ACN Bearer 无 Task 直投稿 — **已做**（`ProductionAuth` kind=`acn_contributor`；内容路由 `allowPublicContribute` + Org 门闸）  
 7. 栏目公开页 `/columns/ai-journal`（时间线、当前记、agent 指引）— **已做**  
 8. 运维 bootstrap 脚本 `npm run bootstrap:ai-journal` — **已做**（需对目标环境执行一次）  
 
