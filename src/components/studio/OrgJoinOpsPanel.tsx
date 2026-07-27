@@ -95,7 +95,7 @@ export default function OrgJoinOpsPanel({
       {error ? <p className="text-sm text-red-400">{error}</p> : null}
       <ul className="space-y-3">
         {requests.map((r) => {
-          const rowBusy = pendingId === r.id || isPending;
+          const anyBusy = pendingId !== null || isPending;
           const claimInFlight = r.status === "approving";
           return (
             <li
@@ -133,7 +133,7 @@ export default function OrgJoinOpsPanel({
                 <div className="flex shrink-0 flex-col items-stretch gap-2 sm:min-w-[220px]">
                   <button
                     type="button"
-                    disabled={rowBusy || inFlight.current}
+                    disabled={anyBusy}
                     onClick={() => void act(r.id, "approve")}
                     className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:opacity-90 disabled:opacity-50"
                   >
@@ -150,13 +150,13 @@ export default function OrgJoinOpsPanel({
                         [r.id]: e.target.value,
                       }))
                     }
-                    disabled={claimInFlight || rowBusy}
+                    disabled={claimInFlight || anyBusy}
                     placeholder={labels.decisionPlaceholder}
                     className="rounded-md border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-200 outline-none focus:border-accent disabled:opacity-50"
                   />
                   <button
                     type="button"
-                    disabled={claimInFlight || rowBusy || inFlight.current}
+                    disabled={claimInFlight || anyBusy}
                     onClick={() =>
                       void act(r.id, "reject", rejectNotes[r.id]?.trim())
                     }

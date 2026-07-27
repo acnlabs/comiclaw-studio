@@ -1,13 +1,6 @@
-import { prisma } from "@/lib/db";
 import { uploadFile } from "@/lib/storage";
-import {
-  badRequest,
-  serverError,
-  unauthorized,
-  notFoundJson,
-} from "@/lib/auth";
-import { verifyUserToken } from "@/lib/userAuth";
-import { assertCanUserContribute } from "@/lib/projectAccess";
+import { badRequest, serverError } from "@/lib/auth";
+import { requireUserContributor } from "@/lib/userContribute";
 
 export const runtime = "nodejs";
 
@@ -21,11 +14,8 @@ function sanitizeFilename(name: string): string {
   return cleaned || "upload";
 }
 
-// 登录用户向可投稿项目上传媒体(需 shareToken)
+// 登录用户向可投稿项目上传媒体(需 shareToken；与内容投稿同一 contributePolicy)
 export async function POST(req: Request) {
-  const sub = await verifyUserToken(req);
-  if (!sub) return unauthorized();
-
   const contentType = req.headers.get("content-type") ?? "";
   if (!contentType.includes("multipart/form-data")) {
     return badRequest("multipart/form-data required");
@@ -37,19 +27,9 @@ export async function POST(req: Request) {
   const shareToken = form.get("shareToken")?.toString()?.trim() || "";
   if (!shareToken) return badRequest("`shareToken` is required");
 
-  const project = await prisma.project.findUnique({
-    where: { shareToken },
-    select: {
-      id: true,
-      visibility: true,
-      isPrivate: true,
-      ownerUserId: true,
-    },
-  });
-  if (!project) return notFoundJson();
-
-  const denied = assertCanUserContribute(project, sub);
-  if (denied) return denied;
+  const access = await requireUserContributor(req, shareToken);
+  if (access instanceof Response) return access;
+  const { project } = access;
 
   const entry = form.get("file");
   if (!entry || typeof entry === "string") return badRequest("`file` field is required");
