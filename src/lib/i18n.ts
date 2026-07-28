@@ -306,6 +306,7 @@ const zh = {
   "studioCreate.org.attach": "挂已有 Org",
   "studioCreate.org.none": "不绑 Org",
   "studioCreate.orgAttachHint": "挂已有 Org 需证明治理权，用户自助暂未开放；请用新建或不绑。",
+  "studioCreate.quotaHint": "自助建栏目与新建 Org 有每人限额；超出请改用「不绑 Org」或联系运维。",
   "studioCreate.acnOrgId": "ACN Org ID",
   "studioCreate.submit": "创建",
   "studioCreate.submitting": "创建中…",
@@ -630,6 +631,8 @@ const en: Record<MessageKey, string> = {
   "studioCreate.org.none": "No Org",
   "studioCreate.orgAttachHint":
     "Attaching an existing Org needs stewardship proof — not available in self-serve yet. Use Create or No Org.",
+  "studioCreate.quotaHint":
+    "Self-serve columns and new Orgs are capped per user. If you hit the cap, pick No Org or ask ops.",
   "studioCreate.acnOrgId": "ACN Org ID",
   "studioCreate.submit": "Create",
   "studioCreate.submitting": "Creating…",

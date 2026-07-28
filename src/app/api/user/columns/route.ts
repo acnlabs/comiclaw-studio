@@ -1,11 +1,18 @@
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { verifyUserToken } from "@/lib/userAuth";
-import { unauthorized, badRequest, conflict } from "@/lib/auth";
+import {
+  unauthorized,
+  badRequest,
+  conflict,
+  tooManyRequests,
+} from "@/lib/auth";
 import { mapError, parseBody } from "@/lib/api";
 import { createColumnSchema } from "@/lib/schemas";
 import { resolveOrgBindOnCreate } from "@/lib/orgBinding";
 import { slugifyLabel } from "@/lib/slugify";
+import { claimColumnSlot } from "@/lib/columnQuota";
 
 const userCreateColumnSchema = createColumnSchema
   .extend({
@@ -88,26 +95,65 @@ export async function POST(req: Request) {
   });
   if (exists) return conflict(`Column slug already exists: ${slug}`);
 
-  const bind = await resolveOrgBindOnCreate({
-    mode: body.orgMode,
-    acnOrgId: body.acnOrgId,
-    displayName: body.name,
-    stewardAgentId: body.stewardAgentId,
-    joinPolicy: body.orgJoinPolicy,
-  });
-  if (bind instanceof Response) return bind;
+  const wantsOrgCreate = body.orgMode === "create";
 
-  const column = await prisma.column.create({
-    data: {
+  // Quota check + row insert share one serializable transaction so parallel
+  // requests cannot both read a stale count.
+  let claim: Awaited<ReturnType<typeof claimColumnSlot>>;
+  try {
+    claim = await claimColumnSlot({
+      ownerUserId: sub,
       slug,
       name: body.name,
       description: body.description ?? null,
       coverUrl: body.coverUrl ?? null,
-      ownerUserId: sub,
-      acnOrgId: bind.acnOrgId,
-      acnSubnetId: bind.acnSubnetId,
       contributePolicy: body.contributePolicy ?? "org_members",
-    },
+      wantsOrgCreate,
+    });
+  } catch (err) {
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === "P2002"
+    ) {
+      return conflict(`Column slug already exists: ${slug}`);
+    }
+    return mapError(err);
+  }
+
+  if (!claim.ok) {
+    return tooManyRequests(
+      claim.decision.reason === "columns"
+        ? `You already own ${claim.decision.limit} columns; ask ops to raise the limit`
+        : `Daily limit of ${claim.decision.limit} new co-creation Orgs reached; retry after 00:00 UTC or create the column with orgMode=none`
+    );
+  }
+
+  if (!wantsOrgCreate) {
+    const column = await prisma.column.findUniqueOrThrow({
+      where: { id: claim.columnId },
+    });
+    return Response.json({ column }, { status: 201 });
+  }
+
+  const bind = await resolveOrgBindOnCreate({
+    mode: "create",
+    displayName: body.name,
+    stewardAgentId: body.stewardAgentId,
+    joinPolicy: body.orgJoinPolicy,
+  });
+  if (bind instanceof Response) {
+    // Keep the reserved row out of the way; the day's allowance stays spent.
+    await prisma.column
+      .delete({ where: { id: claim.columnId } })
+      .catch((err) =>
+        console.error("[user/columns] rollback after Org bind failed", err)
+      );
+    return bind;
+  }
+
+  const column = await prisma.column.update({
+    where: { id: claim.columnId },
+    data: { acnOrgId: bind.acnOrgId, acnSubnetId: bind.acnSubnetId },
   });
 
   return Response.json({ column }, { status: 201 });

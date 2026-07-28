@@ -294,6 +294,9 @@ export default function StudioCreatePanel() {
                 <p className="text-[11px] text-zinc-600">
                   {t("studioCreate.orgAttachHint")}
                 </p>
+                <p className="text-[11px] text-zinc-600">
+                  {t("studioCreate.quotaHint")}
+                </p>
               </>
             )}
           </div>

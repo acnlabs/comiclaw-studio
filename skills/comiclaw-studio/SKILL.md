@@ -137,7 +137,7 @@ curl -sS -X POST "$STUDIO_BASE_URL/api/agent/projects" \
 
 Public browse (no auth): `/columns` UI + `GET /api/user/columns` (columns that already have ≥1 PUBLIC entry), `GET /api/user/columns/:slug`, `GET /api/user/public-projects`. Top nav **Co-create** → `/columns` (finished works stay under Series).
 
-Signed-in humans (Auth0): `POST /api/user/columns` (own a column; `orgMode` none|create|attach), `POST /api/user/projects` with `visibility:PRIVATE` or `PUBLIC` + `columnId` of a column they own. Studio UI: create split on `/studio`.
+Signed-in humans (Auth0): `POST /api/user/columns` (own a column; `orgMode` **create|none** — `attach` needs Org stewardship proof and is rejected), `POST /api/user/projects` with `visibility:PRIVATE` or `PUBLIC` + `columnId` of a column they own. Studio UI: create split on `/studio`. Per-user caps (`USER_MAX_OWNED_COLUMNS`, `USER_MAX_ORG_CREATES_PER_DAY`) return `429`; ACN keeps its own per-agent global quota.
 
 ### Contribute paths
 

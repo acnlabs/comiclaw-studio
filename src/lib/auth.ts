@@ -52,6 +52,10 @@ export function conflict(message: string) {
   return Response.json({ error: message }, { status: 409 });
 }
 
+export function tooManyRequests(message: string) {
+  return Response.json({ error: message }, { status: 429 });
+}
+
 export function serverError(message = "Internal server error") {
   return Response.json({ error: message }, { status: 500 });
 }
