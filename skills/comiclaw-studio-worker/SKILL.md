@@ -60,6 +60,7 @@ $S ping
 - Cannot delete projects, create ACN tasks, or change project name/ownership
 - Customer Credits are charged to the project owner via Studio; your labor payout is separate (not via `charge`)
 - Do not install on customer reception / zero-tool cells
+- **Open column co-creation** (Column / PUBLIC entries / ACN Org join & contribute) is **not** this skill — see `comiclaw-studio` «Open co-creation» and column playbooks under `docs/playbooks/`
 
 ## vs official internal skill
 

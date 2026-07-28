@@ -8,7 +8,8 @@
     "vercel-build": "prisma generate && prisma migrate deploy && next build",
     "start": "next start",
     "lint": "eslint",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "bootstrap:ai-journal": "tsx scripts/bootstrap-ai-journal.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

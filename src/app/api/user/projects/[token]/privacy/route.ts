@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { verifyUserToken } from "@/lib/userAuth";
 import { unauthorized, badRequest, notFoundJson } from "@/lib/auth";
+import { assertPrivacyAllowed } from "@/lib/projectAccess";
 
 type Ctx = { params: Promise<{ token: string }> };
 
@@ -17,12 +18,15 @@ export async function POST(req: Request, ctx: Ctx) {
   const { token } = await ctx.params;
   const project = await prisma.project.findUnique({
     where: { shareToken: token },
-    select: { id: true, ownerUserId: true },
+    select: { id: true, ownerUserId: true, visibility: true },
   });
   if (!project) return notFoundJson();
   if (project.ownerUserId !== sub) {
     return Response.json({ error: "Forbidden" }, { status: 403 });
   }
+
+  const privacyDenied = assertPrivacyAllowed(project.visibility, body.isPrivate);
+  if (privacyDenied) return privacyDenied;
 
   await prisma.project.update({
     where: { id: project.id },

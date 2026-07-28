@@ -40,8 +40,12 @@ export default async function ProjectPage(props: {
     <>
       <LiveRefresh token={token} />
       <div className="px-4 sm:px-6">
-        <AutoClaim shareToken={token} hasOwner={Boolean(project.ownerUserId)} />
-        {project.ownerUserId && <PrivacyToggle shareToken={token} />}
+        {project.visibility !== "PUBLIC" && (
+          <AutoClaim shareToken={token} hasOwner={Boolean(project.ownerUserId)} />
+        )}
+        {project.ownerUserId && project.visibility !== "PUBLIC" && (
+          <PrivacyToggle shareToken={token} />
+        )}
       </div>
       <StudioWorkspace project={data} />
     </>

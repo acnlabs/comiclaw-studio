@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { ZodError, type ZodType } from "zod";
 import { checkApiKey, unauthorized, badRequest, notFoundJson, conflict, serverError } from "@/lib/auth";
 import {
-  authorizeAcnWorkerForProject,
+  authorizeAcnForProject,
   authenticateStudioOrAcnAgent,
   type ProductionAuth,
   type WorkerAccess,
@@ -24,9 +24,9 @@ export function withAgentAuth<Ctx>(
 }
 
 /**
- * 生产工人路由:STUDIO_API_KEY 或「ACN agent + 任务绑定」。
+ * 生产/共创路由:STUDIO_API_KEY,或「ACN agent + 任务绑定」,
+ * 或(可选)PUBLIC 上无 Task 的 acn_contributor。
  * 先做身份认证,再解析资源,避免未认证调用靠 404/401 差异枚举 ID。
- * projectId 默认取 ctx.params.id;也可自定义(嵌套资源先查所属项目)。
  */
 export function withProjectWorkerAuth<Ctx>(
   handler: (req: Request, ctx: Ctx, auth: ProductionAuth) => Promise<Response>,
@@ -35,6 +35,11 @@ export function withProjectWorkerAuth<Ctx>(
     getAcnTaskId?: (req: Request, ctx: Ctx) => Promise<string | null | undefined>;
     /** 默认 write;GET/对账用 read(终态任务仍可读) */
     access?: WorkerAccess;
+    /**
+     * 为 true 时:PUBLIC 项目允许 ACN agent 不带 Task 以 acn_contributor 进入
+     * (内容投稿/改自己的内容)。charge / 项目设置等勿开。
+     */
+    allowPublicContribute?: boolean;
   }
 ): (req: Request, ctx: Ctx) => Promise<Response> {
   return async (req, ctx) => {
@@ -53,9 +58,10 @@ export function withProjectWorkerAuth<Ctx>(
       const acnTaskId = options?.getAcnTaskId
         ? await options.getAcnTaskId(req, ctx)
         : undefined;
-      const bound = await authorizeAcnWorkerForProject(req, projectId, identity.agentId, {
+      const bound = await authorizeAcnForProject(req, projectId, identity.agentId, {
         acnTaskId,
         access: options?.access ?? "write",
+        allowPublicContribute: options?.allowPublicContribute,
       });
       if (bound instanceof Response) return bound;
       auth = bound;
@@ -95,7 +101,7 @@ async function defaultProjectIdFromParams(ctx: unknown): Promise<string | null> 
   return id?.trim() || null;
 }
 
-function mapError(err: unknown): Response {
+export function mapError(err: unknown): Response {
   if (err instanceof ZodError) {
     const msg = err.issues
       .map((i) => `${i.path.join(".") || "body"}: ${i.message}`)
@@ -116,6 +122,19 @@ function mapError(err: unknown): Response {
   }
   console.error("[api] unhandled error:", err);
   return serverError();
+}
+
+/** User/public routes that don't use withAgentAuth wrappers */
+export function withRouteErrors<Ctx>(
+  handler: (req: Request, ctx: Ctx) => Promise<Response>
+): (req: Request, ctx: Ctx) => Promise<Response> {
+  return async (req, ctx) => {
+    try {
+      return await handler(req, ctx);
+    } catch (err) {
+      return mapError(err);
+    }
+  };
 }
 
 // 带重试的操作:并发下版本号唯一约束冲突(P2002)时自动重试

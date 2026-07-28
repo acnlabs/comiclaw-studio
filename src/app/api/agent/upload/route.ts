@@ -1,10 +1,12 @@
+import { prisma } from "@/lib/db";
 import { uploadFile } from "@/lib/storage";
-import { badRequest, serverError } from "@/lib/auth";
+import { badRequest, extractBearer, serverError } from "@/lib/auth";
 import {
   authenticateStudioOrAcnAgent,
-  authorizeAcnWorkerForProject,
+  authorizeAcnForProject,
   readAcnTaskIdHeader,
 } from "@/lib/acnAuth";
+import { assertAgentCanContribute } from "@/lib/orgBinding";
 
 export const runtime = "nodejs";
 
@@ -12,7 +14,6 @@ const MAX_BYTES = 200 * 1024 * 1024; // 200MB
 const ALLOWED_MIME =
   /^(image\/(png|jpeg|jpg|gif|webp|svg\+xml)|video\/(mp4|webm|quicktime)|audio\/(mpeg|mp3|wav|x-wav|ogg|aac|mp4|x-m4a|webm))$/;
 
-// 消毒文件名:仅保留基础名,过滤危险字符,限制长度
 function sanitizeFilename(name: string): string {
   const base = name.split(/[/\\]/).pop() ?? "upload";
   const cleaned = base.replace(/[^\w.\-]+/g, "_").slice(0, 100);
@@ -21,7 +22,8 @@ function sanitizeFilename(name: string): string {
 
 // Agent 上传媒体文件(图片或视频),返回公网 URL
 // - STUDIO_API_KEY: 全权限上传
-// - ACN worker: 必须带 X-Acn-Task-Id + X-Project-Id(任务映射校验)
+// - ACN worker: X-Acn-Task-Id + X-Project-Id
+// - ACN contributor: PUBLIC 项目可仅 X-Project-Id(无 Task)
 export async function POST(req: Request) {
   const identity = await authenticateStudioOrAcnAgent(req);
   if (identity instanceof Response) return identity;
@@ -29,15 +31,31 @@ export async function POST(req: Request) {
   if (identity.kind === "acn_agent") {
     const projectId = req.headers.get("x-project-id")?.trim() || null;
     if (!projectId) {
-      return badRequest("ACN workers must send X-Project-Id and X-Acn-Task-Id for upload");
+      return badRequest(
+        "ACN agents must send X-Project-Id (and X-Acn-Task-Id for production projects)"
+      );
     }
-    if (!readAcnTaskIdHeader(req)) {
-      return badRequest("ACN workers must send X-Acn-Task-Id for upload");
-    }
-    const auth = await authorizeAcnWorkerForProject(req, projectId, identity.agentId, {
+    const auth = await authorizeAcnForProject(req, projectId, identity.agentId, {
       access: "write",
+      allowPublicContribute: true,
+      acnTaskId: readAcnTaskIdHeader(req),
     });
     if (auth instanceof Response) return auth;
+
+    // Align with content create: Org / contributePolicy gate for both
+    // acn_contributor and task-bound acn_worker (before a public URL exists).
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { visibility: true },
+    });
+    if (!project) return badRequest("Project not found");
+    const gated = await assertAgentCanContribute({
+      projectId,
+      projectVisibility: project.visibility,
+      agentId: identity.agentId,
+      bearer: extractBearer(req) ?? undefined,
+    });
+    if (gated) return gated;
   }
 
   const contentType = req.headers.get("content-type") ?? "";
@@ -72,21 +90,16 @@ export async function POST(req: Request) {
     return badRequest(`File exceeds ${MAX_BYTES} bytes limit`);
   }
   if (!ALLOWED_MIME.test(fileMime)) {
-    return badRequest(`Unsupported file type: ${fileMime}. Only images, videos and audio are allowed.`);
+    return badRequest(
+      `Unsupported file type: ${fileMime}. Only images, videos and audio are allowed.`
+    );
   }
 
   try {
     const result = await uploadFile(fileBody, filename, fileMime);
     return Response.json({ url: result.url }, { status: 201 });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    if (/not configured|credentials|BLOB_READ_WRITE_TOKEN/i.test(msg)) {
-      return Response.json(
-        { error: "Storage not configured on server" },
-        { status: 503 }
-      );
-    }
-    console.error("[upload] failed:", err);
+    console.error("[upload]", err);
     return serverError("Upload failed");
   }
 }

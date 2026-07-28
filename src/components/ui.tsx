@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactElement } from "react";
 import { useT } from "@/components/LocaleProvider";
 
 // 通用小组件:版本切换、空状态、徽章、详情弹层
@@ -54,33 +54,60 @@ export function Modal({
   );
 }
 
+export type VersionPillItem = {
+  id: string;
+  label: string;
+};
+
+/** Number-keyed pills (per-asset takes) or id-keyed pills (multi-author scripts/films). */
+export function VersionPills(props: {
+  versions: number[];
+  selected: number;
+  onSelect: (v: number) => void;
+}): ReactElement | null;
+export function VersionPills(props: {
+  versions: VersionPillItem[];
+  selected: string;
+  onSelect: (v: string) => void;
+}): ReactElement | null;
 export function VersionPills({
   versions,
   selected,
   onSelect,
 }: {
-  versions: number[];
-  selected: number;
-  onSelect: (v: number) => void;
+  versions: number[] | VersionPillItem[];
+  selected: number | string;
+  onSelect: (v: never) => void;
 }) {
   const { t } = useT();
-  if (versions.length <= 1) return null;
+  const numeric = typeof versions[0] === "number";
+  const items: VersionPillItem[] = versions.map((v) =>
+    typeof v === "number" ? { id: String(v), label: `V${v}` } : v
+  );
+  if (items.length <= 1) return null;
+  const selectedId = String(selected);
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       <span className="text-xs text-zinc-500">{t("common.version")}</span>
-      {versions.map((v) => (
+      {items.map((item) => (
         <button
-          key={v}
-          onClick={() => onSelect(v)}
-          aria-pressed={v === selected}
-          aria-label={`V${v}`}
+          key={item.id}
+          onClick={() => {
+            if (numeric) {
+              (onSelect as (v: number) => void)(Number(item.id));
+            } else {
+              (onSelect as (v: string) => void)(item.id);
+            }
+          }}
+          aria-pressed={item.id === selectedId}
+          aria-label={item.label}
           className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
-            v === selected
+            item.id === selectedId
               ? "bg-accent text-zinc-950"
               : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
           }`}
         >
-          V{v}
+          {item.label}
         </button>
       ))}
     </div>

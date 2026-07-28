@@ -1,24 +1,35 @@
-// ACN 智能体身份认证 + 生产任务绑定授权。
+// ACN 智能体身份认证 + 生产任务绑定 / 开放共创投稿授权。
 //
 // 开放工人不持有 STUDIO_API_KEY,而是用自己的 ACN API key(或短时 JWT)。
 // Studio 作为 ACN resource server:
 //   AuthN = 调 ACN GET /agents/me(或后续验 JWT)得到 agent_id
-//   AuthZ = 该 agent 必须是对应 AcnTask 的 assignee/invitee,且任务映射到目标项目
+//   AuthZ =
+//     - 生产(PRIVATE / 带 Task):须为 AcnTask assignee/invitee,且任务映射到目标项目
+//     - 共创(PUBLIC 无 Task):允许 acn_contributor,内容门禁再叠 Org 成员校验
 
 import { createHash } from "crypto";
 import { prisma } from "@/lib/db";
-import { checkApiKey, extractBearer, unauthorized, forbidden, badRequest } from "@/lib/auth";
+import {
+  checkApiKey,
+  extractBearer,
+  unauthorized,
+  forbidden,
+  badRequest,
+  notFoundJson,
+} from "@/lib/auth";
 import { getAcnTask, type AcnTask } from "@/lib/acn";
 
 const ACN_API_URL = () =>
   (process.env.ACN_API_URL ?? "https://api.acnlabs.dev").trim().replace(/\/+$/, "");
 
-/** 工人请求必须带的任务绑定头(Studio 全局 key 不需要) */
+/** 生产工人请求必须带的任务绑定头(Studio 全局 key / PUBLIC 共创投稿不需要) */
 export const ACN_TASK_HEADER = "x-acn-task-id";
 
 export type ProductionAuth =
   | { kind: "studio_key" }
-  | { kind: "acn_worker"; agentId: string; acnTaskId: string };
+  | { kind: "acn_worker"; agentId: string; acnTaskId: string }
+  /** PUBLIC 共创投稿:有 ACN 身份、无 Task 绑定;Org 门禁在业务层再校验 */
+  | { kind: "acn_contributor"; agentId: string };
 
 export type WorkerAccess = "read" | "write";
 
@@ -69,6 +80,13 @@ export function readAcnTaskIdHeader(req: Request): string | null {
   return v || null;
 }
 
+export function productionAgentId(auth: ProductionAuth): string | null {
+  if (auth.kind === "acn_worker" || auth.kind === "acn_contributor") {
+    return auth.agentId;
+  }
+  return null;
+}
+
 /** 从 metadata 提取建单时的工人白名单(有则强制执行) */
 export function intendedWorkerIds(task: AcnTask): string[] {
   const meta = task.metadata ?? {};
@@ -88,7 +106,6 @@ export function intendedWorkerIds(task: AcnTask): string[] {
     const studioWorkers = (studio as { worker_agent_ids?: unknown }).worker_agent_ids;
     if (Array.isArray(studioWorkers)) for (const w of studioWorkers) push(w);
   }
-  // 仅有单数字段时也视为白名单(旧单 / 兼容)
   if (out.length === 0 && typeof meta.worker_agent_id === "string") {
     push(meta.worker_agent_id);
   }
@@ -97,8 +114,7 @@ export function intendedWorkerIds(task: AcnTask): string[] {
 
 /**
  * 该 ACN agent 是否被授权操作此任务。
- * - 若 metadata 带工人白名单:只认名单(防 includeDefaultWorker=false 时
- *   subnet 内主 comiclaw 抢 accept 后仍可写 Studio)
+ * - 若 metadata 带工人白名单:只认名单
  * - 无白名单的旧任务:assignee / invitee / worker_agent_id 兼容
  */
 export function agentAuthorizedOnAcnTask(agentId: string, task: AcnTask): boolean {
@@ -116,7 +132,10 @@ export function agentAuthorizedOnAcnTask(agentId: string, task: AcnTask): boolea
   return false;
 }
 
-export function taskStatusAllowsAccess(status: string | undefined | null, access: WorkerAccess): boolean {
+export function taskStatusAllowsAccess(
+  status: string | undefined | null,
+  access: WorkerAccess
+): boolean {
   const s = (status || "").toLowerCase();
   if (!s) return true;
   if (access === "read") return true;
@@ -143,7 +162,7 @@ export async function authorizeAcnWorkerForProject(
   projectId: string,
   agentId: string,
   opts?: { acnTaskId?: string | null; access?: WorkerAccess }
-): Promise<ProductionAuth | Response> {
+): Promise<Extract<ProductionAuth, { kind: "acn_worker" }> | Response> {
   const access: WorkerAccess = opts?.access ?? "write";
   const acnTaskId = (opts?.acnTaskId ?? readAcnTaskIdHeader(req) ?? "").trim();
   if (!acnTaskId) {
@@ -178,17 +197,65 @@ export async function authorizeAcnWorkerForProject(
 }
 
 /**
- * 解析生产调用方(upload 等未走 wrapper 的路由):
- * - STUDIO_API_KEY → 官方全权限(无需任务绑定)
- * - 否则按 ACN Bearer 解析 agent,并校验任务↔项目绑定
+ * ACN agent → 项目写/读授权:
+ * - 有 Task 头 → 生产工人路径
+ * - 无 Task 且 allowPublicContribute 且项目 PUBLIC → 共创投稿者
+ * - 否则要求 Task
+ */
+export async function authorizeAcnForProject(
+  req: Request,
+  projectId: string,
+  agentId: string,
+  opts?: {
+    acnTaskId?: string | null;
+    access?: WorkerAccess;
+    allowPublicContribute?: boolean;
+  }
+): Promise<ProductionAuth | Response> {
+  const taskHeader =
+    opts?.acnTaskId !== undefined
+      ? (opts.acnTaskId ?? "").trim()
+      : readAcnTaskIdHeader(req) ?? "";
+
+  if (taskHeader) {
+    return authorizeAcnWorkerForProject(req, projectId, agentId, {
+      acnTaskId: taskHeader,
+      access: opts?.access ?? "write",
+    });
+  }
+
+  if (opts?.allowPublicContribute) {
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { visibility: true },
+    });
+    if (!project) return notFoundJson();
+    if (project.visibility === "PUBLIC") {
+      return { kind: "acn_contributor", agentId };
+    }
+  }
+
+  return badRequest(
+    `ACN agents must send ${ACN_TASK_HEADER} for production projects; PUBLIC co-creation may omit it on contribute routes`
+  );
+}
+
+/**
+ * 解析生产/共创调用方:
+ * - STUDIO_API_KEY → 官方全权限
+ * - 否则按 ACN Bearer + 任务绑定或 PUBLIC 共创规则
  */
 export async function authorizeProjectWorker(
   req: Request,
   projectId: string,
-  opts?: { acnTaskId?: string | null; access?: WorkerAccess }
+  opts?: {
+    acnTaskId?: string | null;
+    access?: WorkerAccess;
+    allowPublicContribute?: boolean;
+  }
 ): Promise<ProductionAuth | Response> {
   const identity = await authenticateStudioOrAcnAgent(req);
   if (identity instanceof Response) return identity;
   if (identity.kind === "studio_key") return { kind: "studio_key" };
-  return authorizeAcnWorkerForProject(req, projectId, identity.agentId, opts);
+  return authorizeAcnForProject(req, projectId, identity.agentId, opts);
 }

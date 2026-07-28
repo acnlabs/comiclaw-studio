@@ -28,6 +28,9 @@ export interface ScriptVersionData {
   logline: string | null;
   content: string;
   changeLog: string | null;
+  authorUserId?: string | null;
+  authorAgentId?: string | null;
+  authorKey?: string;
   createdAt: string;
 }
 
@@ -45,6 +48,9 @@ export interface AssetData {
   type: string;
   name: string;
   description: string | null;
+  authorUserId?: string | null;
+  authorAgentId?: string | null;
+  authorKey?: string;
   versions: AssetVersionData[]; // 按 version 倒序
 }
 
@@ -66,6 +72,9 @@ export interface ShotData {
   action: string | null;
   prompt: string | null;
   selectedVersion: number | null;
+  authorUserId?: string | null;
+  authorAgentId?: string | null;
+  authorKey?: string;
   versions: ShotVersionData[]; // 按 version 倒序
   assetRefs: {
     asset: {
@@ -92,6 +101,10 @@ export interface FilmVersionData {
   videoUrl: string;
   duration: number | null;
   notes: string | null;
+  authorUserId?: string | null;
+  authorAgentId?: string | null;
+  authorKey?: string;
+  basedOnFilmVersionId?: string | null;
   createdAt: string;
   comments: CommentData[];
 }
@@ -113,6 +126,9 @@ export interface ProjectData {
   agentName: string | null;
   description: string | null;
   coverUrl: string | null;
+  visibility?: string;
+  columnId?: string | null;
+  entryOrder?: number | null;
   currentStage: string;
   statusNote: string | null;
   updatedAt: string;
@@ -121,4 +137,13 @@ export interface ProjectData {
   shots: ShotData[];
   filmVersions: FilmVersionData[];
   releases: ReleaseData[];
+}
+
+export interface ColumnData {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  coverUrl: string | null;
+  updatedAt: string;
 }

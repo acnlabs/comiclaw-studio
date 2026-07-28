@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { emitProjectUpdate } from "@/lib/events";
 import { withAgentAuth, withProjectWorkerAuth, parseBody } from "@/lib/api";
-import { notFoundJson, forbidden } from "@/lib/auth";
+import { notFoundJson, forbidden, badRequest } from "@/lib/auth";
 import { updateProjectSchema } from "@/lib/schemas";
 import type { ProductionAuth } from "@/lib/acnAuth";
 
@@ -30,7 +30,7 @@ export const GET = withProjectWorkerAuth(
     if (!project) return notFoundJson();
     return Response.json({ project });
   },
-  { access: "read" }
+  { access: "read", allowPublicContribute: true }
 );
 
 // 删除项目:仅官方 STUDIO_API_KEY
@@ -48,8 +48,22 @@ export const PATCH = withProjectWorkerAuth(async (req, ctx: Ctx, auth: Productio
   const { id } = await ctx.params;
   const body = await parseBody(req, updateProjectSchema);
 
+  if (auth.kind === "acn_contributor") {
+    return forbidden("ACN contributors cannot update project settings");
+  }
   if (auth.kind === "acn_worker") {
-    const forbiddenKeys = ["name", "clientName", "agentName", "description", "coverUrl"] as const;
+    const forbiddenKeys = [
+      "name",
+      "clientName",
+      "agentName",
+      "description",
+      "coverUrl",
+      "visibility",
+      "columnId",
+      "entryOrder",
+      "acnOrgId",
+      "contributePolicy",
+    ] as const;
     for (const k of forbiddenKeys) {
       if (body[k] !== undefined) {
         return forbidden(`ACN workers may only update statusNote/currentStage (got ${k})`);
@@ -57,8 +71,28 @@ export const PATCH = withProjectWorkerAuth(async (req, ctx: Ctx, auth: Productio
     }
   }
 
-  const exists = await prisma.project.findUnique({ where: { id }, select: { id: true } });
+  const exists = await prisma.project.findUnique({
+    where: { id },
+    select: { id: true, visibility: true, columnId: true },
+  });
   if (!exists) return notFoundJson();
+
+  const nextVisibility = body.visibility ?? exists.visibility;
+  const nextColumnId =
+    body.columnId === undefined
+      ? exists.columnId
+      : body.columnId?.trim() || null;
+
+  if (body.columnId !== undefined && nextColumnId) {
+    const column = await prisma.column.findUnique({
+      where: { id: nextColumnId },
+      select: { id: true },
+    });
+    if (!column) return notFoundJson("Column not found");
+  }
+  if (body.entryOrder != null && !nextColumnId) {
+    return badRequest("entryOrder requires columnId");
+  }
 
   const project = await prisma.project.update({
     where: { id },
@@ -69,6 +103,16 @@ export const PATCH = withProjectWorkerAuth(async (req, ctx: Ctx, auth: Productio
       description: body.description === undefined ? undefined : body.description,
       coverUrl: body.coverUrl === undefined ? undefined : body.coverUrl,
       currentStage: body.currentStage ?? undefined,
+      visibility: body.visibility ?? undefined,
+      columnId: body.columnId === undefined ? undefined : nextColumnId,
+      entryOrder: body.entryOrder === undefined ? undefined : body.entryOrder,
+      acnOrgId:
+        body.acnOrgId === undefined
+          ? undefined
+          : body.acnOrgId?.trim() || null,
+      contributePolicy:
+        body.contributePolicy === undefined ? undefined : body.contributePolicy,
+      ...(nextVisibility === "PUBLIC" ? { isPrivate: false } : {}),
       statusNote:
         body.statusNote === undefined
           ? body.currentStage // 推进阶段时自动清空上一阶段的状态

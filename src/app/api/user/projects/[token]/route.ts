@@ -1,10 +1,11 @@
 import { verifyUserToken } from "@/lib/userAuth";
 import { findFullProjectByToken } from "@/lib/projectQuery";
 import { unauthorized, notFoundJson } from "@/lib/auth";
+import { assertCanViewProject } from "@/lib/projectAccess";
 
 type Ctx = { params: Promise<{ token: string }> };
 
-// 登录用户读取项目全量数据(私密项目仅主人可读)
+// 登录用户读取项目全量数据(PUBLIC / 非私密可读;私密仅主人)
 export async function GET(req: Request, ctx: Ctx) {
   const sub = await verifyUserToken(req);
   if (!sub) return unauthorized();
@@ -13,9 +14,9 @@ export async function GET(req: Request, ctx: Ctx) {
   const project = await findFullProjectByToken(token);
   if (!project) return notFoundJson();
 
+  const denied = assertCanViewProject(project, sub);
+  if (denied) return denied;
+
   const isOwner = project.ownerUserId === sub;
-  if (project.isPrivate && !isOwner) {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
-  }
   return Response.json({ project, isOwner });
 }

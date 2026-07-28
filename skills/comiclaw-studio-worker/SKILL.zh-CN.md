@@ -59,6 +59,7 @@ $S ping
 - 不能删项目、不能建 ACN 单、不能改项目名/归属
 - 客户 Credits 由 Studio 向项目 owner 扣款;你的劳务分成另议,不走 `charge`
 - 客户接待 / 零工具 cell 不要装本技能
+- **开放栏目共创**(栏目 / PUBLIC 记 / 加入 ACN Org 与投稿)**不是**本技能——见 `comiclaw-studio`「开放共创」与 `docs/playbooks/` 下栏目 playbook
 
 ## 与官方内部 skill 的关系
 

@@ -14,10 +14,22 @@ function extractSections(content: string): string[] {
     .map((l) => l.replace(/^##\s+/, "").trim());
 }
 
+function authorTag(authorKey?: string): string {
+  if (!authorKey || authorKey === "legacy") return "";
+  if (authorKey.startsWith("user:")) return "user";
+  if (authorKey.startsWith("agent:")) return "agent";
+  return authorKey.slice(0, 8);
+}
+
 export default function ScriptPanel({ versions }: { versions: ScriptVersionData[] }) {
   const { t, fmtDate } = useT();
-  const [selected, setSelected] = useState(versions[0]?.version ?? 1);
-  const current = versions.find((v) => v.version === selected) ?? versions[0];
+  const [selectedId, setSelectedId] = useState(versions[0]?.id ?? "");
+  const current = versions.find((v) => v.id === selectedId) ?? versions[0];
+
+  const multiAuthor = useMemo(() => {
+    const keys = new Set(versions.map((v) => v.authorKey ?? "legacy"));
+    return keys.size > 1;
+  }, [versions]);
 
   const sections = useMemo(
     () => (current ? extractSections(current.content) : []),
@@ -34,6 +46,8 @@ export default function ScriptPanel({ versions }: { versions: ScriptVersionData[
 
   if (!current) return <EmptyState text={t("panel.script.empty")} />;
 
+  const tag = authorTag(current.authorKey);
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -41,7 +55,8 @@ export default function ScriptPanel({ versions }: { versions: ScriptVersionData[
           <h2 className="text-lg font-semibold text-zinc-100">
             {current.title ?? t("panel.script.defaultTitle")}
             <span className="ml-2 text-sm font-normal text-zinc-500">
-              V{current.version} · {fmtDate(current.createdAt)}
+              V{current.version}
+              {tag ? ` · ${tag}` : ""} · {fmtDate(current.createdAt)}
             </span>
           </h2>
           {current.logline && (
@@ -49,9 +64,15 @@ export default function ScriptPanel({ versions }: { versions: ScriptVersionData[
           )}
         </div>
         <VersionPills
-          versions={versions.map((v) => v.version)}
-          selected={current.version}
-          onSelect={setSelected}
+          versions={versions.map((v) => {
+            const a = authorTag(v.authorKey);
+            return {
+              id: v.id,
+              label: multiAuthor && a ? `V${v.version} · ${a}` : `V${v.version}`,
+            };
+          })}
+          selected={current.id}
+          onSelect={(id) => setSelectedId(String(id))}
         />
       </div>
 

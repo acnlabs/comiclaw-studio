@@ -1,8 +1,14 @@
 import { prisma } from "@/lib/db";
 import { emitProjectUpdate } from "@/lib/events";
-import { withAgentAuth, withProjectWorkerAuth, parseBody } from "@/lib/api";
+import { withProjectWorkerAuth, parseBody } from "@/lib/api";
 import { notFoundJson, badRequest } from "@/lib/auth";
 import { updateShotSchema } from "@/lib/schemas";
+import {
+  actorFromProductionAuth,
+  assertCanDeleteContent,
+  assertCanMutateContent,
+} from "@/lib/contentAuth";
+import type { ProductionAuth } from "@/lib/acnAuth";
 
 type Ctx = { params: Promise<{ shotId: string }> };
 
@@ -15,17 +21,35 @@ const shotProjectId = async (_req: Request, ctx: Ctx) => {
   return shot?.projectId ?? null;
 };
 
+async function loadShotAuth(shotId: string) {
+  return prisma.shot.findUnique({
+    where: { id: shotId },
+    select: {
+      id: true,
+      projectId: true,
+      authorUserId: true,
+      authorAgentId: true,
+      authorKey: true,
+      project: { select: { ownerUserId: true, visibility: true } },
+    },
+  });
+}
+
 // 更新分镜文字信息 / 资产引用
 export const PATCH = withProjectWorkerAuth(
-  async (req, ctx: Ctx) => {
+  async (req, ctx: Ctx, auth: ProductionAuth) => {
     const { shotId } = await ctx.params;
     const body = await parseBody(req, updateShotSchema);
 
-    const shot = await prisma.shot.findUnique({
-      where: { id: shotId },
-      select: { id: true, projectId: true },
-    });
+    const shot = await loadShotAuth(shotId);
     if (!shot) return notFoundJson();
+
+    const denied = assertCanMutateContent(
+      shot,
+      shot.project,
+      actorFromProductionAuth(auth)
+    );
+    if (denied) return denied;
 
     if (body.assetIds && body.assetIds.length > 0) {
       const count = await prisma.asset.count({
@@ -52,18 +76,25 @@ export const PATCH = withProjectWorkerAuth(
     emitProjectUpdate(shot.projectId, "shot.updated");
     return Response.json({ shot: updated });
   },
-  { getProjectId: shotProjectId }
+  { getProjectId: shotProjectId, allowPublicContribute: true }
 );
 
-// 删除分镜:仅官方 key
-export const DELETE = withAgentAuth(async (_req, ctx: Ctx) => {
-  const { shotId } = await ctx.params;
-  const shot = await prisma.shot.findUnique({
-    where: { id: shotId },
-    select: { id: true, projectId: true },
-  });
-  if (!shot) return notFoundJson();
-  await prisma.shot.delete({ where: { id: shotId } });
-  emitProjectUpdate(shot.projectId, "shot.deleted");
-  return Response.json({ deleted: true });
-});
+export const DELETE = withProjectWorkerAuth(
+  async (_req, ctx: Ctx, auth: ProductionAuth) => {
+    const { shotId } = await ctx.params;
+    const shot = await loadShotAuth(shotId);
+    if (!shot) return notFoundJson();
+
+    const denied = assertCanDeleteContent(
+      shot,
+      shot.project,
+      actorFromProductionAuth(auth)
+    );
+    if (denied) return denied;
+
+    await prisma.shot.delete({ where: { id: shotId } });
+    emitProjectUpdate(shot.projectId, "shot.deleted");
+    return Response.json({ deleted: true });
+  },
+  { getProjectId: shotProjectId, allowPublicContribute: true }
+);
