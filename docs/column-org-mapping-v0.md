@@ -1,6 +1,6 @@
 # Column ↔ ACN Org 映射规则 v0
 
-**Status:** Draft → **部分落地**（`acnOrgId` 绑定 + 投稿 Org 成员校验已在 Studio；人类 user 投稿 / Studio key 代署 / ACN 无 Task 直投稿已做；运维 join-request 薄管理面已做；项目页完整 Org 管理面、社区自助建栏目未做）  
+**Status:** Draft → **部分落地**（`acnOrgId` 绑定 + 投稿 Org 成员校验已在 Studio；人类 user 投稿 / Studio key 代署 / ACN 无 Task 直投稿已做；运维 join-request 薄管理面已做；顶栏「共创」+ `/columns` 列表已做；登录用户可自助建栏目/共创项目（`Column.ownerUserId`）；项目页完整 Org 管理面未做）  
 
 **Audience:** comiclaw-studio / ACN 集成  
 **依据：** [acnlabs/ACN](https://github.com/acnlabs/ACN) Org Harness（`/api/v1/orgs*`，ADR-0014）
@@ -120,7 +120,7 @@ Project  * —— 0..1  覆盖 Org（记/项目级；空则继承栏目 Org；�
 ### 3.6 社区自建（目标态 / 未落地）
 
 目标：有权创建者（人或 agent）可自建容器并绑 Org。  
-**v0 未做** user/社区自助创建栏目·项目 API；当前由运维 / Studio key 代建。
+**已做（薄自助）：** 登录用户 `POST /api/user/columns`（自有栏目 + Org 三选一）、`POST /api/user/projects`（私有交付 / PUBLIC 共创条目仅挂自己的栏目）。官方《AI 漫记》仍可由 Studio key / bootstrap 代建（`ownerUserId` 可空）。
 
 comiclaw《AI 漫记》= 官方栏目 +（通常）一个官方共创 Org，**不是**平台唯一组织形态。
 
@@ -182,7 +182,7 @@ v0 **不做**：强制一栏目一 Org、Org 钱包分账、每记自动 publish
 2. ~~创建流三选一：新建 Org / 挂已有 Org / 不绑~~ **已做**（Studio key）  
 3. ~~投稿闸：项目覆盖 → 栏目默认 → 无 Org 策略~~ **已做**（人类 user API；agent 经 Studio key 代署）  
 4. 成员管理代理：Studio `POST /api/agent/orgs/join` + join-requests approve/reject + `…/members` — **已做**（ACN 真相仍在 Org；Studio 代收申请并由 steward 代批；批准走 `pending→approving→approved` 占位防竞态）  
-5. 前端：创建时选组织模式 — **未做**；栏目公开页 Org ID + 加入/直投稿命令 — **已做**；运维 join-request 薄管理面 `/studio/org-joins`（ADMIN_KEY cookie）— **已做**；项目页完整 Org 管理面 — **未做**  
+5. 前端：顶栏「共创」→ `/columns`（官方 ai-journal 置顶）— **已做**；Studio 创建分流（私有 / 共创 + 新建栏目 + Org 三选一）— **已做**；栏目公开页 Org ID + 加入/直投稿命令 — **已做**；运维 join-request 薄管理面 `/studio/org-joins` — **已做**；项目页完整 Org 管理面 — **未做**  
 6. ACN Bearer 无 Task 直投稿 — **已做**（`ProductionAuth` kind=`acn_contributor`；内容路由 `allowPublicContribute` + Org 门闸）  
 7. 栏目公开页 `/columns/ai-journal`（时间线、当前记、agent 指引）— **已做**  
 8. 运维 bootstrap 脚本 `npm run bootstrap:ai-journal` — **已做**（需对目标环境执行一次）  

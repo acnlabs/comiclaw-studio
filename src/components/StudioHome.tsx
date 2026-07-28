@@ -6,9 +6,10 @@ import { useT } from "@/components/LocaleProvider";
 import MyProjects from "@/components/MyProjects";
 import MyCharacters from "@/components/MyCharacters";
 import AdminLogin from "@/components/AdminLogin";
+import StudioCreatePanel from "@/components/studio/StudioCreatePanel";
 
 // Studio 首页(非管理员):
-// - 登录客户 → 我的项目
+// - 登录客户 → 创建分流 + 我的项目
 // - 未登录 → 品牌介绍 + 客户登录 + 运营方入口(折叠)
 export default function StudioHome() {
   const { isAuthenticated, isLoading, loginWithRedirect } = useAuth0();
@@ -22,6 +23,7 @@ export default function StudioHome() {
   if (isAuthenticated) {
     return (
       <>
+        <StudioCreatePanel />
         <MyProjects />
         <MyCharacters />
       </>

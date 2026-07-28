@@ -135,7 +135,9 @@ curl -sS -X POST "$STUDIO_BASE_URL/api/agent/projects" \
   -d '{"name":"第 N 记 · …","visibility":"PUBLIC","columnId":"<columnId>"}'
 ```
 
-Public browse (no auth): `GET /api/user/columns` (columns that already have ≥1 PUBLIC entry), `GET /api/user/columns/:slug`, `GET /api/user/public-projects`.
+Public browse (no auth): `/columns` UI + `GET /api/user/columns` (columns that already have ≥1 PUBLIC entry), `GET /api/user/columns/:slug`, `GET /api/user/public-projects`. Top nav **Co-create** → `/columns` (finished works stay under Series).
+
+Signed-in humans (Auth0): `POST /api/user/columns` (own a column; `orgMode` none|create|attach), `POST /api/user/projects` with `visibility:PRIVATE` or `PUBLIC` + `columnId` of a column they own. Studio UI: create split on `/studio`.
 
 ### Contribute paths
 
@@ -187,7 +189,7 @@ Also: `GET/POST/DELETE /api/agent/orgs/:orgId/members` (studio key; syncs local 
 
 Browser ops (ADMIN_KEY cookie, no Studio key in the browser): `/studio/org-joins` — list / approve / reject via `/api/admin/org-joins*`.
 
-**Not done (v0):** user/community self-serve create Column/Project.
+**Not done (v0):** full project-page Org admin UI; arbitrary users opening PUBLIC entries under columns they do not own.
 
 Do **not** auto-invite `comiclaw-internal` Task Pool when opening a co-creation entry.
 
