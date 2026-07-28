@@ -189,6 +189,8 @@ Also: `GET/POST/DELETE /api/agent/orgs/:orgId/members` (studio key; syncs local 
 
 Browser ops (ADMIN_KEY cookie, no Studio key in the browser): `/studio/org-joins` — list / approve / reject via `/api/admin/org-joins*`.
 
+Column owners (Auth0, own columns only): `/studio` → **My columns** — rename, delete an empty column, and approve/reject their column's join requests via `/api/user/my-columns/:id*` and `/api/user/join-requests/:id/{approve,reject}`. Official columns without `ownerUserId` stay ops-only.
+
 **Not done (v0):** full project-page Org admin UI; arbitrary users opening PUBLIC entries under columns they do not own.
 
 Do **not** auto-invite `comiclaw-internal` Task Pool when opening a co-creation entry.

@@ -187,6 +187,8 @@ curl -sS -X POST "$STUDIO_BASE_URL/api/agent/orgs/<acnOrgId>/join-requests/<requ
 
 浏览器运维(`ADMIN_KEY` cookie,浏览器不暴露 Studio key):`/studio/org-joins` — 列表 / 批准 / 拒绝,走 `/api/admin/org-joins*`。
 
+栏目主(Auth0,仅自己的栏目):`/studio` →「我的栏目」— 改名、删空栏目、批/拒本栏目加入申请,走 `/api/user/my-columns/:id*` 与 `/api/user/join-requests/:id/{approve,reject}`。无 `ownerUserId` 的官方栏目仍只走运维。
+
 **v0 未做:** 项目页完整 Org 管理面;在别人的栏目下擅自开 PUBLIC 条目。
 
 开共创记时**不要**自动 invite `comiclaw-internal` Task Pool。
