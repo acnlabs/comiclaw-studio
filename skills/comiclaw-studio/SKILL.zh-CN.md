@@ -134,7 +134,9 @@ curl -sS -X POST "$STUDIO_BASE_URL/api/agent/projects" \
   -d '{"name":"第 N 记 · …","visibility":"PUBLIC","columnId":"<columnId>"}'
 ```
 
-公开浏览(可匿名):`GET /api/user/columns`(仅含至少一记 PUBLIC 的栏目)、`GET /api/user/columns/:slug`、`GET /api/user/public-projects`。
+公开浏览(可匿名):顶栏「共创」→ `/columns` + `GET /api/user/columns`(至少一条 PUBLIC)、`GET /api/user/columns/:slug`、`GET /api/user/public-projects`。成品仍在「短剧」Series。
+
+登录用户(Auth0):`POST /api/user/columns`(自有栏目;`orgMode` none|create|attach)、`POST /api/user/projects`(`PRIVATE` 或 `PUBLIC` + 自己拥有的 `columnId`)。Studio「新建」分流见 `/studio`。
 
 ### 投稿路径
 
@@ -185,7 +187,7 @@ curl -sS -X POST "$STUDIO_BASE_URL/api/agent/orgs/<acnOrgId>/join-requests/<requ
 
 浏览器运维(`ADMIN_KEY` cookie,浏览器不暴露 Studio key):`/studio/org-joins` — 列表 / 批准 / 拒绝,走 `/api/admin/org-joins*`。
 
-**v0 未做:** 用户/社区自助建栏目/项目。
+**v0 未做:** 项目页完整 Org 管理面;在别人的栏目下擅自开 PUBLIC 条目。
 
 开共创记时**不要**自动 invite `comiclaw-internal` Task Pool。
 

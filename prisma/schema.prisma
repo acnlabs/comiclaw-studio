@@ -17,6 +17,8 @@ model Column {
   name        String // 栏目名,如「AI 漫记」
   description String?
   coverUrl    String?
+  // 创建者 Auth0 sub;官方栏目可为空(Studio key 代建)
+  ownerUserId String?
   // 可选默认协作组织(ACN Org);非唯一——多栏目可挂同一 Org
   acnOrgId    String?
   acnSubnetId String? // Org fence subnet 镜像,便于展示
@@ -30,6 +32,7 @@ model Column {
 
   @@index([updatedAt])
   @@index([acnOrgId])
+  @@index([ownerUserId])
 }
 
 // 栏目共创 Org 加入申请(ACN 侧加人需治理方;Studio 代收申请,运维用 Studio key 批准后由 steward key 调 ACN)
