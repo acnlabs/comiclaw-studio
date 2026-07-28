@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 
 /**
@@ -12,19 +13,29 @@ export const DEFAULT_MAX_OWNED_COLUMNS = 5;
 export const DEFAULT_MAX_ORG_CREATES_PER_DAY = 2;
 
 export function maxOwnedColumns(): number {
-  return positiveInt(process.env.USER_MAX_OWNED_COLUMNS, DEFAULT_MAX_OWNED_COLUMNS);
+  return nonNegativeInt(
+    process.env.USER_MAX_OWNED_COLUMNS,
+    DEFAULT_MAX_OWNED_COLUMNS
+  );
 }
 
 export function maxOrgCreatesPerDay(): number {
-  return positiveInt(
+  return nonNegativeInt(
     process.env.USER_MAX_ORG_CREATES_PER_DAY,
     DEFAULT_MAX_ORG_CREATES_PER_DAY
   );
 }
 
-function positiveInt(raw: string | undefined, fallback: number): number {
-  const n = Number((raw ?? "").trim());
-  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : fallback;
+/** Unset / blank / invalid falls back; an explicit 0 blocks self-serve. */
+export function nonNegativeInt(
+  raw: string | undefined | null,
+  fallback: number
+): number {
+  const trimmed = (raw ?? "").trim();
+  if (trimmed === "") return fallback;
+  const n = Number(trimmed);
+  if (!Number.isFinite(n) || n < 0) return fallback;
+  return Math.floor(n);
 }
 
 export type QuotaDecision =
@@ -54,29 +65,62 @@ export function startOfUtcDay(now = new Date()): Date {
   );
 }
 
-/** Count current usage for a user and apply the policy above. */
-export async function checkColumnQuota(args: {
-  ownerUserId: string;
-  wantsOrgCreate: boolean;
-}): Promise<QuotaDecision> {
-  const [ownedColumns, orgCreatesToday] = await Promise.all([
-    prisma.column.count({ where: { ownerUserId: args.ownerUserId } }),
-    args.wantsOrgCreate
-      ? prisma.column.count({
-          where: {
-            ownerUserId: args.ownerUserId,
-            acnOrgId: { not: null },
-            createdAt: { gte: startOfUtcDay() },
-          },
-        })
-      : Promise.resolve(0),
-  ]);
+export type ClaimResult =
+  | { ok: true; columnId: string }
+  | { ok: false; decision: Extract<QuotaDecision, { allowed: false }> };
 
-  return evaluateColumnQuota({
-    ownedColumns,
-    orgCreatesToday,
-    wantsOrgCreate: args.wantsOrgCreate,
-    maxColumns: maxOwnedColumns(),
-    maxOrgsPerDay: maxOrgCreatesPerDay(),
-  });
+/**
+ * Reserve one column slot for a user and insert the row in the same
+ * serializable transaction, so concurrent requests cannot both pass the count.
+ * `orgCreatedAt` is stamped before calling ACN so a failed bind still consumes
+ * the daily allowance instead of leaving an uncounted orphan Org.
+ */
+export async function claimColumnSlot(args: {
+  ownerUserId: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  coverUrl: string | null;
+  contributePolicy: string;
+  wantsOrgCreate: boolean;
+}): Promise<ClaimResult> {
+  return prisma.$transaction(
+    async (tx) => {
+      const ownedColumns = await tx.column.count({
+        where: { ownerUserId: args.ownerUserId },
+      });
+      const orgCreatesToday = args.wantsOrgCreate
+        ? await tx.column.count({
+            where: {
+              ownerUserId: args.ownerUserId,
+              orgCreatedAt: { gte: startOfUtcDay() },
+            },
+          })
+        : 0;
+
+      const decision = evaluateColumnQuota({
+        ownedColumns,
+        orgCreatesToday,
+        wantsOrgCreate: args.wantsOrgCreate,
+        maxColumns: maxOwnedColumns(),
+        maxOrgsPerDay: maxOrgCreatesPerDay(),
+      });
+      if (!decision.allowed) return { ok: false as const, decision };
+
+      const column = await tx.column.create({
+        data: {
+          slug: args.slug,
+          name: args.name,
+          description: args.description,
+          coverUrl: args.coverUrl,
+          ownerUserId: args.ownerUserId,
+          contributePolicy: args.contributePolicy,
+          orgCreatedAt: args.wantsOrgCreate ? new Date() : null,
+        },
+        select: { id: true },
+      });
+      return { ok: true as const, columnId: column.id };
+    },
+    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+  );
 }

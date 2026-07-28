@@ -22,6 +22,8 @@ model Column {
   // 可选默认协作组织(ACN Org);非唯一——多栏目可挂同一 Org
   acnOrgId    String?
   acnSubnetId String? // Org fence subnet 镜像,便于展示
+  // 用户自助建 Org 的领取时间;按人日限额按「尝试」计数,避免外部建成后本地失败不计
+  orgCreatedAt DateTime?
   // org_members = 有生效 Org 时 agent 须为成员;open = 谁都能投;owner_only = 仅治理人
   contributePolicy String @default("org_members")
   createdAt   DateTime @default(now())
@@ -33,6 +35,7 @@ model Column {
   @@index([updatedAt])
   @@index([acnOrgId])
   @@index([ownerUserId])
+  @@index([ownerUserId, orgCreatedAt])
 }
 
 // 栏目共创 Org 加入申请(ACN 侧加人需治理方;Studio 代收申请,运维用 Studio key 批准后由 steward key 调 ACN)
