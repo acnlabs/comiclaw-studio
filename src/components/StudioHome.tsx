@@ -7,6 +7,7 @@ import MyProjects from "@/components/MyProjects";
 import MyCharacters from "@/components/MyCharacters";
 import AdminLogin from "@/components/AdminLogin";
 import StudioCreatePanel from "@/components/studio/StudioCreatePanel";
+import MyColumnsPanel from "@/components/studio/MyColumnsPanel";
 
 // Studio 首页(非管理员):
 // - 登录客户 → 创建分流 + 我的项目
@@ -24,6 +25,7 @@ export default function StudioHome() {
     return (
       <>
         <StudioCreatePanel />
+        <MyColumnsPanel />
         <MyProjects />
         <MyCharacters />
       </>
