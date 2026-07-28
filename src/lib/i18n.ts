@@ -305,6 +305,7 @@ const zh = {
   "studioCreate.org.create": "新建 Org",
   "studioCreate.org.attach": "挂已有 Org",
   "studioCreate.org.none": "不绑 Org",
+  "studioCreate.orgAttachHint": "挂已有 Org 需证明治理权，用户自助暂未开放；请用新建或不绑。",
   "studioCreate.acnOrgId": "ACN Org ID",
   "studioCreate.submit": "创建",
   "studioCreate.submitting": "创建中…",
@@ -627,6 +628,8 @@ const en: Record<MessageKey, string> = {
   "studioCreate.org.create": "Create Org",
   "studioCreate.org.attach": "Attach Org",
   "studioCreate.org.none": "No Org",
+  "studioCreate.orgAttachHint":
+    "Attaching an existing Org needs stewardship proof — not available in self-serve yet. Use Create or No Org.",
   "studioCreate.acnOrgId": "ACN Org ID",
   "studioCreate.submit": "Create",
   "studioCreate.submitting": "Creating…",

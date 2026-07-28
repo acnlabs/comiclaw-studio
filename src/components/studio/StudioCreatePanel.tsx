@@ -9,13 +9,13 @@ import type { MessageKey } from "@/lib/i18n";
 
 type Kind = "private" | "cocreate";
 type ColumnMode = "existing" | "new";
-type OrgMode = "none" | "create" | "attach";
+/** User self-serve: create or none only (attach needs Org stewardship proof). */
+type OrgMode = "none" | "create";
 
 type MyColumn = { id: string; slug: string; name: string };
 
 const ORG_LABEL: Record<OrgMode, MessageKey> = {
   create: "studioCreate.org.create",
-  attach: "studioCreate.org.attach",
   none: "studioCreate.org.none",
 };
 
@@ -33,7 +33,6 @@ export default function StudioCreatePanel() {
   const [columnName, setColumnName] = useState("");
   const [columnSlug, setColumnSlug] = useState("");
   const [orgMode, setOrgMode] = useState<OrgMode>("create");
-  const [acnOrgId, setAcnOrgId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -101,7 +100,6 @@ export default function StudioCreatePanel() {
             slug: columnSlug.trim() || undefined,
             description: description.trim() || null,
             orgMode,
-            acnOrgId: orgMode === "attach" ? acnOrgId.trim() || undefined : undefined,
             orgJoinPolicy: "approval",
             contributePolicy: "org_members",
           }),
@@ -278,7 +276,7 @@ export default function StudioCreatePanel() {
                   {t("studioCreate.orgSection")}
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {(["create", "attach", "none"] as OrgMode[]).map((m) => (
+                  {(["create", "none"] as OrgMode[]).map((m) => (
                     <button
                       key={m}
                       type="button"
@@ -293,17 +291,9 @@ export default function StudioCreatePanel() {
                     </button>
                   ))}
                 </div>
-                {orgMode === "attach" ? (
-                  <label className="block text-sm text-zinc-400">
-                    {t("studioCreate.acnOrgId")}
-                    <input
-                      value={acnOrgId}
-                      onChange={(e) => setAcnOrgId(e.target.value)}
-                      required
-                      className="mt-1 w-full border border-zinc-700 bg-zinc-950 px-3 py-2 font-mono text-sm text-zinc-100 outline-none focus:border-accent"
-                    />
-                  </label>
-                ) : null}
+                <p className="text-[11px] text-zinc-600">
+                  {t("studioCreate.orgAttachHint")}
+                </p>
               </>
             )}
           </div>

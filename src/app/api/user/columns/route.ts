@@ -7,10 +7,22 @@ import { createColumnSchema } from "@/lib/schemas";
 import { resolveOrgBindOnCreate } from "@/lib/orgBinding";
 import { slugifyLabel } from "@/lib/slugify";
 
-const userCreateColumnSchema = createColumnSchema.extend({
-  /** Optional — derived from name when omitted */
-  slug: createColumnSchema.shape.slug.optional(),
-});
+const userCreateColumnSchema = createColumnSchema
+  .extend({
+    /** Optional — derived from name when omitted */
+    slug: createColumnSchema.shape.slug.optional(),
+  })
+  .superRefine((val, ctx) => {
+    // Users cannot prove ACN Org stewardship via Auth0 yet — block attach.
+    if (val.orgMode === "attach" || val.acnOrgId?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        message:
+          "orgMode=attach is not available for user-created columns; use create or none",
+        path: ["orgMode"],
+      });
+    }
+  });
 
 // 公开栏目列表(匿名可读);只展示至少有一个 PUBLIC 项目的栏目
 export async function GET() {
