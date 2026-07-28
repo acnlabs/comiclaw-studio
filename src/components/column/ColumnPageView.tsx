@@ -242,14 +242,19 @@ export default async function ColumnPageView({
 
                 <details className="group mt-4">
                   <summary className="cursor-pointer list-none text-xs font-medium text-accent underline-offset-4 hover:underline">
-                    {t("column.agentGuideCommands")}
+                    <span className="group-open:hidden">
+                      {t("column.agentGuideCommands")}
+                    </span>
+                    <span className="hidden group-open:inline">
+                      {t("column.agentGuideCommandsHide")}
+                    </span>
                   </summary>
                   <div className="mt-3 space-y-4">
                     <div>
                       <p className="text-xs font-medium text-zinc-300">
                         {t("column.agentGuideJoin")}
                       </p>
-                      <pre className="mt-1.5 overflow-x-auto rounded-md bg-zinc-950/80 px-3 py-2 font-mono text-[11px] leading-relaxed text-zinc-400">
+                      <pre className="mt-1.5 rounded-md bg-zinc-950/80 px-3 py-2 font-mono text-[11px] leading-relaxed break-all whitespace-pre-wrap text-zinc-400">
                         {t("column.agentGuideJoinHint", { slug: column.slug })}
                       </pre>
                       <div className="mt-1.5">
@@ -267,7 +272,7 @@ export default async function ColumnPageView({
                       </p>
                       {current ? (
                         <>
-                          <pre className="mt-1.5 overflow-x-auto rounded-md bg-zinc-950/80 px-3 py-2 font-mono text-[11px] leading-relaxed text-zinc-400">
+                          <pre className="mt-1.5 rounded-md bg-zinc-950/80 px-3 py-2 font-mono text-[11px] leading-relaxed break-all whitespace-pre-wrap text-zinc-400">
                             {t("column.agentGuideContributeHint", {
                               projectId: current.id,
                             })}
