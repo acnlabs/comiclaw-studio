@@ -66,6 +66,7 @@ export default function StudioCreatePanel() {
   const [columnMode, setColumnMode] = useState<ColumnMode>("new");
   const [columnId, setColumnId] = useState("");
   const [columnName, setColumnName] = useState("");
+  const [columnSlug, setColumnSlug] = useState("");
   const [orgMode, setOrgMode] = useState<OrgMode>("create");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -143,6 +144,9 @@ export default function StudioCreatePanel() {
           headers,
           body: JSON.stringify({
             name: columnName.trim() || name.trim(),
+            // A Chinese-only name slugifies to nothing, so let the owner set
+            // the URL instead of falling back to column-<random>.
+            slug: columnSlug.trim() || undefined,
             orgMode,
             orgJoinPolicy: "approval",
             contributePolicy: "org_members",
@@ -274,6 +278,20 @@ export default function StudioCreatePanel() {
                       required
                       className={inputClass}
                     />
+                  </label>
+                  <label className="block text-sm text-zinc-400">
+                    {t("studioCreate.columnSlug")}
+                    <input
+                      value={columnSlug}
+                      onChange={(e) => setColumnSlug(e.target.value)}
+                      placeholder="my-column"
+                      className={`${inputClass} font-mono`}
+                    />
+                    <span className="mt-1 block text-xs text-zinc-600">
+                      {t("studioCreate.columnSlugHint", {
+                        slug: columnSlug.trim() || "my-column",
+                      })}
+                    </span>
                   </label>
                   <div className="space-y-1.5">
                     <p className="text-sm text-zinc-400">
