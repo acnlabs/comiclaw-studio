@@ -203,7 +203,7 @@ export default function MyColumnsPanel() {
 
       <ul className="mt-4 space-y-3">
         {columns.map((c) => (
-          <li key={c.id} className="border border-zinc-800 bg-zinc-900/40">
+          <li key={c.id} className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/50">
             <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
@@ -225,7 +225,7 @@ export default function MyColumnsPanel() {
               <button
                 type="button"
                 onClick={() => void openColumn(c)}
-                className="border border-zinc-600 px-3 py-1.5 text-xs text-zinc-300 transition hover:border-zinc-400 hover:text-zinc-100"
+                className="rounded-full border border-zinc-600 px-3.5 py-1.5 text-xs text-zinc-300 transition hover:border-zinc-400 hover:text-zinc-100"
               >
                 {openId === c.id ? t("myColumns.close") : t("myColumns.manage")}
               </button>
@@ -239,14 +239,14 @@ export default function MyColumnsPanel() {
                     <input
                       value={renaming}
                       onChange={(e) => setRenaming(e.target.value)}
-                      className="mt-1 block w-64 border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-sm text-zinc-100 outline-none focus:border-accent"
+                      className="mt-1 block w-64 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-sm text-zinc-100 outline-none focus:border-accent"
                     />
                   </label>
                   <button
                     type="button"
                     disabled={busy}
                     onClick={() => void rename(c.id)}
-                    className="bg-accent px-3 py-1.5 text-xs font-semibold text-zinc-950 disabled:opacity-50"
+                    className="rounded-full bg-accent px-4 py-1.5 text-xs font-medium text-zinc-950 transition-opacity hover:opacity-90 disabled:opacity-50"
                   >
                     {t("myColumns.save")}
                   </button>
@@ -261,14 +261,14 @@ export default function MyColumnsPanel() {
                           : undefined
                     }
                     onClick={() => void remove(c.id)}
-                    className="border border-zinc-700 px-3 py-1.5 text-xs text-zinc-400 transition hover:border-red-500 hover:text-red-400 disabled:opacity-40"
+                    className="rounded-full border border-zinc-700 px-4 py-1.5 text-xs text-zinc-400 transition hover:border-red-500 hover:text-red-400 disabled:opacity-40"
                   >
                     {t("myColumns.delete")}
                   </button>
                 </div>
 
                 <div>
-                  <p className="text-xs font-medium tracking-wide text-zinc-300 uppercase">
+                  <p className="text-xs font-medium text-zinc-300">
                     {t("myColumns.joinRequests")}
                   </p>
                   {!c.acnOrgId ? (
@@ -286,7 +286,7 @@ export default function MyColumnsPanel() {
                       {requests.map((r) => (
                         <li
                           key={r.id}
-                          className="flex flex-wrap items-center justify-between gap-3 border border-zinc-800 px-3 py-2"
+                          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-950/40 px-3.5 py-2.5"
                         >
                           <div className="min-w-0">
                             <p className="truncate font-mono text-xs text-accent">
@@ -306,7 +306,7 @@ export default function MyColumnsPanel() {
                               type="button"
                               disabled={busy}
                               onClick={() => void decide(r.id, "approve")}
-                              className="bg-accent px-3 py-1 text-xs font-semibold text-zinc-950 disabled:opacity-50"
+                              className="rounded-full bg-accent px-3.5 py-1 text-xs font-medium text-zinc-950 transition-opacity hover:opacity-90 disabled:opacity-50"
                             >
                               {t("myColumns.approve")}
                             </button>
@@ -314,7 +314,7 @@ export default function MyColumnsPanel() {
                               type="button"
                               disabled={busy}
                               onClick={() => void decide(r.id, "reject")}
-                              className="border border-zinc-600 px-3 py-1 text-xs text-zinc-300 disabled:opacity-50"
+                              className="rounded-full border border-zinc-600 px-3.5 py-1 text-xs text-zinc-300 transition hover:border-zinc-400 disabled:opacity-50"
                             >
                               {t("myColumns.reject")}
                             </button>

@@ -18,8 +18,8 @@ interface MyProject {
   updatedAt: string;
 }
 
-// 登录客户的项目列表(嵌入 Studio 页)
-export default function MyProjects() {
+// 登录客户的项目列表(嵌入 Studio 页);action 用于在标题行放「新建」入口
+export default function MyProjects({ action }: { action?: React.ReactNode }) {
   const { isAuthenticated, isLoading, getAccessTokenSilently } = useAuth0();
   const { t, fmtDate } = useT();
   const [projects, setProjects] = useState<MyProject[] | null>(null);
@@ -44,8 +44,13 @@ export default function MyProjects() {
 
   return (
     <div>
-      <h2 className="mt-12 mb-1 text-lg font-semibold text-zinc-100">{t("my.title")}</h2>
-      <p className="mb-4 text-sm text-zinc-500">{t("my.subtitle")}</p>
+      <div className="mt-12 mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold text-zinc-100">{t("my.title")}</h2>
+          <p className="mt-1 text-sm text-zinc-500">{t("my.subtitle")}</p>
+        </div>
+        {action ? <div className="shrink-0">{action}</div> : null}
+      </div>
 
       {projects === null ? (
         <div className="py-10 text-center text-sm text-zinc-600">…</div>

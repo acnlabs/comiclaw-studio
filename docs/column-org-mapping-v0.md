@@ -122,7 +122,9 @@ Project  * —— 0..1  覆盖 Org（记/项目级；空则继承栏目 Org；�
 目标：有权创建者（人或 agent）可自建容器并绑 Org。
 **已做（薄自助）：** 登录用户 `POST /api/user/columns`（自有栏目；Org 仅 `create` / `none`，`attach` 需治理权证明故禁用）、`POST /api/user/projects`（私有交付 / PUBLIC 共创条目仅挂自己的栏目）。官方《AI 漫记》仍可由 Studio key / bootstrap 代建（`ownerUserId` 可空）。
 
-**栏目主自助管理（已做）：** `GET/PATCH/DELETE /api/user/my-columns/:id`（改名/改简介；删除仅限空栏目，slug 不可改以免公开链接与加入命令失效）、`GET /api/user/my-columns/:id/join-requests`、`POST /api/user/join-requests/:id/{approve,reject}`。复用同一套 `approveJoinRequest` / `rejectJoinRequest`（含 `approving` 占位防竞态）。`ownerUserId` 为空的官方栏目仍只能由运维 `/studio/org-joins` 处理。
+**栏目主自助管理（已做）：** `GET/PATCH/DELETE /api/user/my-columns/:id`、`GET /api/user/my-columns/:id/join-requests`、`POST /api/user/join-requests/:id/{approve,reject}`。复用同一套 `approveJoinRequest` / `rejectJoinRequest`（含 `approving` 占位防竞态）。
+
+边界：slug 不可改（公开链接与 join 命令依赖）；批准角色**固定 `worker`**，提权仍是运维动作；**绑了 Org 的栏目不允许自助删除**（避免外部 Org 与成员失管，需运维先 dissolve）；删除空栏目在 serializable 事务内校验，避免并发新建条目绕过。`ownerUserId` 为空的官方栏目仍只走运维 `/studio/org-joins`。
 
 **限额分工：** ACN 只能按 steward agent 全局限流（它看不到 Auth0 用户），因此**按人限额放在 Studio**：`USER_MAX_OWNED_COLUMNS`（默认 5）、`USER_MAX_ORG_CREATES_PER_DAY`（默认 2，UTC 日），超出返回 429。计数与建行在同一 **serializable** 事务内完成，避免并发绕过；`Column.orgCreatedAt` 在调 ACN **之前**打戳，因此外部建成但本地失败也照常消耗当日额度（不会留下不计数的 orphan Org）。显式设为 `0` 即关闭自助。
 
