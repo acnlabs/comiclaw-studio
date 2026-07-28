@@ -1,11 +1,17 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { verifyUserToken } from "@/lib/userAuth";
-import { unauthorized, badRequest, conflict } from "@/lib/auth";
+import {
+  unauthorized,
+  badRequest,
+  conflict,
+  tooManyRequests,
+} from "@/lib/auth";
 import { mapError, parseBody } from "@/lib/api";
 import { createColumnSchema } from "@/lib/schemas";
 import { resolveOrgBindOnCreate } from "@/lib/orgBinding";
 import { slugifyLabel } from "@/lib/slugify";
+import { checkColumnQuota } from "@/lib/columnQuota";
 
 const userCreateColumnSchema = createColumnSchema
   .extend({
@@ -87,6 +93,18 @@ export async function POST(req: Request) {
     select: { id: true },
   });
   if (exists) return conflict(`Column slug already exists: ${slug}`);
+
+  const quota = await checkColumnQuota({
+    ownerUserId: sub,
+    wantsOrgCreate: body.orgMode === "create",
+  });
+  if (!quota.allowed) {
+    return tooManyRequests(
+      quota.reason === "columns"
+        ? `You already own ${quota.limit} columns; delete one or ask ops to raise the limit`
+        : `Daily limit of ${quota.limit} new co-creation Orgs reached; retry tomorrow or create the column with orgMode=none`
+    );
+  }
 
   const bind = await resolveOrgBindOnCreate({
     mode: body.orgMode,

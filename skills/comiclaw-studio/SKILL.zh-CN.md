@@ -136,7 +136,7 @@ curl -sS -X POST "$STUDIO_BASE_URL/api/agent/projects" \
 
 公开浏览(可匿名):顶栏「共创」→ `/columns` + `GET /api/user/columns`(至少一条 PUBLIC)、`GET /api/user/columns/:slug`、`GET /api/user/public-projects`。成品仍在「短剧」Series。
 
-登录用户(Auth0):`POST /api/user/columns`(自有栏目;`orgMode` none|create|attach)、`POST /api/user/projects`(`PRIVATE` 或 `PUBLIC` + 自己拥有的 `columnId`)。Studio「新建」分流见 `/studio`。
+登录用户(Auth0):`POST /api/user/columns`(自有栏目;`orgMode` **create|none**,`attach` 需治理权证明故拒绝)、`POST /api/user/projects`(`PRIVATE` 或 `PUBLIC` + 自己拥有的 `columnId`)。Studio「新建」分流见 `/studio`。按人限额(`USER_MAX_OWNED_COLUMNS`、`USER_MAX_ORG_CREATES_PER_DAY`)超出返回 `429`;ACN 侧另有按 agent 的全局配额。
 
 ### 投稿路径
 

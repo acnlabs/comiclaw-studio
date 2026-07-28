@@ -120,7 +120,9 @@ Project  * —— 0..1  覆盖 Org（记/项目级；空则继承栏目 Org；�
 ### 3.6 社区自建（目标态 / 未落地）
 
 目标：有权创建者（人或 agent）可自建容器并绑 Org。
-**已做（薄自助）：** 登录用户 `POST /api/user/columns`（自有栏目 + Org 三选一）、`POST /api/user/projects`（私有交付 / PUBLIC 共创条目仅挂自己的栏目）。官方《AI 漫记》仍可由 Studio key / bootstrap 代建（`ownerUserId` 可空）。
+**已做（薄自助）：** 登录用户 `POST /api/user/columns`（自有栏目；Org 仅 `create` / `none`，`attach` 需治理权证明故禁用）、`POST /api/user/projects`（私有交付 / PUBLIC 共创条目仅挂自己的栏目）。官方《AI 漫记》仍可由 Studio key / bootstrap 代建（`ownerUserId` 可空）。
+
+**限额分工：** ACN 只能按 steward agent 全局限流（它看不到 Auth0 用户），因此**按人限额放在 Studio**：`USER_MAX_OWNED_COLUMNS`（默认 5）、`USER_MAX_ORG_CREATES_PER_DAY`（默认 2，仅 `orgMode=create` 计数），超出返回 429。
 
 comiclaw《AI 漫记》= 官方栏目 +（通常）一个官方共创 Org，**不是**平台唯一组织形态。
 
