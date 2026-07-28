@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { badRequest, conflict, notFoundJson } from "@/lib/auth";
 import { mapError, parseBody } from "@/lib/api";
@@ -80,7 +81,13 @@ export async function PATCH(req: Request, ctx: Ctx) {
   return Response.json({ column });
 }
 
-/** Delete an empty column. Entries must be removed first to avoid orphaning. */
+/**
+ * Delete an empty column.
+ * - Columns bound to an ACN Org stay ops-only: deleting the Studio row would
+ *   strand the external Org and its members with no management surface.
+ * - Entry / request checks run inside a serializable transaction so a
+ *   concurrent create cannot slip past the "empty" check.
+ */
 export async function DELETE(req: Request, ctx: Ctx) {
   const { id: rawId } = await ctx.params;
   const columnId = rawId?.trim();
@@ -89,15 +96,33 @@ export async function DELETE(req: Request, ctx: Ctx) {
   const access = await requireColumnOwner(req, columnId);
   if (access instanceof Response) return access;
 
-  const projectCount = await prisma.project.count({ where: { columnId } });
-  if (projectCount > 0) {
+  if (access.column.acnOrgId) {
     return conflict(
-      `Column still has ${projectCount} entries; remove them before deleting`
+      "This column is bound to an ACN Org; ask ops to dissolve the Org before deleting"
     );
   }
 
-  await prisma.orgJoinRequest.deleteMany({ where: { columnId } });
-  await prisma.column.delete({ where: { id: columnId } });
+  try {
+    const result = await prisma.$transaction(
+      async (tx) => {
+        const projectCount = await tx.project.count({ where: { columnId } });
+        if (projectCount > 0) return { deleted: false as const, projectCount };
+
+        await tx.orgJoinRequest.deleteMany({ where: { columnId } });
+        await tx.column.delete({ where: { id: columnId } });
+        return { deleted: true as const, projectCount: 0 };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
+
+    if (!result.deleted) {
+      return conflict(
+        `Column still has ${result.projectCount} entries; remove them before deleting`
+      );
+    }
+  } catch (err) {
+    return mapError(err);
+  }
 
   return Response.json({ deleted: true, slug: access.column.slug });
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
 import { useT } from "@/components/LocaleProvider";
 import { AUTH0_AUDIENCE } from "@/lib/auth0";
@@ -33,6 +33,9 @@ export default function MyColumnsPanel() {
   const [renaming, setRenaming] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const inFlight = useRef(false);
+  /** Guards against a slow join-request fetch landing after the user switched columns. */
+  const openToken = useRef(0);
 
   const authHeaders = useCallback(async () => {
     const token = await getAccessTokenSilently({
@@ -72,6 +75,8 @@ export default function MyColumnsPanel() {
   }, [isAuthenticated, isLoading, fetchColumns]);
 
   const openColumn = async (col: MyColumn) => {
+    openToken.current += 1;
+    const token = openToken.current;
     if (openId === col.id) {
       setOpenId(null);
       setRequests(null);
@@ -88,9 +93,9 @@ export default function MyColumnsPanel() {
         { headers }
       );
       const data = (await res.json()) as { requests?: JoinRequest[] };
-      setRequests(data.requests ?? []);
+      if (openToken.current === token) setRequests(data.requests ?? []);
     } catch {
-      setRequests([]);
+      if (openToken.current === token) setRequests([]);
     }
   };
 
@@ -98,7 +103,8 @@ export default function MyColumnsPanel() {
     requestId: string,
     action: "approve" | "reject"
   ) => {
-    if (busy) return;
+    if (busy || inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -120,12 +126,14 @@ export default function MyColumnsPanel() {
     } catch {
       setError(t("myColumns.error"));
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   };
 
   const rename = async (columnId: string) => {
-    if (busy || !renaming.trim()) return;
+    if (busy || inFlight.current || !renaming.trim()) return;
+    inFlight.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -146,12 +154,14 @@ export default function MyColumnsPanel() {
     } catch {
       setError(t("myColumns.error"));
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   };
 
   const remove = async (columnId: string) => {
-    if (busy) return;
+    if (busy || inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -173,6 +183,7 @@ export default function MyColumnsPanel() {
     } catch {
       setError(t("myColumns.error"));
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   };
@@ -241,9 +252,13 @@ export default function MyColumnsPanel() {
                   </button>
                   <button
                     type="button"
-                    disabled={busy || c.entryCount > 0}
+                    disabled={busy || c.entryCount > 0 || Boolean(c.acnOrgId)}
                     title={
-                      c.entryCount > 0 ? t("myColumns.deleteBlocked") : undefined
+                      c.acnOrgId
+                        ? t("myColumns.deleteOrgBlocked")
+                        : c.entryCount > 0
+                          ? t("myColumns.deleteBlocked")
+                          : undefined
                     }
                     onClick={() => void remove(c.id)}
                     className="border border-zinc-700 px-3 py-1.5 text-xs text-zinc-400 transition hover:border-red-500 hover:text-red-400 disabled:opacity-40"

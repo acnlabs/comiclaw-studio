@@ -321,6 +321,7 @@ const zh = {
   "myColumns.save": "保存",
   "myColumns.delete": "删除栏目",
   "myColumns.deleteBlocked": "栏目下还有条目，先移除后再删除",
+  "myColumns.deleteOrgBlocked": "已绑定 Org 的栏目需由运维处理（先解散 Org）",
   "myColumns.joinRequests": "加入申请",
   "myColumns.noOrg": "本栏目未绑定 Org，无需审批加入。",
   "myColumns.noPending": "没有待审批的申请。",
@@ -663,6 +664,8 @@ const en: Record<MessageKey, string> = {
   "myColumns.save": "Save",
   "myColumns.delete": "Delete column",
   "myColumns.deleteBlocked": "Remove its entries before deleting",
+  "myColumns.deleteOrgBlocked":
+    "Columns bound to an ACN Org are ops-only — dissolve the Org first",
   "myColumns.joinRequests": "Join requests",
   "myColumns.noOrg": "This column has no Org, so nothing to approve.",
   "myColumns.noPending": "No pending requests.",

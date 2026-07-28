@@ -1,15 +1,13 @@
-import { z } from "zod";
-import { badRequest, notFoundJson } from "@/lib/auth";
+import { notFoundJson } from "@/lib/auth";
 import { requireOwnedJoinRequest } from "@/lib/columnOwner";
 import { approveJoinRequest } from "@/lib/orgJoin";
 
 type Ctx = { params: Promise<{ requestId: string }> };
 
-const bodySchema = z.object({
-  role: z.string().trim().min(1).max(64).optional(),
-});
-
-/** Column owner approves a join request for their own column's Org. */
+/**
+ * Column owner approves a join request for their own column's Org.
+ * Role is fixed to worker: granting elevated ACN roles stays an ops action.
+ */
 export async function POST(req: Request, ctx: Ctx) {
   const { requestId: rawId } = await ctx.params;
   const requestId = rawId?.trim();
@@ -18,20 +16,10 @@ export async function POST(req: Request, ctx: Ctx) {
   const access = await requireOwnedJoinRequest(req, requestId);
   if (access instanceof Response) return access;
 
-  const raw = await req.json().catch(() => ({}));
-  const parsed = bodySchema.safeParse(raw ?? {});
-  if (!parsed.success) {
-    return badRequest(
-      parsed.error.issues
-        .map((i) => `${i.path.join(".") || "body"}: ${i.message}`)
-        .join("; ")
-    );
-  }
-
   const result = await approveJoinRequest({
     requestId,
     expectedOrgId: access.request.acnOrgId,
-    role: parsed.data.role,
+    role: "worker",
   });
   if (result instanceof Response) return result;
   return Response.json({ status: "approved", ...result });
