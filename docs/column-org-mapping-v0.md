@@ -122,6 +122,8 @@ Project  * —— 0..1  覆盖 Org（记/项目级；空则继承栏目 Org；�
 目标：有权创建者（人或 agent）可自建容器并绑 Org。
 **已做（薄自助）：** 登录用户 `POST /api/user/columns`（自有栏目；Org 仅 `create` / `none`，`attach` 需治理权证明故禁用）、`POST /api/user/projects`（私有交付 / PUBLIC 共创条目仅挂自己的栏目）。官方《AI 漫记》仍可由 Studio key / bootstrap 代建（`ownerUserId` 可空）。
 
+**栏目主自助管理（已做）：** `GET/PATCH/DELETE /api/user/my-columns/:id`（改名/改简介；删除仅限空栏目，slug 不可改以免公开链接与加入命令失效）、`GET /api/user/my-columns/:id/join-requests`、`POST /api/user/join-requests/:id/{approve,reject}`。复用同一套 `approveJoinRequest` / `rejectJoinRequest`（含 `approving` 占位防竞态）。`ownerUserId` 为空的官方栏目仍只能由运维 `/studio/org-joins` 处理。
+
 **限额分工：** ACN 只能按 steward agent 全局限流（它看不到 Auth0 用户），因此**按人限额放在 Studio**：`USER_MAX_OWNED_COLUMNS`（默认 5）、`USER_MAX_ORG_CREATES_PER_DAY`（默认 2，UTC 日），超出返回 429。计数与建行在同一 **serializable** 事务内完成，避免并发绕过；`Column.orgCreatedAt` 在调 ACN **之前**打戳，因此外部建成但本地失败也照常消耗当日额度（不会留下不计数的 orphan Org）。显式设为 `0` 即关闭自助。
 
 comiclaw《AI 漫记》= 官方栏目 +（通常）一个官方共创 Org，**不是**平台唯一组织形态。
@@ -184,7 +186,7 @@ v0 **不做**：强制一栏目一 Org、Org 钱包分账、每记自动 publish
 2. ~~创建流三选一：新建 Org / 挂已有 Org / 不绑~~ **已做**（Studio key）
 3. ~~投稿闸：项目覆盖 → 栏目默认 → 无 Org 策略~~ **已做**（人类 user API；agent 经 Studio key 代署）
 4. 成员管理代理：Studio `POST /api/agent/orgs/join` + join-requests approve/reject + `…/members` — **已做**（ACN 真相仍在 Org；Studio 代收申请并由 steward 代批；批准走 `pending→approving→approved` 占位防竞态）
-5. 前端：顶栏「共创」→ `/columns`（官方 ai-journal 置顶）— **已做**；Studio 创建分流（私有 / 共创 + 新建栏目 + Org 三选一）— **已做**；栏目公开页 Org ID + 加入/直投稿命令 — **已做**；运维 join-request 薄管理面 `/studio/org-joins` — **已做**；项目页完整 Org 管理面 — **未做**
+5. 前端：顶栏「共创」→ `/columns`（官方 ai-journal 置顶）— **已做**；Studio 创建分流（私有 / 共创 + 新建栏目 + Org）— **已做**；栏目主「我的栏目」管理（改名/删空栏目/批拒加入）— **已做**；栏目公开页 Org ID + 加入/直投稿命令 — **已做**；运维 join-request 薄管理面 `/studio/org-joins` — **已做**；项目页完整 Org 管理面 — **未做**  
 6. ACN Bearer 无 Task 直投稿 — **已做**（`ProductionAuth` kind=`acn_contributor`；内容路由 `allowPublicContribute` + Org 门闸）
 7. 栏目公开页 `/columns/ai-journal`（时间线、当前记、agent 指引）— **已做**
 8. 运维 bootstrap 脚本 `npm run bootstrap:ai-journal` — **已做**（需对目标环境执行一次）
