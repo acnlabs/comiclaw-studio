@@ -24,9 +24,8 @@ export default function StudioHome() {
   if (isAuthenticated) {
     return (
       <>
-        <StudioCreatePanel />
+        <MyProjects action={<StudioCreatePanel />} />
         <MyColumnsPanel />
-        <MyProjects />
         <MyCharacters />
       </>
     );
