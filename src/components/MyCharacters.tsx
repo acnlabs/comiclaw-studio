@@ -19,7 +19,7 @@ interface MyCharacter {
 
 // 登录客户名下的数字人角色 + 在 Studio 范围内的选角授权收益统计。
 // 只在客户名下有角色时渲染(大多数客户没有,不占空间)。
-export default function MyCharacters() {
+export default function MyCharacters({ bare }: { bare?: boolean }) {
   const { isAuthenticated, isLoading, getAccessTokenSilently } = useAuth0();
   const { t } = useT();
   const [characters, setCharacters] = useState<MyCharacter[] | null>(null);
@@ -42,13 +42,26 @@ export default function MyCharacters() {
     })();
   }, [isAuthenticated, isLoading, getAccessTokenSilently]);
 
-  if (!characters || characters.length === 0) return null;
+  if (!bare && (!characters || characters.length === 0)) return null;
 
   return (
     <div>
-      <h2 className="mt-12 mb-1 text-lg font-semibold text-zinc-100">{t("myChar.title")}</h2>
-      <p className="mb-4 text-sm text-zinc-500">{t("myChar.subtitle")}</p>
+      {bare ? (
+        <p className="mb-4 text-sm text-zinc-500">{t("myChar.subtitle")}</p>
+      ) : (
+        <>
+          <h2 className="mt-12 mb-1 text-lg font-semibold text-zinc-100">{t("myChar.title")}</h2>
+          <p className="mb-4 text-sm text-zinc-500">{t("myChar.subtitle")}</p>
+        </>
+      )}
 
+      {characters === null ? (
+        <div className="py-10 text-center text-sm text-zinc-600">…</div>
+      ) : characters.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-zinc-800 px-6 py-16 text-center text-sm text-zinc-500">
+          {t("myChar.empty")}
+        </div>
+      ) : (
       <ul className="space-y-3">
         {characters.map((c) => (
           <li
@@ -86,7 +99,10 @@ export default function MyCharacters() {
           </li>
         ))}
       </ul>
-      <p className="mt-3 text-xs text-zinc-600">{t("myChar.walletHint")}</p>
+      )}
+      {characters && characters.length > 0 ? (
+        <p className="mt-3 text-xs text-zinc-600">{t("myChar.walletHint")}</p>
+      ) : null}
     </div>
   );
 }

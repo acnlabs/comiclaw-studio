@@ -18,8 +18,9 @@ interface MyProject {
   updatedAt: string;
 }
 
-// 登录客户的项目列表(嵌入 Studio 页);action 用于在标题行放「新建」入口
-export default function MyProjects({ action }: { action?: React.ReactNode }) {
+// 登录客户的项目列表(嵌入 Studio 页)
+// bare: 由外层标签页给标题时,省掉组件内的标题块
+export default function MyProjects({ bare }: { bare?: boolean }) {
   const { isAuthenticated, isLoading, getAccessTokenSilently } = useAuth0();
   const { t, fmtDate } = useT();
   const [projects, setProjects] = useState<MyProject[] | null>(null);
@@ -44,13 +45,16 @@ export default function MyProjects({ action }: { action?: React.ReactNode }) {
 
   return (
     <div>
-      <div className="mt-12 mb-4 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold text-zinc-100">{t("my.title")}</h2>
-          <p className="mt-1 text-sm text-zinc-500">{t("my.subtitle")}</p>
-        </div>
-        {action ? <div className="shrink-0">{action}</div> : null}
-      </div>
+      {bare ? (
+        <p className="mb-4 text-sm text-zinc-500">{t("my.subtitle")}</p>
+      ) : (
+        <>
+          <h2 className="mt-12 mb-1 text-lg font-semibold text-zinc-100">
+            {t("my.title")}
+          </h2>
+          <p className="mb-4 text-sm text-zinc-500">{t("my.subtitle")}</p>
+        </>
+      )}
 
       {projects === null ? (
         <div className="py-10 text-center text-sm text-zinc-600">…</div>

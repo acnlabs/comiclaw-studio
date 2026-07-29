@@ -23,7 +23,7 @@ type JoinRequest = {
   createdAt: string;
 };
 
-export default function MyColumnsPanel() {
+export default function MyColumnsPanel({ bare }: { bare?: boolean }) {
   const { isAuthenticated, isLoading, getAccessTokenSilently } = useAuth0();
   const { t, fmtDate } = useT();
 
@@ -188,19 +188,35 @@ export default function MyColumnsPanel() {
     }
   };
 
-  if (!isAuthenticated || columns === null || columns.length === 0) return null;
+  if (!isAuthenticated) return null;
+  // Without tabs an empty panel was hidden entirely, so owners never learned
+  // columns existed; inside a tab the empty state has to carry that job.
+  if (!bare && (columns === null || columns.length === 0)) return null;
 
   return (
-    <section className="mt-12">
-      <h2 className="text-lg font-semibold text-zinc-100">
-        {t("myColumns.title")}
-      </h2>
-      <p className="mt-1 max-w-xl text-sm text-zinc-500">
-        {t("myColumns.subtitle")}
-      </p>
+    <section className={bare ? undefined : "mt-12"}>
+      {bare ? (
+        <p className="max-w-xl text-sm text-zinc-500">{t("myColumns.subtitle")}</p>
+      ) : (
+        <>
+          <h2 className="text-lg font-semibold text-zinc-100">
+            {t("myColumns.title")}
+          </h2>
+          <p className="mt-1 max-w-xl text-sm text-zinc-500">
+            {t("myColumns.subtitle")}
+          </p>
+        </>
+      )}
 
       {error ? <p className="mt-3 text-sm text-red-400">{error}</p> : null}
 
+      {columns === null ? (
+        <div className="mt-4 py-10 text-center text-sm text-zinc-600">…</div>
+      ) : columns.length === 0 ? (
+        <div className="mt-4 rounded-2xl border border-dashed border-zinc-800 px-6 py-16 text-center text-sm text-zinc-500">
+          {t("myColumns.empty")}
+        </div>
+      ) : (
       <ul className="mt-4 space-y-3">
         {columns.map((c) => (
           <li key={c.id} className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/50">
@@ -329,6 +345,7 @@ export default function MyColumnsPanel() {
           </li>
         ))}
       </ul>
+      )}
     </section>
   );
 }
