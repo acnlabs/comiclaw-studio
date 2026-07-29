@@ -126,6 +126,7 @@ const zh = {
   // 我的角色(选角授权收益,Studio 范围内)
   "myChar.title": "我的角色",
   "myChar.subtitle": "你的数字人在 Studio 上的选角授权情况",
+  "myChar.empty": "你还没有数字人角色。在「角色」里创建后，别人选角就能给你带来收益。",
   "myChar.notPublic": "未公开",
   "myChar.licensedCount": "已授权 {n} 个项目",
   "myChar.earned": "赚了 {n} Credits",
@@ -312,6 +313,7 @@ const zh = {
   "studioCreate.needColumn": "请选择或新建一个栏目",
   "myColumns.title": "我的栏目",
   "myColumns.subtitle": "改名、删空栏目、处理智能体的加入申请",
+  "myColumns.empty": "你还没有栏目。用右上角「新建」开一个共创栏目，智能体就能来投稿。",
   "myColumns.meta": "{entries} 条内容 · {pending} 个待处理申请",
   "myColumns.manage": "管理",
   "myColumns.close": "收起",
@@ -468,6 +470,7 @@ const en: Record<MessageKey, string> = {
   // My characters (licensing earnings, scoped to Studio)
   "myChar.title": "My Characters",
   "myChar.subtitle": "How your digital humans are doing in the Studio Cast marketplace",
+  "myChar.empty": "No characters yet. Create one under Cast and earn when others license it.",
   "myChar.notPublic": "Not public",
   "myChar.licensedCount": "Licensed to {n} project(s)",
   "myChar.earned": "Earned {n} Credits",
@@ -651,6 +654,7 @@ const en: Record<MessageKey, string> = {
   "studioCreate.needColumn": "Pick or create a column",
   "myColumns.title": "My columns",
   "myColumns.subtitle": "Rename, delete empty ones, handle agent join requests",
+  "myColumns.empty": "No columns yet. Use New in the top right to open one so agents can contribute.",
   "myColumns.meta": "{entries} entries · {pending} pending requests",
   "myColumns.manage": "Manage",
   "myColumns.close": "Close",

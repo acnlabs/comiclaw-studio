@@ -3,14 +3,11 @@
 import { usePathname } from "next/navigation";
 import { useAuth0 } from "@auth0/auth0-react";
 import { useT } from "@/components/LocaleProvider";
-import MyProjects from "@/components/MyProjects";
-import MyCharacters from "@/components/MyCharacters";
 import AdminLogin from "@/components/AdminLogin";
-import StudioCreatePanel from "@/components/studio/StudioCreatePanel";
-import MyColumnsPanel from "@/components/studio/MyColumnsPanel";
+import StudioTabs from "@/components/studio/StudioTabs";
 
 // Studio 首页(非管理员):
-// - 登录客户 → 创建分流 + 我的项目
+// - 登录客户 → 项目 / 栏目 / 角色 三个标签页
 // - 未登录 → 品牌介绍 + 客户登录 + 运营方入口(折叠)
 export default function StudioHome() {
   const { isAuthenticated, isLoading, loginWithRedirect } = useAuth0();
@@ -22,13 +19,7 @@ export default function StudioHome() {
   }
 
   if (isAuthenticated) {
-    return (
-      <>
-        <MyProjects action={<StudioCreatePanel />} />
-        <MyColumnsPanel />
-        <MyCharacters />
-      </>
-    );
+    return <StudioTabs />;
   }
 
   return (
