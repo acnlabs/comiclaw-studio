@@ -4,10 +4,13 @@
  */
 import assert from "node:assert/strict";
 import {
+  mergeLedgerEntries,
   shapeEarnedGroups,
   shapeSpentGroups,
   type EarnedGroup,
+  type EarnedRow,
   type SpentGroup,
+  type SpentRow,
 } from "../src/lib/creditsLedger";
 
 function ok(label: string) {
@@ -70,5 +73,55 @@ ok("spent sorts by credits and buckets a missing action");
 
 assert.deepEqual(shapeSpentGroups([]), { total: 0, byAction: [] });
 ok("spent handles no charges");
+
+const earnedRows: EarnedRow[] = [
+  {
+    id: "l1",
+    characterId: "c1",
+    characterName: "阿虾",
+    projectName: "第 3 记",
+    points: 30,
+    createdAt: "2026-07-27T10:00:00.000Z",
+  },
+  {
+    id: "l2",
+    characterId: "c1",
+    characterName: "阿虾",
+    projectName: null,
+    points: 20,
+    createdAt: "2026-07-20T10:00:00.000Z",
+  },
+];
+const spentRows: SpentRow[] = [
+  {
+    id: "s1",
+    projectId: "p1",
+    projectName: "第 3 记",
+    action: "video_generate",
+    amount: 30,
+    status: "SUCCESS",
+    createdAt: "2026-07-28T10:00:00.000Z",
+  },
+  {
+    id: "s2",
+    projectId: "p1",
+    projectName: "第 3 记",
+    action: "asset_generate",
+    amount: 5,
+    status: "SUCCESS",
+    createdAt: "2026-07-25T10:00:00.000Z",
+  },
+];
+
+const merged = mergeLedgerEntries(earnedRows, spentRows);
+assert.deepEqual(
+  merged.map((e) => `${e.kind}:${e.id}`),
+  ["spend:s1", "earn:l1", "spend:s2", "earn:l2"],
+  "statement must read newest first across both kinds"
+);
+ok("merged statement interleaves income and spend by date");
+
+assert.deepEqual(mergeLedgerEntries([], []), []);
+ok("merged statement handles an empty ledger");
 
 console.log("\nAll credits ledger checks passed.");

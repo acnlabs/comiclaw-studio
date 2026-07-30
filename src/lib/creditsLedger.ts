@@ -79,6 +79,60 @@ export function shapeEarnedGroups(
   };
 }
 
+/**
+ * One chronological statement, the way a bill reads, so income and spend can
+ * be scanned together instead of in two stacked sections.
+ */
+export type LedgerEntry =
+  | {
+      kind: "earn";
+      id: string;
+      characterName: string;
+      projectName: string | null;
+      points: number;
+      createdAt: string;
+    }
+  | {
+      kind: "spend";
+      id: string;
+      action: string | null;
+      projectName: string | null;
+      amount: number | null;
+      status: string;
+      createdAt: string;
+    };
+
+export function mergeLedgerEntries(
+  earned: EarnedRow[],
+  spent: SpentRow[]
+): LedgerEntry[] {
+  const entries: LedgerEntry[] = [
+    ...earned.map(
+      (r): LedgerEntry => ({
+        kind: "earn",
+        id: r.id,
+        characterName: r.characterName,
+        projectName: r.projectName,
+        points: r.points,
+        createdAt: r.createdAt,
+      })
+    ),
+    ...spent.map(
+      (r): LedgerEntry => ({
+        kind: "spend",
+        id: r.id,
+        action: r.action,
+        projectName: r.projectName,
+        amount: r.amount,
+        status: r.status,
+        createdAt: r.createdAt,
+      })
+    ),
+  ];
+
+  return entries.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
 export function shapeSpentGroups(groups: SpentGroup[]): {
   total: number;
   byAction: SpentByAction[];
