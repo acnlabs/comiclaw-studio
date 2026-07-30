@@ -1,13 +1,15 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { verifyUserToken } from "@/lib/userAuth";
 import { unauthorized } from "@/lib/auth";
 import {
-  summarizeEarned,
-  summarizeSpent,
+  shapeEarnedGroups,
+  shapeSpentGroups,
   type EarnedRow,
   type SpentRow,
 } from "@/lib/creditsLedger";
 
+/** Lists are a recent window; totals are aggregated over every row. */
 const RECENT_LIMIT = 50;
 
 /**
@@ -19,13 +21,22 @@ export async function GET(req: Request) {
   const sub = await verifyUserToken(req);
   if (!sub) return unauthorized();
 
-  const [licenses, charges] = await Promise.all([
+  const earnedWhere: Prisma.CastingLicenseWhereInput = {
+    status: "GRANTED",
+    licenseeSub: { not: sub },
+    character: { ownerUserId: sub },
+  };
+  const spentWhere: Prisma.GenerationChargeRefWhereInput = { userSub: sub };
+
+  const [
+    licenses,
+    charges,
+    earnedGroups,
+    spentGroups,
+    failedCount,
+  ] = await Promise.all([
     prisma.castingLicense.findMany({
-      where: {
-        status: "GRANTED",
-        licenseeSub: { not: sub },
-        character: { ownerUserId: sub },
-      },
+      where: earnedWhere,
       orderBy: { createdAt: "desc" },
       take: RECENT_LIMIT,
       select: {
@@ -33,11 +44,13 @@ export async function GET(req: Request) {
         points: true,
         createdAt: true,
         character: { select: { id: true, name: true } },
-        project: { select: { name: true } },
+        // A licensee's PRIVATE project name is their business, not the
+        // character owner's, so only PUBLIC entries are named below.
+        project: { select: { name: true, visibility: true } },
       },
     }),
     prisma.generationChargeRef.findMany({
-      where: { userSub: sub },
+      where: spentWhere,
       orderBy: { createdAt: "desc" },
       take: RECENT_LIMIT,
       select: {
@@ -50,13 +63,35 @@ export async function GET(req: Request) {
         project: { select: { name: true } },
       },
     }),
+    prisma.castingLicense.groupBy({
+      by: ["characterId"],
+      where: earnedWhere,
+      _sum: { points: true },
+      _count: { _all: true },
+    }),
+    prisma.generationChargeRef.groupBy({
+      by: ["action"],
+      where: { ...spentWhere, status: "SUCCESS" },
+      _sum: { amount: true },
+      _count: { _all: true },
+    }),
+    prisma.generationChargeRef.count({
+      where: { ...spentWhere, status: { not: "SUCCESS" } },
+    }),
   ]);
+
+  const characterNames = await prisma.agentCharacter.findMany({
+    where: { id: { in: earnedGroups.map((g) => g.characterId) } },
+    select: { id: true, name: true },
+  });
+  const namesById = new Map(characterNames.map((c) => [c.id, c.name]));
 
   const earnedRows: EarnedRow[] = licenses.map((l) => ({
     id: l.id,
     characterId: l.character.id,
     characterName: l.character.name,
-    projectName: l.project?.name ?? null,
+    projectName:
+      l.project?.visibility === "PUBLIC" ? (l.project?.name ?? null) : null,
     points: l.points,
     createdAt: l.createdAt.toISOString(),
   }));
@@ -71,8 +106,25 @@ export async function GET(req: Request) {
     createdAt: c.createdAt.toISOString(),
   }));
 
+  const earned = shapeEarnedGroups(
+    earnedGroups.map((g) => ({
+      characterId: g.characterId,
+      licenseCount: g._count._all,
+      credits: g._sum.points,
+    })),
+    namesById
+  );
+  const spent = shapeSpentGroups(
+    spentGroups.map((g) => ({
+      action: g.action,
+      count: g._count._all,
+      credits: g._sum.amount,
+    }))
+  );
+
   return Response.json({
-    earned: { ...summarizeEarned(earnedRows), rows: earnedRows },
-    spent: { ...summarizeSpent(spentRows), rows: spentRows },
+    earned: { ...earned, rows: earnedRows },
+    spent: { ...spent, failedCount, rows: spentRows },
+    recentLimit: RECENT_LIMIT,
   });
 }

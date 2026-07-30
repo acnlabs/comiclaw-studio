@@ -13,4 +13,6 @@ export type Ledger = {
     failedCount: number;
     rows: SpentRow[];
   };
+  /** Rows are a recent window; totals are aggregated over everything */
+  recentLimit: number;
 };

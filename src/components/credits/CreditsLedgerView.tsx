@@ -6,6 +6,20 @@ import { WALLET_URL } from "@/components/CreditsBadge";
 import type { Ledger } from "@/components/credits/types";
 import type { MessageKey } from "@/lib/i18n";
 
+const KNOWN_STATUS_LABELS: Record<string, MessageKey> = {
+  INSUFFICIENT_BALANCE: "chargeStatus.INSUFFICIENT_BALANCE",
+  ERROR: "chargeStatus.ERROR",
+};
+
+/** An unexpected status must not leak a raw i18n key into the page. */
+function chargeStatusLabel(
+  status: string,
+  t: (key: MessageKey, params?: Record<string, string | number>) => string
+): string {
+  const key = KNOWN_STATUS_LABELS[status];
+  return key ? t(key) : t("chargeStatus.ERROR");
+}
+
 /** Presentational half of the credits page: no fetching, so it can be previewed. */
 export default function CreditsLedgerView({
   ledger,
@@ -50,6 +64,9 @@ export default function CreditsLedgerView({
             </div>
             <p className="mt-1 text-sm text-zinc-500">
               {t("credits.earnedSubtitle")}
+            </p>
+            <p className="mt-1 text-xs text-zinc-600">
+              {t("credits.grossNote")}
             </p>
 
             {ledger.earned.rows.length === 0 ? (
@@ -97,6 +114,11 @@ export default function CreditsLedgerView({
                     </li>
                   ))}
                 </ul>
+                {ledger.earned.rows.length >= ledger.recentLimit ? (
+                  <p className="mt-2 text-xs text-zinc-600">
+                    {t("credits.recentOnly", { n: ledger.recentLimit })}
+                  </p>
+                ) : null}
               </>
             )}
           </section>
@@ -107,11 +129,14 @@ export default function CreditsLedgerView({
                 {t("credits.spentTitle")}
               </h2>
               <p className="text-sm text-zinc-300">
-                −{ledger.spent.total.toLocaleString()}
+                ≈ −{ledger.spent.total.toLocaleString()}
               </p>
             </div>
             <p className="mt-1 text-sm text-zinc-500">
               {t("credits.spentSubtitle")}
+            </p>
+            <p className="mt-1 text-xs text-zinc-600">
+              {t("credits.approxNote")}
             </p>
 
             {ledger.spent.rows.length === 0 ? (
@@ -150,7 +175,7 @@ export default function CreditsLedgerView({
                           {fmtDate(r.createdAt)}
                           {r.status !== "SUCCESS" ? (
                             <span className="ml-2 text-amber-500">
-                              {t(`chargeStatus.${r.status}` as MessageKey)}
+                              {chargeStatusLabel(r.status, t)}
                             </span>
                           ) : null}
                         </p>
@@ -167,6 +192,11 @@ export default function CreditsLedgerView({
                     </li>
                   ))}
                 </ul>
+                {ledger.spent.rows.length >= ledger.recentLimit ? (
+                  <p className="mt-2 text-xs text-zinc-600">
+                    {t("credits.recentOnly", { n: ledger.recentLimit })}
+                  </p>
+                ) : null}
                 {ledger.spent.failedCount > 0 ? (
                   <p className="mt-2 text-xs text-zinc-600">
                     {t(
@@ -195,4 +225,3 @@ export default function CreditsLedgerView({
     </div>
   );
 }
-

@@ -14,7 +14,6 @@ interface MyCharacter {
   licensePoints: number;
   listed: boolean;
   licensedProjectCount: number;
-  totalCreditsEarnedGross: number;
 }
 
 // 角色页顶部的「我的角色」:登录客户名下的数字人。
