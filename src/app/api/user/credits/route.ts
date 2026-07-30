@@ -9,7 +9,11 @@ import {
   type SpentRow,
 } from "@/lib/creditsLedger";
 
-/** Lists are a recent window; totals are aggregated over every row. */
+/**
+ * Each side is windowed separately so filtering by income still shows recent
+ * income even when spend dominates. That means the merged list is not a single
+ * "latest N", so the UI only says the list is a window — never how deep.
+ */
 const RECENT_LIMIT = 50;
 
 /**
@@ -125,6 +129,7 @@ export async function GET(req: Request) {
   return Response.json({
     earned: { ...earned, rows: earnedRows },
     spent: { ...spent, failedCount, rows: spentRows },
-    recentLimit: RECENT_LIMIT,
+    truncated:
+      licenses.length >= RECENT_LIMIT || charges.length >= RECENT_LIMIT,
   });
 }
