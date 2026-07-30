@@ -14,12 +14,11 @@ interface MyCharacter {
   licensePoints: number;
   listed: boolean;
   licensedProjectCount: number;
-  totalCreditsEarnedGross: number;
 }
 
-// 登录客户名下的数字人角色 + 在 Studio 范围内的选角授权收益统计。
-// 只在客户名下有角色时渲染(大多数客户没有,不占空间)。
-export default function MyCharacters({ bare }: { bare?: boolean }) {
+// 角色页顶部的「我的角色」:登录客户名下的数字人。
+// 收益归因在 /credits,这里只讲资产本身。
+export default function MyCharacters() {
   const { isAuthenticated, isLoading, getAccessTokenSilently } = useAuth0();
   const { t } = useT();
   const [characters, setCharacters] = useState<MyCharacter[] | null>(null);
@@ -42,26 +41,23 @@ export default function MyCharacters({ bare }: { bare?: boolean }) {
     })();
   }, [isAuthenticated, isLoading, getAccessTokenSilently]);
 
-  if (!bare && (!characters || characters.length === 0)) return null;
+  // Nothing owned yet is the common case on a public marketplace page, so stay
+  // out of the way instead of showing an empty box above everyone's browse view.
+  if (!characters || characters.length === 0) return null;
 
   return (
-    <div>
-      {bare ? (
-        <p className="mb-4 text-sm text-zinc-500">{t("myChar.subtitle")}</p>
-      ) : (
-        <>
-          <h2 className="mt-12 mb-1 text-lg font-semibold text-zinc-100">{t("myChar.title")}</h2>
-          <p className="mb-4 text-sm text-zinc-500">{t("myChar.subtitle")}</p>
-        </>
-      )}
+    <section className="mb-10 rounded-2xl border border-zinc-800 bg-zinc-900/40 px-5 py-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-lg font-semibold text-zinc-100">{t("myChar.title")}</h2>
+        <Link
+          href="/credits"
+          className="text-xs text-accent underline-offset-4 hover:underline"
+        >
+          {t("myChar.earningsLink")}
+        </Link>
+      </div>
+      <p className="mt-1 mb-4 text-sm text-zinc-500">{t("myChar.subtitle")}</p>
 
-      {characters === null ? (
-        <div className="py-10 text-center text-sm text-zinc-600">…</div>
-      ) : characters.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-zinc-800 px-6 py-16 text-center text-sm text-zinc-500">
-          {t("myChar.empty")}
-        </div>
-      ) : (
       <ul className="space-y-3">
         {characters.map((c) => (
           <li
@@ -88,21 +84,12 @@ export default function MyCharacters({ bare }: { bare?: boolean }) {
                 {!c.isPublic && ` · ${t("myChar.notPublic")}`}
               </div>
             </div>
-            <div className="shrink-0 text-right">
-              <div className="text-sm font-medium text-zinc-100">
-                {t("myChar.licensedCount", { n: c.licensedProjectCount })}
-              </div>
-              <div className="mt-0.5 text-xs text-accent">
-                {t("myChar.earned", { n: c.totalCreditsEarnedGross })}
-              </div>
+            <div className="shrink-0 text-right text-sm text-zinc-400">
+              {t("myChar.licensedCount", { n: c.licensedProjectCount })}
             </div>
           </li>
         ))}
       </ul>
-      )}
-      {characters && characters.length > 0 ? (
-        <p className="mt-3 text-xs text-zinc-600">{t("myChar.walletHint")}</p>
-      ) : null}
-    </div>
+    </section>
   );
 }

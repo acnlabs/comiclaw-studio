@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getLocale } from "@/lib/locale";
 import { translate } from "@/lib/i18n";
+import MyCharacters from "@/components/MyCharacters";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,9 @@ export default async function CharactersPage() {
   return (
     <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
       <h1 className="text-xl font-bold text-zinc-50">{t("char.title")}</h1>
-      <p className="mt-1 max-w-3xl text-sm text-zinc-500">{t("char.subtitle")}</p>
+      <p className="mt-1 mb-8 max-w-3xl text-sm text-zinc-500">{t("char.subtitle")}</p>
+
+      <MyCharacters />
 
       {characters.length === 0 ? (
         <div className="mt-10 rounded-2xl border border-dashed border-zinc-800 py-20 text-center text-sm text-zinc-500">

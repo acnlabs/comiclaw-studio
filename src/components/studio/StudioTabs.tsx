@@ -3,17 +3,16 @@
 import { useRef, useState } from "react";
 import { useT } from "@/components/LocaleProvider";
 import MyProjects from "@/components/MyProjects";
-import MyCharacters from "@/components/MyCharacters";
 import MyColumnsPanel from "@/components/studio/MyColumnsPanel";
 import StudioCreatePanel from "@/components/studio/StudioCreatePanel";
 
-type Tab = "projects" | "columns" | "characters";
+type Tab = "projects" | "columns";
 
-const ORDER: Tab[] = ["projects", "columns", "characters"];
+const ORDER: Tab[] = ["projects", "columns"];
 
 /**
- * Projects, columns and characters are separate workspaces, not one long
- * scroll — each tab keeps its own list and empty state.
+ * Studio is the workbench: things being made. Owned assets and their earnings
+ * live under Cast and /credits instead.
  */
 export default function StudioTabs() {
   const { t } = useT();
@@ -23,7 +22,6 @@ export default function StudioTabs() {
   const labels: Record<Tab, string> = {
     projects: t("my.title"),
     columns: t("myColumns.title"),
-    characters: t("myChar.title"),
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -80,7 +78,6 @@ export default function StudioTabs() {
       >
         {tab === "projects" ? <MyProjects bare /> : null}
         {tab === "columns" ? <MyColumnsPanel bare /> : null}
-        {tab === "characters" ? <MyCharacters bare /> : null}
       </div>
     </div>
   );

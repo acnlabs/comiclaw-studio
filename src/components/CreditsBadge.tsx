@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
 import { useT } from "@/components/LocaleProvider";
@@ -21,7 +22,8 @@ export function requestCreditsRefresh() {
 }
 
 // 顶栏 Credits 余额:登录后显示,窗口重获焦点(如从 AgentPlanet 充值/付款回来)
-// 与收到刷新事件时自动更新。拉取失败时静默隐藏,不影响导航。
+// 与收到刷新事件时自动更新。点进站内收支页(归因明细),再从那里去 AgentPlanet
+// 钱包看总账;余额拉不到时只藏数字,入口仍在,否则收支页就没有导航入口了。
 export default function CreditsBadge() {
   const { isAuthenticated, getAccessTokenSilently } = useAuth0();
   const { t } = useT();
@@ -56,18 +58,16 @@ export default function CreditsBadge() {
     };
   }, [isAuthenticated, refresh]);
 
-  if (!isAuthenticated || balance === null) return null;
+  if (!isAuthenticated) return null;
 
   return (
-    <a
-      href={WALLET_URL}
-      target="_blank"
-      rel="noopener noreferrer"
+    <Link
+      href="/credits"
       title={t("nav.creditsTitle")}
       className="flex items-center gap-1 rounded-full border border-zinc-700 px-2.5 py-0.5 text-xs font-medium text-zinc-300 transition-colors hover:border-zinc-500 hover:text-zinc-100"
     >
       <span className="text-accent">◈</span>
-      {balance.toLocaleString()}
-    </a>
+      {balance === null ? t("nav.credits") : balance.toLocaleString()}
+    </Link>
   );
 }
