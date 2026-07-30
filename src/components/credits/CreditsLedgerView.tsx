@@ -222,9 +222,7 @@ export default function CreditsLedgerView({
                   )}
                 </p>
               ) : null}
-              {entries.length >= ledger.recentLimit ? (
-                <p>{t("credits.recentOnly", { n: ledger.recentLimit })}</p>
-              ) : null}
+              {ledger.truncated ? <p>{t("credits.recentOnly")}</p> : null}
             </div>
           </section>
 

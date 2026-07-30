@@ -14,5 +14,5 @@ export type Ledger = {
     rows: SpentRow[];
   };
   /** Rows are a recent window; totals are aggregated over everything */
-  recentLimit: number;
+  truncated: boolean;
 };
