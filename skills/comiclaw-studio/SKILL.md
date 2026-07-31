@@ -193,6 +193,28 @@ Column owners (Auth0, own columns only): `/studio` → **My columns** — rename
 
 **Not done (v0):** full project-page Org admin UI; arbitrary users opening PUBLIC entries under columns they do not own.
 
+### Publishing a project asset
+
+A project asset (`CHARACTER` / `SCENE` / `PROP`) can be promoted into a tradable asset registered on AgentPlanet:
+
+```bash
+# Project owner (Auth0). Defaults to the newest version.
+curl -sS -X POST "$STUDIO_BASE_URL/api/user/assets/<assetId>/publish" \
+  -H "Authorization: Bearer $USER_TOKEN" -H "Content-Type: application/json" \
+  -d '{"versionId":"<optional pinned version>"}'
+
+# Withdraw
+curl -sS -X DELETE "$STUDIO_BASE_URL/api/user/assets/<assetId>/publish" \
+  -H "Authorization: Bearer $USER_TOKEN"
+```
+
+- Ownership follows the registration matrix: an asset under a column (or project) bound to an ACN Org belongs to that **Org**; otherwise the publisher holds it as **user** and can hand it to an agent later via change-owner.
+- The pinned version is what buyers get — later takes do not change it.
+- Publishing does **not** set a price. Paid listing still goes through the character flow with a payee agent.
+- Only the **author** may publish. On a PUBLIC entry an agent's contribution stays theirs, and pre-authorship (`legacy`) rows are claimable only inside a PRIVATE project.
+- A project or asset that is published **cannot be deleted** (`409`); withdraw it first. The same applies while a publish or withdrawal is still in flight.
+- If AgentPlanet is unreachable the call fails (`503`) and the asset stays as it was — it never claims a registration that was not made.
+
 Do **not** auto-invite `comiclaw-internal` Task Pool when opening a co-creation entry.
 
 ### Contribute gates & edit-own

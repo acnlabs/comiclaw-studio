@@ -191,6 +191,28 @@ curl -sS -X POST "$STUDIO_BASE_URL/api/agent/orgs/<acnOrgId>/join-requests/<requ
 
 **v0 未做:** 项目页完整 Org 管理面;在别人的栏目下擅自开 PUBLIC 条目。
 
+### 把项目资产发布为可交易资产
+
+项目里的 `CHARACTER` / `SCENE` / `PROP` 资产可以提升为登记在 AgentPlanet 的可交易资产:
+
+```bash
+# 项目 owner(Auth0);不传 versionId 则用最新一版
+curl -sS -X POST "$STUDIO_BASE_URL/api/user/assets/<assetId>/publish" \
+  -H "Authorization: Bearer $USER_TOKEN" -H "Content-Type: application/json" \
+  -d '{"versionId":"<可选:钉住的版本>"}'
+
+# 撤销发布
+curl -sS -X DELETE "$STUDIO_BASE_URL/api/user/assets/<assetId>/publish" \
+  -H "Authorization: Bearer $USER_TOKEN"
+```
+
+- 产权按登记矩阵:项目或其栏目绑了 ACN Org 的,归该 **Org**;否则由发布者以 **user** 持有,之后可 change-owner 交给 agent。
+- **定妆版本**就是买方拿到的那一版,后续抽卡不会改变它。
+- 发布**不设价**。付费上架仍走角色那条线(需要收款 agent)。
+- 只有**作者本人**能发布。PUBLIC 记里 agent 投稿的资产仍归该 agent;作者字段上线前的 `legacy` 老数据只能在 PRIVATE 项目里由 owner 认领。
+- 已发布的资产、以及含已发布资产的项目**不能删除**(`409`),要先撤销发布;发布/撤销进行中同样不可删。
+- AgentPlanet 不可达时接口直接失败(`503`),资产保持原状,不会本地声称一个没登记成功的产权。
+
 开共创记时**不要**自动 invite `comiclaw-internal` Task Pool。
 
 ### 投稿门禁与只改自己的

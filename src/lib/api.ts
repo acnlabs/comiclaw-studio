@@ -116,6 +116,13 @@ export function mapError(err: unknown): Response {
         return badRequest("Referenced record does not exist");
       case "P2025":
         return notFoundJson("Record not found");
+      case "P2034":
+        // Serializable transaction lost a write conflict; the caller should
+        // retry rather than be told their request was malformed.
+        return Response.json(
+          { error: "Concurrent update, please retry" },
+          { status: 409 }
+        );
       default:
         return badRequest(`Database error (${err.code})`);
     }

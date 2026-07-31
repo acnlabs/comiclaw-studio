@@ -160,16 +160,31 @@ model Asset {
   authorUserId  String?
   authorAgentId String?
   authorKey     String   @default("legacy")
+  // 发布为可交易资产后的产权主体,对应 AgentPlanet 登记表 owner_type/owner_id
+  // (user | agent | org;org 用 ACN org_id)。未发布时为空。
+  ownerType   String?
+  ownerId     String?
+  // 定妆版本:交易的是这一版,不随后续抽卡改变
+  publishedVersionId String?
+  publishedAt        DateTime?
+  // draft | publishing | published | unpublishing
+  // 单独一个状态位:publishedAt 无法区分「正在登记」和「已登记」,并发撤销会把
+  // 还在登记中的资产注销掉
+  publishState       String    @default("draft")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   project  Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  versions AssetVersion[]
+  versions AssetVersion[] @relation("AssetVersions")
+  publishedVersion AssetVersion? @relation("AssetPublishedVersion", fields: [publishedVersionId], references: [id], onDelete: SetNull)
   shotRefs ShotAsset[]
 
   @@index([projectId, authorKey])
   @@index([authorUserId])
   @@index([authorAgentId])
+  @@index([publishedAt])
+  @@index([publishState])
+  @@index([ownerType, ownerId])
 }
 
 model AssetVersion {
@@ -181,7 +196,8 @@ model AssetVersion {
   notes     String? // 本版设计说明
   createdAt DateTime @default(now())
 
-  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  asset Asset @relation("AssetVersions", fields: [assetId], references: [id], onDelete: Cascade)
+  publishedFor Asset[] @relation("AssetPublishedVersion")
 
   @@unique([assetId, version])
 }

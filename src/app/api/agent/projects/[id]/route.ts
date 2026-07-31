@@ -1,8 +1,10 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { emitProjectUpdate } from "@/lib/events";
 import { withAgentAuth, withProjectWorkerAuth, parseBody } from "@/lib/api";
-import { notFoundJson, forbidden, badRequest } from "@/lib/auth";
+import { notFoundJson, forbidden, badRequest, conflict } from "@/lib/auth";
 import { updateProjectSchema } from "@/lib/schemas";
+import { blocksProjectDelete, PUBLISH_DRAFT } from "@/lib/assetPublish";
 import type { ProductionAuth } from "@/lib/acnAuth";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -38,7 +40,30 @@ export const DELETE = withAgentAuth(async (_req, ctx: Ctx) => {
   const { id } = await ctx.params;
   const exists = await prisma.project.findUnique({ where: { id }, select: { id: true } });
   if (!exists) return notFoundJson();
-  await prisma.project.delete({ where: { id } });
+
+  // Assets cascade with the project. A published one is registered on
+  // AgentPlanet and may be licensed by other projects, so it has to be
+  // withdrawn deliberately rather than vanish with its origin. Count and
+  // delete share one serializable transaction: a publish landing between the
+  // two would otherwise cascade a live registration away.
+  const publishedAssets = await prisma.$transaction(
+    async (tx) => {
+      const count = await tx.asset.count({
+        where: { projectId: id, publishState: { not: PUBLISH_DRAFT } },
+      });
+      if (blocksProjectDelete(count)) return count;
+      await tx.project.delete({ where: { id } });
+      return 0;
+    },
+    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+  );
+
+  if (blocksProjectDelete(publishedAssets)) {
+    return conflict(
+      `Project has ${publishedAssets} registered assets; withdraw them before deleting`
+    );
+  }
+
   return Response.json({ deleted: true });
 });
 

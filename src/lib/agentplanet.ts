@@ -189,15 +189,19 @@ export async function patchAsset(
   }
 }
 
-/** 产权变更(人→Agent、Agent→Org 等)。404 = 从未登记,调用方随后 register 即可。 */
+/**
+ * 产权变更(人→Agent、Agent→Org 等)。404 = 从未登记,调用方随后 register 即可。
+ * 返回是否确实改成了:调用方若要据此写本地产权,必须先看这个结果,否则本地
+ * 与登记表会各说各话,之后上架被 seller != owner 挡住。
+ */
 export async function changeAssetOwner(
   kind: AssetKind,
   localId: string,
   owner: AssetOwner,
   reason = "rebind"
-): Promise<void> {
+): Promise<boolean> {
   try {
-    await storeFetch(
+    const res = await storeFetch(
       `/api/store/asset-registry/${encodeURIComponent(assetRef(kind, localId))}/change-owner`,
       {
         method: "POST",
@@ -208,23 +212,29 @@ export async function changeAssetOwner(
         }),
       }
     );
+    return res.ok;
   } catch {
-    // best effort:失败时新商品上架会被登记表挡住,不会造成错误收款
+    return false;
   }
 }
 
-/** 注销登记(资产删除时)。best effort、幂等。 */
+/**
+ * 注销登记。幂等:404(从未登记/已注销)视为成功。
+ * 返回是否确实注销:撤销发布必须等它成功才能清本地状态,否则本地说"没发布"、
+ * 登记表还留着,项目就能被删掉,留下真正的孤儿登记。
+ */
 export async function revokeAsset(
   kind: AssetKind,
   localId: string
-): Promise<void> {
+): Promise<boolean> {
   try {
-    await storeFetch(
+    const res = await storeFetch(
       `/api/store/asset-registry/${encodeURIComponent(assetRef(kind, localId))}/revoke`,
       { method: "POST", body: JSON.stringify({}) }
     );
+    return res.ok || res.status === 404;
   } catch {
-    // 忽略:注销失败只影响登记表整洁度;死资产的新订单会被下单时点核对挡住
+    return false;
   }
 }
 
