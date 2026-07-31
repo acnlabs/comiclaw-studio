@@ -51,6 +51,11 @@ export interface AssetData {
   authorUserId?: string | null;
   authorAgentId?: string | null;
   authorKey?: string;
+  // 发布为可交易资产后的状态与产权(draft | publishing | published | unpublishing)
+  publishState?: string;
+  publishedVersionId?: string | null;
+  ownerType?: string | null;
+  ownerId?: string | null;
   versions: AssetVersionData[]; // 按 version 倒序
 }
 
@@ -127,6 +132,7 @@ export interface ProjectData {
   description: string | null;
   coverUrl: string | null;
   visibility?: string;
+  ownerUserId?: string | null;
   columnId?: string | null;
   entryOrder?: number | null;
   currentStage: string;

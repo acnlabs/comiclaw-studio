@@ -5,8 +5,17 @@ import { ASSET_TYPE_KEYS, type AssetData } from "@/lib/types";
 import type { MessageKey } from "@/lib/i18n";
 import { useT } from "@/components/LocaleProvider";
 import { VersionPills, EmptyState, Modal, Badge } from "@/components/ui";
+import AssetPublishControl from "@/components/panels/AssetPublishControl";
 
-function AssetCard({ asset }: { asset: AssetData }) {
+function AssetCard({
+  asset,
+  projectOwnerUserId,
+  projectVisibility,
+}: {
+  asset: AssetData;
+  projectOwnerUserId: string | null | undefined;
+  projectVisibility: string | undefined;
+}) {
   const { t, fmtDate } = useT();
   const [selected, setSelected] = useState(asset.versions[0]?.version ?? 1);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -93,12 +102,26 @@ function AssetCard({ asset }: { asset: AssetData }) {
           selected={current?.version ?? 1}
           onSelect={setSelected}
         />
+        <AssetPublishControl
+          asset={asset}
+          projectOwnerUserId={projectOwnerUserId}
+          projectVisibility={projectVisibility}
+          selectedVersionId={current?.id}
+        />
       </div>
     </div>
   );
 }
 
-export default function AssetsPanel({ assets }: { assets: AssetData[] }) {
+export default function AssetsPanel({
+  assets,
+  projectOwnerUserId,
+  projectVisibility,
+}: {
+  assets: AssetData[];
+  projectOwnerUserId?: string | null;
+  projectVisibility?: string;
+}) {
   const { t } = useT();
   const [typeFilter, setTypeFilter] = useState<string>("ALL");
 
@@ -139,7 +162,12 @@ export default function AssetsPanel({ assets }: { assets: AssetData[] }) {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {filtered.map((asset) => (
-          <AssetCard key={asset.id} asset={asset} />
+          <AssetCard
+            key={asset.id}
+            asset={asset}
+            projectOwnerUserId={projectOwnerUserId}
+            projectVisibility={projectVisibility}
+          />
         ))}
       </div>
     </div>

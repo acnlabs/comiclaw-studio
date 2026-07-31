@@ -1,7 +1,8 @@
 import { badRequest } from "@/lib/auth";
+import { LEGACY_AUTHOR_KEY } from "@/lib/authorKey";
 import type { ProductionAuth } from "@/lib/acnAuth";
 
-export const LEGACY_AUTHOR_KEY = "legacy";
+export { LEGACY_AUTHOR_KEY };
 
 export type ContentAuthor = {
   authorUserId: string | null;
