@@ -96,6 +96,7 @@ model Project {
   work           Work?
   comments       Comment[]
   castingLicenses CastingLicense[]
+  assetLicenses   AssetLicense[]
   generationCharges GenerationChargeRef[]
   acnTaskRefs       AcnTaskRef[]
 
@@ -176,6 +177,7 @@ model Asset {
 
   project  Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
   versions AssetVersion[] @relation("AssetVersions")
+  licenses AssetLicense[]
   publishedVersion AssetVersion? @relation("AssetPublishedVersion", fields: [publishedVersionId], references: [id], onDelete: SetNull)
   shotRefs ShotAsset[]
 
@@ -355,6 +357,26 @@ model CastingLicense {
   project   Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([characterId, projectId])
+}
+
+// 已发布资产的授权:把别人已登记的资产用到自己项目里。
+// CastingLicense 只管 AgentCharacter,场景/道具登记了也没法用,所以另起一张按
+// 资产走的表。points / storeOrderId 先留好,付费授权不必再迁一次库。
+model AssetLicense {
+  id           String   @id @default(cuid())
+  assetId      String // 被授权的已发布资产
+  projectId    String // 使用它的项目(授权方的项目)
+  licenseeSub  String // 发起授权的客户(Auth0 sub)
+  points       Int      @default(0) // 成交 Credits 快照;免费为 0
+  status       String   @default("GRANTED") // GRANTED | PENDING_PAYMENT
+  storeOrderId String?  @unique
+  createdAt    DateTime @default(now())
+
+  asset   Asset   @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([assetId, projectId])
+  @@index([licenseeSub, status])
 }
 
 // 参演关系:作品 ↔ 角色(主演/参演)
