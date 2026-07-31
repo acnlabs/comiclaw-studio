@@ -2,6 +2,7 @@ import {
   ASSET_SOURCE,
   assetRef,
   registerAssetPayload,
+  sellerFields,
   type AssetKind,
   type AssetOwner,
   type RegisterAssetArgs,
@@ -79,6 +80,7 @@ export interface StoreCheckout {
   amount_credits: number;
 }
 
+
 // 上架/更新资产为 agent_asset 商品。返回 product_id;失败返回 null(调用方降级处理)。
 // seller 必须与登记表的产权人一致(user | agent | org),否则 Store 403。
 export async function upsertAssetListing(args: {
@@ -96,8 +98,7 @@ export async function upsertAssetListing(args: {
       const res = await storeFetch(`/api/store/agent-assets/products/${args.storeProductId}`, {
         method: "PATCH",
         body: JSON.stringify({
-          seller_type: args.owner.type,
-          seller_id: args.owner.id,
+          ...sellerFields(args.owner),
           name: args.name,
           description: args.tagline,
           credits_price: args.credits,
@@ -256,7 +257,7 @@ export async function unlistAssetListing(
   try {
     await storeFetch(`/api/store/agent-assets/products/${storeProductId}/unlist`, {
       method: "POST",
-      body: JSON.stringify({ seller_type: seller.type, seller_id: seller.id }),
+      body: JSON.stringify(sellerFields(seller)),
     });
   } catch {
     // 忽略:下架失败不阻塞主流程,商品残留只影响目录展示

@@ -59,3 +59,16 @@ export function sellerMatchesOwner(
 ): boolean {
   return seller.type === owner.type && seller.id === owner.id;
 }
+
+/**
+ * Store's unlist and product PATCH historically accepted only `seller_id`.
+ * Agent sellers keep that exact shape: a rejected unlist would leave a paid
+ * product on sale after its licensing was switched off. `org` / `user` are new
+ * paths with no legacy payload, and an id alone cannot say which kind of
+ * principal it is, so they must carry the type.
+ */
+export function sellerFields(owner: AssetOwner): Record<string, string> {
+  return owner.type === "agent"
+    ? { seller_id: owner.id }
+    : { seller_type: owner.type, seller_id: owner.id };
+}

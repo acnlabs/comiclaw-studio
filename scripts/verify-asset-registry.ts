@@ -8,6 +8,7 @@ import {
   ASSET_SOURCE,
   assetRef,
   registerAssetPayload,
+  sellerFields,
   sellerMatchesOwner,
   type AssetOwner,
 } from "../src/lib/assetRegistry";
@@ -76,5 +77,19 @@ assert.equal(
   false
 );
 ok("seller must match the registered owner exactly");
+
+// Unlist and product PATCH historically accepted only seller_id. Sending a
+// seller_type an old schema rejects would leave a paid product listed after
+// its licensing was switched off, so agent sellers keep the legacy shape.
+assert.deepEqual(sellerFields({ type: "agent", id: "a1" }), { seller_id: "a1" });
+assert.deepEqual(sellerFields(orgOwner), {
+  seller_type: "org",
+  seller_id: "org_a3a067ed",
+});
+assert.deepEqual(sellerFields(userOwner), {
+  seller_type: "user",
+  seller_id: "auth0|abc",
+});
+ok("agent sellers keep the legacy payload; new owner types carry their type");
 
 console.log("\nAll asset registry checks passed.");
