@@ -6,7 +6,7 @@ import {
   actorFromProductionAuth,
   assertCanDeleteContent,
 } from "@/lib/contentAuth";
-import { deletableState, PUBLISH_DRAFT } from "@/lib/assetPublish";
+import { blocksAssetDelete, deletableState, PUBLISH_DRAFT } from "@/lib/assetPublish";
 import type { ProductionAuth } from "@/lib/acnAuth";
 
 type Ctx = { params: Promise<{ assetId: string }> };
@@ -52,9 +52,18 @@ export const DELETE = withProjectWorkerAuth(
 
     // A published asset is registered on AgentPlanet and may be licensed by
     // other projects. Deleting it here would strand that registration, so the
-    // author has to withdraw it first. The condition lives in the delete
+    // author has to withdraw it first. The state condition lives in the delete
     // itself: a publish landing right after a separate check would otherwise
     // slip through.
+    const granted = await prisma.assetLicense.count({
+      where: { assetId, status: "GRANTED" },
+    });
+    if (blocksAssetDelete(granted)) {
+      return conflict(
+        `This asset is licensed by ${granted} project(s); the licence record must be kept`
+      );
+    }
+
     const removed = await prisma.asset.deleteMany({
       where: { id: assetId, publishState: PUBLISH_DRAFT },
     });
