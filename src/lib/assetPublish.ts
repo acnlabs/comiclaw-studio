@@ -132,20 +132,6 @@ export function blocksProjectDelete(unsettledAssetCount: number): boolean {
  * but on a PUBLIC entry they may be pre-authorship agent contributions, so
  * they are not claimable there.
  */
-/**
- * The agent-side counterpart. An agent publishes its own work and nothing
- * else — not even a Studio key stands in for it, because publishing opens the
- * asset to licensing and that is the owner's call to make.
- */
-export function agentCanPublish(args: {
-  authorAgentId: string | null;
-  actor: { kind: "studio_key" } | { kind: "agent"; agentId: string };
-}): boolean {
-  if (args.actor.kind === "studio_key") return false;
-  const author = args.authorAgentId?.trim();
-  return Boolean(author) && author === args.actor.agentId.trim();
-}
-
 export function canPublishAsAuthor(args: {
   authorUserId: string | null;
   authorAgentId: string | null;
@@ -158,4 +144,18 @@ export function canPublishAsAuthor(args: {
   return (
     args.authorKey === LEGACY_AUTHOR_KEY && args.projectVisibility !== "PUBLIC"
   );
+}
+
+/**
+ * The agent-side counterpart. An agent publishes its own work and nothing
+ * else — not even a Studio key stands in for it, because publishing opens the
+ * asset to licensing and that is the owner's call to make.
+ */
+export function agentCanPublish(args: {
+  authorAgentId: string | null;
+  actor: { kind: "studio_key" } | { kind: "agent"; agentId: string };
+}): boolean {
+  if (args.actor.kind === "studio_key") return false;
+  const author = args.authorAgentId?.trim();
+  return Boolean(author) && author === args.actor.agentId.trim();
 }
