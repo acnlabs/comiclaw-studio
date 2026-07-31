@@ -109,7 +109,13 @@ export default function StudioWorkspace({ project }: { project: ProjectData }) {
       {/* 内容 */}
       <main className="pt-6">
         {tab === "SCRIPT" && <ScriptPanel versions={project.scriptVersions} />}
-        {tab === "ASSETS" && <AssetsPanel assets={project.assets} />}
+        {tab === "ASSETS" && (
+          <AssetsPanel
+            assets={project.assets}
+            projectOwnerUserId={project.ownerUserId}
+            projectVisibility={project.visibility}
+          />
+        )}
         {tab === "STORYBOARD" && (
           <StoryboardPanel shots={project.shots} shareToken={project.shareToken} />
         )}
