@@ -1,4 +1,4 @@
-import { LEGACY_AUTHOR_KEY } from "@/lib/contentAuthor";
+import { LEGACY_AUTHOR_KEY } from "@/lib/authorKey";
 import type { AssetKind, AssetOwner } from "@/lib/assetRegistry";
 
 /**

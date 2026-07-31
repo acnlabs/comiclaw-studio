@@ -13,6 +13,12 @@ import {
 import type { AssetData } from "@/lib/types";
 
 /**
+ * A PRIVATE project is rendered from client-side state, where router.refresh()
+ * cannot reach the fetch that produced it, so publishing announces itself.
+ */
+export const ASSET_PUBLISH_CHANGED_EVENT = "asset-publish:changed";
+
+/**
  * Publish a project asset to the AgentPlanet registry.
  *
  * The server is the authority on who may publish; this only decides whether to
@@ -84,6 +90,7 @@ export default function AssetPublishControl({
         return;
       }
       router.refresh();
+      window.dispatchEvent(new Event(ASSET_PUBLISH_CHANGED_EVENT));
     } catch {
       setError(t("assetPublish.error"));
     } finally {

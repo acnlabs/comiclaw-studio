@@ -8,6 +8,7 @@ import { AUTH0_AUDIENCE } from "@/lib/auth0";
 import type { ProjectData } from "@/lib/types";
 import StudioWorkspace from "@/components/StudioWorkspace";
 import PrivacyToggle from "@/components/PrivacyToggle";
+import { ASSET_PUBLISH_CHANGED_EVENT } from "@/components/panels/AssetPublishControl";
 
 // 私密项目的客户端渲染:验证登录用户是主人后,通过用户 API 拉取全量数据
 export default function PrivateProject({ shareToken }: { shareToken: string }) {
@@ -16,6 +17,15 @@ export default function PrivateProject({ shareToken }: { shareToken: string }) {
   const { t } = useT();
   const [project, setProject] = useState<ProjectData | null>(null);
   const [status, setStatus] = useState<"loading" | "denied" | "ok">("loading");
+  const [reloadKey, setReloadKey] = useState(0);
+
+  // Publishing happens inside the workspace we render, and router.refresh()
+  // cannot re-run the fetch below, so listen for the change instead.
+  useEffect(() => {
+    const onChanged = () => setReloadKey((n) => n + 1);
+    window.addEventListener(ASSET_PUBLISH_CHANGED_EVENT, onChanged);
+    return () => window.removeEventListener(ASSET_PUBLISH_CHANGED_EVENT, onChanged);
+  }, []);
 
   useEffect(() => {
     if (isLoading) return;
@@ -42,7 +52,7 @@ export default function PrivateProject({ shareToken }: { shareToken: string }) {
         setStatus("denied");
       }
     })();
-  }, [isAuthenticated, isLoading, getAccessTokenSilently, shareToken]);
+  }, [isAuthenticated, isLoading, getAccessTokenSilently, shareToken, reloadKey]);
 
   if (isLoading || status === "loading") {
     return (
