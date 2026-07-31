@@ -1,7 +1,7 @@
 # 请求 AgentPlanet 协助：资产主体统一后的 `asset_ref` 迁移
 
-**发起方：** ComicLaw Studio  
-**状态：** 待 AgentPlanet 答复；答复前 ComicLaw 侧不会改动任何已登记资产  
+**发起方：** ComicLaw Studio
+**状态：** 待 AgentPlanet 答复；答复前 ComicLaw 侧不会改动任何已登记资产
 **相关文档：** 《ComicLaw × AgentPlanet 资产登记矩阵》、`COMICLAW_ASSET_REGISTRY_MATRIX.md`、`asset-v1.md`、`agent-asset-registry.md`
 
 > 已收到《资产产权登记对接说明》。**主路径已迁到 `/api/assets/registry`，上架已迁到 `/api/store/assets/products`**，兼容别名不再使用（见 §10）。第 6 节要 ComicLaw 确认的项在 §11 回复。
@@ -42,9 +42,19 @@ ComicLaw 目前有两张表都可以成为可交易主体：
 
 两者 id 都是 cuid，实际碰撞概率可忽略，但**语义上 `comiclaw:character:` 里混了两个来源表的主键**。这正是我们要收敛的原因。
 
-### 一个对迁移规模有利的事实
+### 迁移规模：比"全部角色"小，但不等于"当前付费的角色"
 
-**免费角色从未登记过**——`register` 只发生在 `licensePoints > 0` 的分支里。所以需要迁移的只有**存量付费角色**，不是全部角色。我们可以用生产 Studio key 从 `GET /api/agent/characters` 导出精确清单（`licensePoints > 0` 且 `storeProductId` 非空）交给你们核对。
+`register` 只发生在 `licensePoints > 0` 的分支里，所以**从未付费过的角色确实从未登记**。
+
+但有一个坑要说清楚：**角色从付费改回免费时，ComicLaw 只做 `unlist`，不做 `revoke`，本地 `storeProductId` 也不清空**（这是有意的——将来重新定价可以复用同一个商品）。所以「当前免费」的角色里，**曾经付费过的那些仍然有登记记录**。
+
+因此：
+
+- 用 `licensePoints > 0` 筛会**漏掉**这批曾付费、现免费的角色
+- 我们能给出的本地超集是 `licensePoints > 0 OR storeProductId IS NOT NULL`
+- 但**权威清单在你们侧**：按 `source=comiclaw-studio` 查登记表最准，因为还存在「登记成功、上架失败」的情况（那种本地连 `storeProductId` 都没有）
+
+建议做法：你们按 `source` 导出登记表清单，我们用生产 Studio key 从 `GET /api/agent/characters` 导出上述超集，两边对一遍差集再定迁移范围。
 
 ---
 
@@ -84,10 +94,10 @@ ComicLaw 目前有两张表都可以成为可交易主体：
 
 ## 7. 顺带需要确认的两件小事
 
-1. **`unlist` 与商品 `PATCH` 是否接受 `seller_type`？**  
+1. **`unlist` 与商品 `PATCH` 是否接受 `seller_type`？**
    这两个端点历史上只收 `seller_id`。矩阵要求 seller 与登记 owner 一致，但没给这两个端点的 payload 示例。我们出于谨慎做了区分：**agent 卖家保持只发 `seller_id`**（多发一个字段若被旧 schema 拒绝，会导致「关掉付费但商品下不掉架、继续可买」），`org` / `user` 才带 `seller_type`。请确认这两个端点是否已统一接受 `seller_type`，我们好把行为归一。
 
-2. **CN 分区**  
+2. **CN 分区**
    矩阵第 6 节要求全球与 CN 分别注册 Org / Agent，但 ComicLaw Studio 目前只有单一 `AGENTPLANET_API_URL` / `ACN_API_URL`，**跑不了双分区**。CN 侧的栏目 Org 也还没建。如果 CN 上线有时间表，请告知，我们需要先做分区配置。
 
 ---
@@ -149,7 +159,7 @@ ComicLaw 目前有两张表都可以成为可交易主体：
 | 栏目 `org_id` 全球 | `org_a3a067ed8b4342b6bc4b82c7be3ea12c`（《AI 漫记》，已在生产创建） |
 | 栏目 `org_id` CN | **暂无**。ComicLaw Studio 目前只有单一 `AGENTPLANET_API_URL` / `ACN_API_URL`，**跑不了双分区**；CN 要上线需要我们先做分区配置，再建 CN 侧 Org |
 | 若用 agent 持有：收款 agent_id | 现有 `CHARGE_PAYEE_AGENT_ID = 90f884c1-f7fd-4e6f-b375-84521539648a`（comiclaw-studio）是**用量扣款**收款方。按你们「产权 ≠ 扣款」的口径，我们**不打算复用它做资产产权**；官方资产倾向 `org` 持有，若必须用 agent，请为此**另开一个持有 Agent** |
-| 存量角色补登记 | **建议先观察**。现网只有 `licensePoints > 0` 才登记；免费角色从未登记，但也从未上架，强制模式不影响它们；一旦改价，上架前会自动补登记。真正需要处理的是 §5–§6 的 `asset_ref` 迁移 |
+| 存量角色补登记 | **建议先观察**。从未付费过的角色确实从未登记，也从未上架，强制模式不影响它们；一旦改价，上架前会自动补登记。注意「曾付费、现免费」的角色仍有登记记录（我们只 unlist 不 revoke，见 §3）。真正需要处理的是 §5–§6 的 `asset_ref` 迁移 |
 | 对接环境优先级 | **先全球**（现网数据都在全球侧，且 CN 需要我们先改分区配置）。CN 的时间表请给一下，我们据此排分区改造 |
 | 预计联调窗口 | 待定，取决于 §6 的 `asset_ref` 迁移方案（尤其是能否支持 alias） |
 
