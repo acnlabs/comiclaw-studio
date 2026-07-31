@@ -8,6 +8,7 @@ import {
   blocksProjectDelete,
   canPublishAsAuthor,
   checkPublishable,
+  deletableState,
   resolvePublishOwner,
 } from "../src/lib/assetPublish";
 
@@ -51,7 +52,7 @@ ok("refuses to publish with no principal to own it");
 const versions = ["v3", "v2", "v1"];
 
 assert.deepEqual(
-  checkPublishable({ type: "SCENE", publishedAt: null, versionIds: versions }),
+  checkPublishable({ type: "SCENE", publishState: "draft", versionIds: versions }),
   { ok: true, versionId: "v3" }
 );
 ok("defaults to the newest version");
@@ -59,7 +60,7 @@ ok("defaults to the newest version");
 assert.deepEqual(
   checkPublishable({
     type: "SCENE",
-    publishedAt: null,
+    publishState: "draft",
     versionIds: versions,
     requestedVersionId: "v2",
   }),
@@ -71,7 +72,7 @@ ok("honours an explicit version pick");
 assert.deepEqual(
   checkPublishable({
     type: "SCENE",
-    publishedAt: null,
+    publishState: "draft",
     versionIds: versions,
     requestedVersionId: "someone-elses-version",
   }),
@@ -80,7 +81,7 @@ assert.deepEqual(
 ok("rejects a version that does not belong to the asset");
 
 assert.deepEqual(
-  checkPublishable({ type: "SCENE", publishedAt: null, versionIds: [] }),
+  checkPublishable({ type: "SCENE", publishState: "draft", versionIds: [] }),
   { ok: false, reason: "no_versions" }
 );
 ok("refuses to publish an asset with no artwork");
@@ -88,15 +89,34 @@ ok("refuses to publish an asset with no artwork");
 assert.deepEqual(
   checkPublishable({
     type: "SCENE",
-    publishedAt: new Date("2026-07-31T00:00:00.000Z"),
+    publishState: "published",
     versionIds: versions,
   }),
   { ok: false, reason: "already_published" }
 );
 ok("publishing twice is rejected");
 
+// An in-flight publish must not be publishable again either.
 assert.deepEqual(
-  checkPublishable({ type: "MYSTERY", publishedAt: null, versionIds: versions }),
+  checkPublishable({
+    type: "SCENE",
+    publishState: "publishing",
+    versionIds: versions,
+  }),
+  { ok: false, reason: "already_published" }
+);
+ok("a publish already in flight is rejected");
+
+// Only a settled draft is safe to delete: the other states may already have a
+// registration on AgentPlanet.
+assert.equal(deletableState("draft"), true);
+assert.equal(deletableState("publishing"), false);
+assert.equal(deletableState("published"), false);
+assert.equal(deletableState("unpublishing"), false);
+ok("only a settled draft may be deleted");
+
+assert.deepEqual(
+  checkPublishable({ type: "MYSTERY", publishState: "draft", versionIds: versions }),
   { ok: false, reason: "unknown_type" }
 );
 ok("an unregistrable type cannot be published");

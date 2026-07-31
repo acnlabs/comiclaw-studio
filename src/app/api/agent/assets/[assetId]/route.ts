@@ -6,6 +6,7 @@ import {
   actorFromProductionAuth,
   assertCanDeleteContent,
 } from "@/lib/contentAuth";
+import { PUBLISH_DRAFT } from "@/lib/assetPublish";
 import type { ProductionAuth } from "@/lib/acnAuth";
 
 type Ctx = { params: Promise<{ assetId: string }> };
@@ -27,7 +28,7 @@ export const DELETE = withProjectWorkerAuth(
       select: {
         id: true,
         projectId: true,
-        publishedAt: true,
+        publishState: true,
         authorUserId: true,
         authorAgentId: true,
         authorKey: true,
@@ -49,7 +50,7 @@ export const DELETE = withProjectWorkerAuth(
     // itself: a publish landing right after a separate check would otherwise
     // slip through.
     const removed = await prisma.asset.deleteMany({
-      where: { id: assetId, publishedAt: null },
+      where: { id: assetId, publishState: PUBLISH_DRAFT },
     });
     if (removed.count === 0) {
       return conflict("Unpublish this asset before deleting it");

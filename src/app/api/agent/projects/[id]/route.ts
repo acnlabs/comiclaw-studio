@@ -4,7 +4,7 @@ import { emitProjectUpdate } from "@/lib/events";
 import { withAgentAuth, withProjectWorkerAuth, parseBody } from "@/lib/api";
 import { notFoundJson, forbidden, badRequest, conflict } from "@/lib/auth";
 import { updateProjectSchema } from "@/lib/schemas";
-import { blocksProjectDelete } from "@/lib/assetPublish";
+import { blocksProjectDelete, PUBLISH_DRAFT } from "@/lib/assetPublish";
 import type { ProductionAuth } from "@/lib/acnAuth";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -49,7 +49,7 @@ export const DELETE = withAgentAuth(async (_req, ctx: Ctx) => {
   const publishedAssets = await prisma.$transaction(
     async (tx) => {
       const count = await tx.asset.count({
-        where: { projectId: id, publishedAt: { not: null } },
+        where: { projectId: id, publishState: { not: PUBLISH_DRAFT } },
       });
       if (blocksProjectDelete(count)) return count;
       await tx.project.delete({ where: { id } });

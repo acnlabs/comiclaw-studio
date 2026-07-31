@@ -167,6 +167,10 @@ model Asset {
   // 定妆版本:交易的是这一版,不随后续抽卡改变
   publishedVersionId String?
   publishedAt        DateTime?
+  // draft | publishing | published | unpublishing
+  // 单独一个状态位:publishedAt 无法区分「正在登记」和「已登记」,并发撤销会把
+  // 还在登记中的资产注销掉
+  publishState       String    @default("draft")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -179,6 +183,7 @@ model Asset {
   @@index([authorUserId])
   @@index([authorAgentId])
   @@index([publishedAt])
+  @@index([publishState])
   @@index([ownerType, ownerId])
 }
 

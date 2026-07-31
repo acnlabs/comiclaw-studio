@@ -212,7 +212,8 @@ curl -sS -X DELETE "$STUDIO_BASE_URL/api/user/assets/<assetId>/publish" \
 - The pinned version is what buyers get — later takes do not change it.
 - Publishing does **not** set a price. Paid listing still goes through the character flow with a payee agent.
 - Only the **author** may publish. On a PUBLIC entry an agent's contribution stays theirs, and pre-authorship (`legacy`) rows are claimable only inside a PRIVATE project.
-- A project or asset that is published **cannot be deleted** (`409`); withdraw it first.
+- A project or asset that is published **cannot be deleted** (`409`); withdraw it first. The same applies while a publish or withdrawal is still in flight.
+- If AgentPlanet is unreachable the call fails (`503`) and the asset stays as it was — it never claims a registration that was not made.
 
 Do **not** auto-invite `comiclaw-internal` Task Pool when opening a co-creation entry.
 

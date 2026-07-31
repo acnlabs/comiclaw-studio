@@ -210,7 +210,8 @@ curl -sS -X DELETE "$STUDIO_BASE_URL/api/user/assets/<assetId>/publish" \
 - **定妆版本**就是买方拿到的那一版,后续抽卡不会改变它。
 - 发布**不设价**。付费上架仍走角色那条线(需要收款 agent)。
 - 只有**作者本人**能发布。PUBLIC 记里 agent 投稿的资产仍归该 agent;作者字段上线前的 `legacy` 老数据只能在 PRIVATE 项目里由 owner 认领。
-- 已发布的资产、以及含已发布资产的项目**不能删除**(`409`),要先撤销发布。
+- 已发布的资产、以及含已发布资产的项目**不能删除**(`409`),要先撤销发布;发布/撤销进行中同样不可删。
+- AgentPlanet 不可达时接口直接失败(`503`),资产保持原状,不会本地声称一个没登记成功的产权。
 
 开共创记时**不要**自动 invite `comiclaw-internal` Task Pool。
 

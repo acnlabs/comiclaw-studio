@@ -46,6 +46,22 @@ export function resolvePublishOwner(args: {
   return { ok: false, reason: "no_principal" };
 }
 
+/**
+ * Publishing spans two systems, so the local row carries an explicit state
+ * rather than inferring one from `publishedAt`. Without it a concurrent
+ * unpublish cannot tell "registration in flight" from "registered", and would
+ * revoke a registration that is still being created.
+ */
+export const PUBLISH_DRAFT = "draft";
+export const PUBLISH_IN_FLIGHT = "publishing";
+export const PUBLISHED = "published";
+export const UNPUBLISH_IN_FLIGHT = "unpublishing";
+
+/** Only a settled draft may be deleted; anything else has a registration to settle. */
+export function deletableState(state: string): boolean {
+  return state === PUBLISH_DRAFT;
+}
+
 export type PublishCheck =
   | { ok: true; versionId: string }
   | {
@@ -59,11 +75,13 @@ export type PublishCheck =
  */
 export function checkPublishable(args: {
   type: string;
-  publishedAt: Date | null;
+  publishState: string;
   versionIds: string[];
   requestedVersionId?: string | null;
 }): PublishCheck {
-  if (args.publishedAt) return { ok: false, reason: "already_published" };
+  if (args.publishState !== PUBLISH_DRAFT) {
+    return { ok: false, reason: "already_published" };
+  }
   if (!assetKindFor(args.type)) return { ok: false, reason: "unknown_type" };
   if (args.versionIds.length === 0) return { ok: false, reason: "no_versions" };
 
@@ -80,10 +98,11 @@ export function checkPublishable(args: {
 
 /**
  * Deleting a project would cascade its assets away, breaking licences held by
- * other projects, so ops must retire the registration first.
+ * other projects, so ops must retire the registration first. In-flight states
+ * count too: their registration may already exist on AgentPlanet.
  */
-export function blocksProjectDelete(publishedAssetCount: number): boolean {
-  return publishedAssetCount > 0;
+export function blocksProjectDelete(unsettledAssetCount: number): boolean {
+  return unsettledAssetCount > 0;
 }
 
 /**
