@@ -1,0 +1,61 @@
+/**
+ * AgentPlanet asset registry client (platform-level ownership ledger).
+ *
+ * Per the ComicLaw × AgentPlanet registration matrix:
+ * - `asset_kind` ∈ character | scene | prop
+ * - `owner_type` ∈ user | agent | org (there is no `human`; people are `user`)
+ * - org ids are ACN org ids (`org_{uuid}`)
+ * - a Store listing's seller MUST equal the registry owner, or listing 403s
+ * - ownership and on-screen identity are separate: change the acting agent with
+ *   PATCH `bound_agent_id`, change ownership with change-owner
+ */
+
+export type AssetKind = "character" | "scene" | "prop";
+
+export type AssetOwner =
+  | { type: "user"; id: string }
+  | { type: "agent"; id: string }
+  | { type: "org"; id: string };
+
+export const ASSET_SOURCE = "comiclaw-studio";
+
+/** Namespace is derived from the source's first segment and must stay in sync. */
+export function assetRef(kind: AssetKind, localId: string): string {
+  return `comiclaw:${kind}:${localId}`;
+}
+
+export type RegisterResult = "registered" | "exists" | "failed";
+
+export type RegisterAssetArgs = {
+  kind: AssetKind;
+  /** Stable ComicLaw primary key — never a display name */
+  localId: string;
+  owner: AssetOwner;
+  displayName: string;
+  /**
+   * Agent that appears as this asset on screen. Independent of ownership:
+   * an org-owned character is still played by a member agent. Scenes and
+   * props normally leave this null.
+   */
+  boundAgentId?: string | null;
+};
+
+export function registerAssetPayload(args: RegisterAssetArgs) {
+  return {
+    asset_ref: assetRef(args.kind, args.localId),
+    source: ASSET_SOURCE,
+    asset_kind: args.kind,
+    owner_type: args.owner.type,
+    owner_id: args.owner.id,
+    display_name: args.displayName,
+    bound_agent_id: args.boundAgentId ?? null,
+  };
+}
+
+/** Store rejects a listing whose seller differs from the registered owner. */
+export function sellerMatchesOwner(
+  seller: { type: string; id: string },
+  owner: AssetOwner
+): boolean {
+  return seller.type === owner.type && seller.id === owner.id;
+}

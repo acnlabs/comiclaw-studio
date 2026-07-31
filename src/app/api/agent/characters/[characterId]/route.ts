@@ -4,8 +4,8 @@ import { badRequest, notFoundJson } from "@/lib/auth";
 import { updateCharacterSchema } from "@/lib/schemas";
 import { syncCharacterListing } from "@/lib/characterListing";
 import {
-  unlistCharacterListing,
-  revokeCharacterAsset,
+  unlistAssetListing,
+  revokeAsset,
   storeConfigured,
   verifyAgentExists,
 } from "@/lib/agentplanet";
@@ -94,9 +94,12 @@ export const DELETE = withAgentAuth(async (_req, ctx: Ctx) => {
   // 先下架 Store 商品 + 注销产权登记(均 best effort),再删角色
   if (storeConfigured()) {
     if (exists.storeProductId && exists.acnAgentId) {
-      await unlistCharacterListing(exists.storeProductId, exists.acnAgentId);
+      await unlistAssetListing(exists.storeProductId, {
+        type: "agent",
+        id: exists.acnAgentId,
+      });
     }
-    await revokeCharacterAsset(characterId);
+    await revokeAsset("character", characterId);
   }
   await prisma.agentCharacter.delete({ where: { id: characterId } });
   return Response.json({ deleted: true });
