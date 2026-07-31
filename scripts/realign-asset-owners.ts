@@ -13,6 +13,7 @@
 import { prisma } from "../src/lib/db";
 import { changeAssetOwner } from "../src/lib/agentplanet";
 import { assetKindFor, resolvePublishOwner, PUBLISHED } from "../src/lib/assetPublish";
+import type { AssetOwner } from "../src/lib/assetRegistry";
 
 const APPLY = process.argv.includes("--apply");
 
@@ -32,7 +33,9 @@ async function main() {
     },
   });
 
-  const mismatched = assets.flatMap((a) => {
+  type Pending = { asset: (typeof assets)[number]; expected: AssetOwner | null };
+
+  const mismatched = assets.flatMap<Pending>((a) => {
     const expected = resolvePublishOwner({
       authorUserId: a.authorUserId,
       authorAgentId: a.authorAgentId,
