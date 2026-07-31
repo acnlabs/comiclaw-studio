@@ -1,3 +1,14 @@
+import {
+  ASSET_SOURCE,
+  assetRef,
+  registerAssetPayload,
+  sellerFields,
+  type AssetKind,
+  type AssetOwner,
+  type RegisterAssetArgs,
+  type RegisterResult,
+} from "@/lib/assetRegistry";
+
 // AgentPlanet Store 对接层(product_type=agent_asset)。
 //
 // 付费角色授权走 AgentPlanet Store 的 agent_asset 商品闭环:
@@ -69,14 +80,17 @@ export interface StoreCheckout {
   amount_credits: number;
 }
 
-// 上架/更新角色为 agent_asset 商品。返回 product_id;失败返回 null(调用方降级处理)。
-export async function upsertCharacterListing(args: {
+
+// 上架/更新资产为 agent_asset 商品。返回 product_id;失败返回 null(调用方降级处理)。
+// seller 必须与登记表的产权人一致(user | agent | org),否则 Store 403。
+export async function upsertAssetListing(args: {
   storeProductId: string | null;
-  characterId: string;
+  kind: AssetKind;
+  localId: string;
   name: string;
   tagline: string | null;
-  imageUrl: string;
-  sellerAgentId: string; // 收款方:角色所属智能体(ACN agent_id)
+  imageUrl: string | null;
+  owner: AssetOwner;
   credits: number;
 }): Promise<string | null> {
   try {
@@ -84,7 +98,7 @@ export async function upsertCharacterListing(args: {
       const res = await storeFetch(`/api/store/agent-assets/products/${args.storeProductId}`, {
         method: "PATCH",
         body: JSON.stringify({
-          seller_id: args.sellerAgentId,
+          ...sellerFields(args.owner),
           name: args.name,
           description: args.tagline,
           credits_price: args.credits,
@@ -98,16 +112,16 @@ export async function upsertCharacterListing(args: {
     const res = await storeFetch(`/api/store/agent-assets/products`, {
       method: "POST",
       body: JSON.stringify({
-        seller_id: args.sellerAgentId,
-        seller_type: "agent",
+        seller_type: args.owner.type,
+        seller_id: args.owner.id,
         name: args.name,
         description: args.tagline,
         credits_price: args.credits,
         asset_metadata: {
-          asset_ref: `comiclaw:character:${args.characterId}`,
-          asset_kind: "character",
-          source: "comiclaw-studio",
-          preview_url: args.imageUrl,
+          asset_ref: assetRef(args.kind, args.localId),
+          asset_kind: args.kind,
+          source: ASSET_SOURCE,
+          ...(args.imageUrl ? { preview_url: args.imageUrl } : {}),
         },
       }),
     });
@@ -135,29 +149,17 @@ export async function verifyAgentExists(agentId: string): Promise<boolean | null
 }
 
 // ---- 资产登记表(平台级产权账本;ap-backend /api/store/asset-registry)----
-// 登记的是产权与指针;付费角色上架前登记,产权人 = 收款智能体。
+// 登记的是产权与指针。产权人可以是 user / agent / org;上架时 seller 必须与
+// 产权人一致,否则 Store 403。形象绑定(bound_agent_id)与产权分开维护。
 
-const assetRef = (characterId: string) => `comiclaw:character:${characterId}`;
-
-// 登记角色产权。"exists"(409)表示此前已登记——产权人可能是旧收款方,
-// 调用方须随后 change-owner 对齐,否则上架会被登记表的 seller 校验挡住。
-export async function registerCharacterAsset(args: {
-  characterId: string;
-  ownerAgentId: string;
-  displayName: string;
-}): Promise<"registered" | "exists" | "failed"> {
+/** 登记产权。"exists"(409)表示此前登记过,产权人可能是旧的 → 调用方随后 change-owner 对齐。 */
+export async function registerAsset(
+  args: RegisterAssetArgs
+): Promise<RegisterResult> {
   try {
     const res = await storeFetch(`/api/store/asset-registry`, {
       method: "POST",
-      body: JSON.stringify({
-        asset_ref: assetRef(args.characterId),
-        source: "comiclaw-studio",
-        asset_kind: "character",
-        owner_type: "agent",
-        owner_id: args.ownerAgentId,
-        display_name: args.displayName,
-        bound_agent_id: args.ownerAgentId,
-      }),
+      body: JSON.stringify(registerAssetPayload(args)),
     });
     if (res.ok) return "registered";
     if (res.status === 409) return "exists";
@@ -167,28 +169,60 @@ export async function registerCharacterAsset(args: {
   }
 }
 
-// 产权变更(客户改绑收款智能体)。404 = 从未登记过,调用方随后走 register 即可。
-export async function changeCharacterAssetOwner(
-  characterId: string,
-  newAgentId: string
+/** 改展示名 / 改出镜 Agent。产权变更不走这里,走 change-owner。 */
+export async function patchAsset(
+  kind: AssetKind,
+  localId: string,
+  patch: { displayName?: string; boundAgentId?: string | null }
+): Promise<void> {
+  const body: Record<string, unknown> = {};
+  if (patch.displayName !== undefined) body.display_name = patch.displayName;
+  if (patch.boundAgentId !== undefined) body.bound_agent_id = patch.boundAgentId;
+  if (Object.keys(body).length === 0) return;
+  try {
+    await storeFetch(
+      `/api/store/asset-registry/${encodeURIComponent(assetRef(kind, localId))}`,
+      { method: "PATCH", body: JSON.stringify(body) }
+    );
+  } catch {
+    // best effort:登记表展示名不同步只影响目录可读性,不影响收款
+  }
+}
+
+/** 产权变更(人→Agent、Agent→Org 等)。404 = 从未登记,调用方随后 register 即可。 */
+export async function changeAssetOwner(
+  kind: AssetKind,
+  localId: string,
+  owner: AssetOwner,
+  reason = "rebind"
 ): Promise<void> {
   try {
-    await storeFetch(`/api/store/asset-registry/${encodeURIComponent(assetRef(characterId))}/change-owner`, {
-      method: "POST",
-      body: JSON.stringify({ owner_type: "agent", owner_id: newAgentId, reason: "rebind" }),
-    });
+    await storeFetch(
+      `/api/store/asset-registry/${encodeURIComponent(assetRef(kind, localId))}/change-owner`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          owner_type: owner.type,
+          owner_id: owner.id,
+          reason,
+        }),
+      }
+    );
   } catch {
     // best effort:失败时新商品上架会被登记表挡住,不会造成错误收款
   }
 }
 
-// 注销登记(角色删除时)。best effort、幂等。
-export async function revokeCharacterAsset(characterId: string): Promise<void> {
+/** 注销登记(资产删除时)。best effort、幂等。 */
+export async function revokeAsset(
+  kind: AssetKind,
+  localId: string
+): Promise<void> {
   try {
-    await storeFetch(`/api/store/asset-registry/${encodeURIComponent(assetRef(characterId))}/revoke`, {
-      method: "POST",
-      body: JSON.stringify({}),
-    });
+    await storeFetch(
+      `/api/store/asset-registry/${encodeURIComponent(assetRef(kind, localId))}/revoke`,
+      { method: "POST", body: JSON.stringify({}) }
+    );
   } catch {
     // 忽略:注销失败只影响登记表整洁度;死资产的新订单会被下单时点核对挡住
   }
@@ -215,15 +249,15 @@ export async function getCharacterListing(
   }
 }
 
-// 下架商品(角色关闭付费/删除时)。best effort。
-export async function unlistCharacterListing(
+// 下架商品(关闭付费/删除时)。best effort。seller 仍须是当时的产权人。
+export async function unlistAssetListing(
   storeProductId: string,
-  sellerAgentId: string
+  seller: AssetOwner
 ): Promise<void> {
   try {
     await storeFetch(`/api/store/agent-assets/products/${storeProductId}/unlist`, {
       method: "POST",
-      body: JSON.stringify({ seller_id: sellerAgentId }),
+      body: JSON.stringify(sellerFields(seller)),
     });
   } catch {
     // 忽略:下架失败不阻塞主流程,商品残留只影响目录展示

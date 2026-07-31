@@ -1,12 +1,20 @@
 import { prisma } from "@/lib/db";
 import {
   storeConfigured,
-  upsertCharacterListing,
-  unlistCharacterListing,
-  registerCharacterAsset,
-  changeCharacterAssetOwner,
+  upsertAssetListing,
+  unlistAssetListing,
+  registerAsset,
+  changeAssetOwner,
 } from "@/lib/agentplanet";
+import type { AssetOwner } from "@/lib/assetRegistry";
 import type { AgentCharacter } from "@prisma/client";
+
+// 角色今天只支持 agent 产权(收款方 = 角色所属智能体)。org / user 产权由
+// 上层显式传入后再放开,避免把 org id 写进 agent 字段。
+const agentOwner = (agentId: string): AssetOwner => ({
+  type: "agent",
+  id: agentId,
+});
 
 // 把角色的付费授权状态同步到 AgentPlanet Store(agent_asset 商品)。
 // - licensePoints > 0 且有收款方(acnAgentId):上架/更新商品,回填 storeProductId
@@ -31,9 +39,16 @@ export async function syncCharacterListing(
     previous.acnAgentId &&
     current.acnAgentId !== previous.acnAgentId
   ) {
-    await unlistCharacterListing(previous.storeProductId, previous.acnAgentId);
+    await unlistAssetListing(
+      previous.storeProductId,
+      agentOwner(previous.acnAgentId)
+    );
     if (current.acnAgentId) {
-      await changeCharacterAssetOwner(current.id, current.acnAgentId);
+      await changeAssetOwner(
+        "character",
+        current.id,
+        agentOwner(current.acnAgentId)
+      );
     }
     current = await prisma.agentCharacter.update({
       where: { id: current.id },
@@ -46,21 +61,26 @@ export async function syncCharacterListing(
     // 上架前先登记产权(登记表由此校验 seller == 产权人)。
     // 已存在(exists)说明此前登记过,产权人可能是旧收款方 → change-owner 对齐
     // (归属相同则幂等空操作)。登记失败不阻塞——Store 观察模式对未登记资产放行。
-    const reg = await registerCharacterAsset({
-      characterId: current.id,
-      ownerAgentId: current.acnAgentId,
+    const owner = agentOwner(current.acnAgentId);
+    const reg = await registerAsset({
+      kind: "character",
+      localId: current.id,
+      owner,
       displayName: current.name,
+      // 出镜 Agent 与产权分开:角色由该智能体出镜,同时也是当前收款方
+      boundAgentId: current.acnAgentId,
     });
     if (reg === "exists") {
-      await changeCharacterAssetOwner(current.id, current.acnAgentId);
+      await changeAssetOwner("character", current.id, owner);
     }
-    const productId = await upsertCharacterListing({
+    const productId = await upsertAssetListing({
       storeProductId: current.storeProductId,
-      characterId: current.id,
+      kind: "character",
+      localId: current.id,
       name: current.name,
       tagline: current.tagline,
       imageUrl: current.imageUrl,
-      sellerAgentId: current.acnAgentId,
+      owner,
       credits: current.licensePoints,
     });
     if (productId && productId !== current.storeProductId) {
@@ -73,7 +93,10 @@ export async function syncCharacterListing(
   }
 
   if (current.storeProductId && current.acnAgentId) {
-    await unlistCharacterListing(current.storeProductId, current.acnAgentId);
+    await unlistAssetListing(
+      current.storeProductId,
+      agentOwner(current.acnAgentId)
+    );
   }
   return changed ? current : null;
 }
