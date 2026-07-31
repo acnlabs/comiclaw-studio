@@ -52,7 +52,7 @@ export const DELETE = withProjectWorkerAuth(
 
     // A published asset is registered on AgentPlanet and may be licensed by
     // other projects. Deleting it here would strand that registration, so the
-    // author has to withdraw it first. The condition lives in the delete
+    // author has to withdraw it first. The state condition lives in the delete
     // itself: a publish landing right after a separate check would otherwise
     // slip through.
     const granted = await prisma.assetLicense.count({

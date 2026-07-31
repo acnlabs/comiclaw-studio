@@ -58,7 +58,6 @@ export async function POST(req: Request) {
         type: true,
         publishState: true,
         publishedVersionId: true,
-        publishedVersion: { select: { imageUrl: true, audioUrl: true } },
       },
     }),
     prisma.project.findUnique({
