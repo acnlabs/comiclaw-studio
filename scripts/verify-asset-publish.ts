@@ -1,0 +1,107 @@
+/**
+ * Offline checks for project-asset publishing rules.
+ * Run: npx tsx scripts/verify-asset-publish.ts
+ */
+import assert from "node:assert/strict";
+import {
+  assetKindFor,
+  blocksProjectDelete,
+  checkPublishable,
+  resolvePublishOwner,
+} from "../src/lib/assetPublish";
+
+function ok(label: string) {
+  console.log(`✓ ${label}`);
+}
+
+assert.equal(assetKindFor("CHARACTER"), "character");
+assert.equal(assetKindFor("SCENE"), "scene");
+assert.equal(assetKindFor("PROP"), "prop");
+assert.equal(assetKindFor("SOMETHING_ELSE"), null);
+ok("asset types map onto the three registry kinds");
+
+// A column bound to an ACN Org owns what is published under it, so licensing
+// revenue reaches the Org treasury rather than the individual publisher.
+assert.deepEqual(
+  resolvePublishOwner({
+    columnAcnOrgId: "org_a3a067ed",
+    publisherSub: "auth0|abc",
+  }),
+  { ok: true, owner: { type: "org", id: "org_a3a067ed" } }
+);
+ok("column Org ownership wins over the publisher");
+
+assert.deepEqual(
+  resolvePublishOwner({ columnAcnOrgId: null, publisherSub: "auth0|abc" }),
+  { ok: true, owner: { type: "user", id: "auth0|abc" } }
+);
+assert.deepEqual(
+  resolvePublishOwner({ columnAcnOrgId: "   ", publisherSub: "auth0|abc" }),
+  { ok: true, owner: { type: "user", id: "auth0|abc" } }
+);
+ok("without an Org the publisher holds it as user");
+
+assert.deepEqual(
+  resolvePublishOwner({ columnAcnOrgId: null, publisherSub: null }),
+  { ok: false, reason: "no_principal" }
+);
+ok("refuses to publish with no principal to own it");
+
+const versions = ["v3", "v2", "v1"];
+
+assert.deepEqual(
+  checkPublishable({ type: "SCENE", publishedAt: null, versionIds: versions }),
+  { ok: true, versionId: "v3" }
+);
+ok("defaults to the newest version");
+
+assert.deepEqual(
+  checkPublishable({
+    type: "SCENE",
+    publishedAt: null,
+    versionIds: versions,
+    requestedVersionId: "v2",
+  }),
+  { ok: true, versionId: "v2" }
+);
+ok("honours an explicit version pick");
+
+// Pinning a version id from another asset would publish someone else's art.
+assert.deepEqual(
+  checkPublishable({
+    type: "SCENE",
+    publishedAt: null,
+    versionIds: versions,
+    requestedVersionId: "someone-elses-version",
+  }),
+  { ok: false, reason: "unknown_version" }
+);
+ok("rejects a version that does not belong to the asset");
+
+assert.deepEqual(
+  checkPublishable({ type: "SCENE", publishedAt: null, versionIds: [] }),
+  { ok: false, reason: "no_versions" }
+);
+ok("refuses to publish an asset with no artwork");
+
+assert.deepEqual(
+  checkPublishable({
+    type: "SCENE",
+    publishedAt: new Date("2026-07-31T00:00:00.000Z"),
+    versionIds: versions,
+  }),
+  { ok: false, reason: "already_published" }
+);
+ok("publishing twice is rejected");
+
+assert.deepEqual(
+  checkPublishable({ type: "MYSTERY", publishedAt: null, versionIds: versions }),
+  { ok: false, reason: "unknown_type" }
+);
+ok("an unregistrable type cannot be published");
+
+assert.equal(blocksProjectDelete(0), false);
+assert.equal(blocksProjectDelete(2), true);
+ok("a project with published assets cannot be deleted out from under buyers");
+
+console.log("\nAll asset publish checks passed.");
