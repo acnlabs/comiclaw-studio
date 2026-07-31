@@ -1,7 +1,7 @@
 # 请求 AgentPlanet 协助：资产主体统一后的 `asset_ref` 迁移
 
 **发起方：** ComicLaw Studio
-**状态：** 待 AgentPlanet 答复；答复前 ComicLaw 侧不会改动任何已登记资产
+**状态：** 已收到 AgentPlanet 正式答复（2026-07-31）。回复见 §12，主体统一已解锁
 **相关文档：** 《ComicLaw × AgentPlanet 资产登记矩阵》、`COMICLAW_ASSET_REGISTRY_MATRIX.md`、`asset-v1.md`、`agent-asset-registry.md`
 
 > 已收到《资产产权登记对接说明》。**主路径已迁到 `/api/assets/registry`，上架已迁到 `/api/store/assets/products`**，兼容别名不再使用（见 §10）。第 6 节要 ComicLaw 确认的项在 §11 回复。
@@ -166,3 +166,42 @@ ComicLaw 目前有两张表都可以成为可交易主体：
 ### 需要提醒的一点
 
 你们写「CN 生产默认未登记不可上架（`store_asset_registry_enforce=true`）」。ComicLaw 侧**登记失败不阻塞上架**（best effort，注释里写的是「观察模式对未登记资产放行」）。在 enforce 为真的环境里，这个假设不成立：登记失败会导致后续上架被挡，而我们当时不会报错。CN 接入前我们会把这条改成 fail-closed，但**前提是先确认 CN 的基址与 token**。
+
+---
+
+## 12. 回复 AgentPlanet 正式答复的 §8
+
+### 12.1 主体统一：按「无对外存量」执行
+
+**是，按此执行。** 新发布与新付费上架一律按 `Asset.id` 登记；测试期旧 `comiclaw:character:{AgentCharacter.id}` 走 revoke → 重登记 → 重上架 → 回填本地 `storeProductId`。
+
+一个前提要请你们**书面确认**：结论建立在「资产付费能力尚未对外推出、生产无真实用户存量」上。ComicLaw 侧看不到你们登记表与订单的全貌，所以这条前提由你们背书。**如果生产上其实存在真实已完成订单，revoke + 重上架会让那批订单的 `asset_ref` 与新登记项脱钩**，届时我们需要改回等 alias 的方案。
+
+### 12.2 fail-closed：已完成，本次即上线
+
+`store_asset_registry_enforce` 在两个环境都是 True，而我们此前登记失败仍会继续上架，属于现网隐患：客户设了价、以为在售，enforce 下实际不可买且**我们不会报错**。
+
+已改为 fail-closed：
+
+- 登记被拒（`failed`），或已存在但产权改绑没成功（`exists` + change-owner 失败）→ **不上架**
+- 角色创建 / 更新接口在响应里多带 `listingBlocked: true` 与 `listingError`，让 comiclaw 能明确告诉客户「价没生效」
+- 授权兜底上架路径遇到登记被拒时返回「未上架」，走既有的 `402 NOT_LISTED`，不再继续下单
+- 规则收在一个函数里并有离线校验，包含「已登记但产权仍属他人不得上架」这一条
+
+顺带修掉一个漏洞：删除角色时原先要求 `acnAgentId` 存在才下架商品，于是**没有收款方却有商品的角色永远下不掉架**。现在只要有 `storeProductId` 就下架。
+
+### 12.3 `seller_type` 已按你们口径归一
+
+确认「unlist / 商品 PATCH 只认 `seller_id`，多传 `seller_type` 会被忽略」后，已**统一只发 `seller_id`**，删掉我们此前按 owner 类型分支的防御代码。建商品仍按示例同时发 `seller_type` + `seller_id`。
+
+### 12.4 是否需要你们导出登记清单
+
+**需要。** 请导出一版全球 `source=comiclaw-studio` 的登记清单（含 `asset_ref` / `owner_type` / `owner_id` / 是否有在架商品）。我们用 `licensePoints > 0 OR storeProductId IS NOT NULL` 做交叉核对，把测试残留清干净，避免统一后留下指向 `AgentCharacter.id` 的孤儿登记项。
+
+### 12.5 CN 分区排期
+
+**暂无。** ComicLaw Studio 目前是单基址（`AGENTPLANET_API_URL` / `ACN_API_URL`），要接 CN 需要：分区配置（双基址 + 双 token）、CN 侧 Org 创建、以及产权主体在两区分别登记。CN 付费资产在此之前不接。有确定排期我们会单独同步。
+
+### 12.6 `GET /api/assets/registry/{ref}` 仍未接
+
+同意「对账/诊断前建议补上」。目前没有读回登记态的场景就先不接，避免无用代码；做统一后的清场核对时会一并接上——那正是需要它的时候。

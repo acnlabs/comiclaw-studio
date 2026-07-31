@@ -172,6 +172,10 @@ export async function GET(req: Request) {
 async function ensureListing(character: AgentCharacter): Promise<string | null> {
   if (character.storeProductId) return character.storeProductId;
   if (!character.acnAgentId) return null; // 无收款方,无法上架
-  const synced = await syncCharacterListing(character);
+  const { character: synced, registryBlocked } =
+    await syncCharacterListing(character);
+  // enforce 打开时未登记资产不可上架,所以登记被拒就当作"没上架",让调用方
+  // 回 NOT_LISTED,而不是继续走下单
+  if (registryBlocked) return null;
   return synced?.storeProductId ?? null;
 }

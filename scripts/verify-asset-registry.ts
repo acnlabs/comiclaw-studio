@@ -8,10 +8,10 @@ import {
   ASSET_SOURCE,
   assetRef,
   registerAssetPayload,
+  mayListAfterRegistration,
   registryActionPath,
   registryEntryPath,
   REGISTRY_PATH,
-  sellerFields,
   sellerMatchesOwner,
   storeProductPath,
   STORE_PRODUCTS_PATH,
@@ -83,20 +83,6 @@ assert.equal(
 );
 ok("seller must match the registered owner exactly");
 
-// Unlist and product PATCH historically accepted only seller_id. Sending a
-// seller_type an old schema rejects would leave a paid product listed after
-// its licensing was switched off, so agent sellers keep the legacy shape.
-assert.deepEqual(sellerFields({ type: "agent", id: "a1" }), { seller_id: "a1" });
-assert.deepEqual(sellerFields(orgOwner), {
-  seller_type: "org",
-  seller_id: "org_a3a067ed",
-});
-assert.deepEqual(sellerFields(userOwner), {
-  seller_type: "user",
-  seller_id: "auth0|abc",
-});
-ok("agent sellers keep the legacy payload; new owner types carry their type");
-
 // The compat aliases still answer, so nothing fails loudly if new code drifts
 // back to them — pin the canonical paths instead.
 assert.equal(REGISTRY_PATH, "/api/assets/registry");
@@ -130,5 +116,27 @@ assert.equal(
   "/api/store/assets/products/prod_1/order"
 );
 ok("store product paths cover listing, unlist and order");
+
+// enforce is on in both environments, so listing an unregistered asset leaves
+// the owner thinking a price took effect on something nobody can buy.
+assert.equal(
+  mayListAfterRegistration({ registration: "registered", ownerRealigned: false }),
+  true,
+  "a fresh registration needs no realignment"
+);
+assert.equal(
+  mayListAfterRegistration({ registration: "failed", ownerRealigned: true }),
+  false
+);
+assert.equal(
+  mayListAfterRegistration({ registration: "exists", ownerRealigned: true }),
+  true
+);
+assert.equal(
+  mayListAfterRegistration({ registration: "exists", ownerRealigned: false }),
+  false,
+  "an existing entry still owned by someone else must not be listed"
+);
+ok("listing is fail-closed on the registry");
 
 console.log("\nAll asset registry checks passed.");

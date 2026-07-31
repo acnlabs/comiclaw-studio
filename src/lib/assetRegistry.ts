@@ -89,14 +89,18 @@ export function sellerMatchesOwner(
 }
 
 /**
- * Store's unlist and product PATCH historically accepted only `seller_id`.
- * Agent sellers keep that exact shape: a rejected unlist would leave a paid
- * product on sale after its licensing was switched off. `org` / `user` are new
- * paths with no legacy payload, and an id alone cannot say which kind of
- * principal it is, so they must carry the type.
+ * Whether a listing may proceed after touching the registry.
+ *
+ * `store_asset_registry_enforce` is on in both the global and CN environments,
+ * so an unregistered asset cannot be listed, relisted or ordered. Listing
+ * anyway would leave the owner believing a price took effect on something
+ * nobody can buy, so anything short of a confirmed registration stops here.
  */
-export function sellerFields(owner: AssetOwner): Record<string, string> {
-  return owner.type === "agent"
-    ? { seller_id: owner.id }
-    : { seller_type: owner.type, seller_id: owner.id };
+export function mayListAfterRegistration(args: {
+  registration: RegisterResult;
+  ownerRealigned: boolean;
+}): boolean {
+  if (args.registration === "failed") return false;
+  if (args.registration === "exists") return args.ownerRealigned;
+  return true;
 }

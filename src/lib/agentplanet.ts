@@ -5,7 +5,6 @@ import {
   registryActionPath,
   registryEntryPath,
   REGISTRY_PATH,
-  sellerFields,
   storeProductPath,
   STORE_PRODUCTS_PATH,
   type AssetKind,
@@ -103,7 +102,8 @@ export async function upsertAssetListing(args: {
       const res = await storeFetch(storeProductPath(args.storeProductId), {
         method: "PATCH",
         body: JSON.stringify({
-          ...sellerFields(args.owner),
+          // unlist 与商品 PATCH 只认 seller_id;多传 seller_type 会被忽略
+          seller_id: args.owner.id,
           name: args.name,
           description: args.tagline,
           credits_price: args.credits,
@@ -265,15 +265,14 @@ export async function getCharacterListing(
   }
 }
 
-// 下架商品(关闭付费/删除时)。best effort。seller 仍须是当时的产权人。
+// 下架商品(关闭付费/删除时)。best effort。端点只认 seller_id。
 export async function unlistAssetListing(
-  storeProductId: string,
-  seller: AssetOwner
+  storeProductId: string
 ): Promise<void> {
   try {
     await storeFetch(storeProductPath(storeProductId, "unlist"), {
       method: "POST",
-      body: JSON.stringify(sellerFields(seller)),
+      body: JSON.stringify({}),
     });
   } catch {
     // 忽略:下架失败不阻塞主流程,商品残留只影响目录展示
