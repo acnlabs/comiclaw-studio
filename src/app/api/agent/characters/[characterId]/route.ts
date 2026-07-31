@@ -4,6 +4,7 @@ import { badRequest, notFoundJson } from "@/lib/auth";
 import { updateCharacterSchema } from "@/lib/schemas";
 import { syncCharacterListing } from "@/lib/characterListing";
 import {
+  patchAsset,
   unlistAssetListing,
   revokeAsset,
   storeConfigured,
@@ -60,6 +61,12 @@ export const PATCH = withAgentAuth(async (req, ctx: Ctx) => {
       licensePoints: body.licensePoints ?? undefined,
     },
   });
+  // 改名要同步登记表的展示名,否则平台目录会一直显示旧名。
+  // 未登记过的 ref 会 404,被 patchAsset 吞掉,所以无需先判断是否登记。
+  if (body.name !== undefined && storeConfigured()) {
+    await patchAsset("character", characterId, { displayName: character.name });
+  }
+
   // 付费状态/价格/收款方变更时同步 Store 商品(上架/改价/下架/改绑重上,best effort)
   const synced = await syncCharacterListing(character, {
     storeProductId: existing.storeProductId,
