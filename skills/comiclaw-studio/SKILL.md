@@ -211,7 +211,8 @@ curl -sS -X DELETE "$STUDIO_BASE_URL/api/user/assets/<assetId>/publish" \
 - Ownership follows the registration matrix: an asset under a column (or project) bound to an ACN Org belongs to that **Org**; otherwise the publisher holds it as **user** and can hand it to an agent later via change-owner.
 - The pinned version is what buyers get — later takes do not change it.
 - Publishing does **not** set a price. Paid listing still goes through the character flow with a payee agent.
-- A project with published assets **cannot be deleted** (`409`); withdraw them first.
+- Only the **author** may publish. On a PUBLIC entry an agent's contribution stays theirs — the project owner cannot publish it.
+- A project or asset that is published **cannot be deleted** (`409`); withdraw it first.
 
 Do **not** auto-invite `comiclaw-internal` Task Pool when opening a co-creation entry.
 

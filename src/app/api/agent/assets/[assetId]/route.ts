@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { emitProjectUpdate } from "@/lib/events";
 import { withProjectWorkerAuth } from "@/lib/api";
-import { notFoundJson } from "@/lib/auth";
+import { conflict, notFoundJson } from "@/lib/auth";
 import {
   actorFromProductionAuth,
   assertCanDeleteContent,
@@ -27,6 +27,7 @@ export const DELETE = withProjectWorkerAuth(
       select: {
         id: true,
         projectId: true,
+        publishedAt: true,
         authorUserId: true,
         authorAgentId: true,
         authorKey: true,
@@ -41,6 +42,13 @@ export const DELETE = withProjectWorkerAuth(
       actorFromProductionAuth(auth)
     );
     if (denied) return denied;
+
+    // A published asset is registered on AgentPlanet and may be licensed by
+    // other projects. Deleting it here would strand that registration, so the
+    // author has to withdraw it first.
+    if (asset.publishedAt) {
+      return conflict("Unpublish this asset before deleting it");
+    }
 
     await prisma.asset.delete({ where: { id: assetId } });
     emitProjectUpdate(asset.projectId, "asset.deleted");

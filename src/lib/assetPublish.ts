@@ -1,3 +1,4 @@
+import { LEGACY_AUTHOR_KEY } from "@/lib/contentAuthor";
 import type { AssetKind, AssetOwner } from "@/lib/assetRegistry";
 
 /**
@@ -10,7 +11,7 @@ import type { AssetKind, AssetOwner } from "@/lib/assetRegistry";
  * not disappear underneath a buyer.
  */
 
-export const ASSET_KIND_BY_TYPE: Record<string, AssetKind> = {
+const ASSET_KIND_BY_TYPE: Record<string, AssetKind> = {
   CHARACTER: "character",
   SCENE: "scene",
   PROP: "prop",
@@ -83,4 +84,22 @@ export function checkPublishable(args: {
  */
 export function blocksProjectDelete(publishedAssetCount: number): boolean {
   return publishedAssetCount > 0;
+}
+
+/**
+ * Publishing claims ownership and opens the asset to licensing, so it is not
+ * the project owner's to do on someone else's work. On a PUBLIC co-creation
+ * entry the contributors are agents, and their assets stay theirs; the owner
+ * may only publish what they authored themselves, plus pre-authorship rows in
+ * their own project.
+ */
+export function canPublishAsAuthor(args: {
+  authorUserId: string | null;
+  authorAgentId: string | null;
+  authorKey: string;
+  publisherSub: string;
+}): boolean {
+  if (args.authorUserId) return args.authorUserId === args.publisherSub;
+  if (args.authorAgentId) return false;
+  return args.authorKey === LEGACY_AUTHOR_KEY;
 }

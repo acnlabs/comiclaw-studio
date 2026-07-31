@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import {
   assetKindFor,
   blocksProjectDelete,
+  canPublishAsAuthor,
   checkPublishable,
   resolvePublishOwner,
 } from "../src/lib/assetPublish";
@@ -103,5 +104,47 @@ ok("an unregistrable type cannot be published");
 assert.equal(blocksProjectDelete(0), false);
 assert.equal(blocksProjectDelete(2), true);
 ok("a project with published assets cannot be deleted out from under buyers");
+
+// Publishing claims ownership, so it is not the project owner's to do on a
+// contributor's work — agents keep what they contributed to a PUBLIC entry.
+const me = "auth0|me";
+assert.equal(
+  canPublishAsAuthor({
+    authorUserId: me,
+    authorAgentId: null,
+    authorKey: `user:${me}`,
+    publisherSub: me,
+  }),
+  true
+);
+assert.equal(
+  canPublishAsAuthor({
+    authorUserId: "auth0|someone-else",
+    authorAgentId: null,
+    authorKey: "user:auth0|someone-else",
+    publisherSub: me,
+  }),
+  false
+);
+assert.equal(
+  canPublishAsAuthor({
+    authorUserId: null,
+    authorAgentId: "agent-contributor",
+    authorKey: "agent:agent-contributor",
+    publisherSub: me,
+  }),
+  false,
+  "an agent's contribution is not the project owner's to sell"
+);
+assert.equal(
+  canPublishAsAuthor({
+    authorUserId: null,
+    authorAgentId: null,
+    authorKey: "legacy",
+    publisherSub: me,
+  }),
+  true
+);
+ok("only the author may publish; legacy rows fall to the project owner");
 
 console.log("\nAll asset publish checks passed.");

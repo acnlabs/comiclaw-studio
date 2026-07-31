@@ -12,6 +12,7 @@ import { mapError, parseBody } from "@/lib/api";
 import { registerAsset, changeAssetOwner, revokeAsset } from "@/lib/agentplanet";
 import {
   assetKindFor,
+  canPublishAsAuthor,
   checkPublishable,
   resolvePublishOwner,
 } from "@/lib/assetPublish";
@@ -40,6 +41,9 @@ async function loadOwnedAsset(assetId: string, sub: string) {
       publishedAt: true,
       ownerType: true,
       ownerId: true,
+      authorUserId: true,
+      authorAgentId: true,
+      authorKey: true,
       versions: {
         orderBy: { version: "desc" },
         select: { id: true },
@@ -79,6 +83,12 @@ export async function POST(req: Request, ctx: Ctx) {
   const loaded = await loadOwnedAsset(assetId, sub);
   if ("error" in loaded) return loaded.error;
   const { asset } = loaded;
+
+  if (!canPublishAsAuthor({ ...asset, publisherSub: sub })) {
+    return forbidden(
+      "Only the asset's author can publish it; contributors keep their own work"
+    );
+  }
 
   const check = checkPublishable({
     type: asset.type,
@@ -121,7 +131,16 @@ export async function POST(req: Request, ctx: Ctx) {
   // Registered earlier under a different principal (e.g. a retried publish
   // after ownership moved) — realign so a later listing is not rejected.
   if (registered === "exists") {
-    await changeAssetOwner(kind, asset.id, owner.owner, "publish");
+    const realigned = await changeAssetOwner(kind, asset.id, owner.owner, "publish");
+    if (!realigned) {
+      return Response.json(
+        {
+          error:
+            "Asset is registered to a different owner and could not be reassigned; try again later",
+        },
+        { status: 503 }
+      );
+    }
   }
 
   try {
@@ -146,7 +165,12 @@ export async function POST(req: Request, ctx: Ctx) {
     return Response.json({ asset: updated }, { status: 201 });
   } catch (err) {
     // Do not leave a registration pointing at an asset we failed to mark.
-    await revokeAsset(kind, asset.id);
+    // If this revoke also fails the ref stays registered, which a retry heals:
+    // register returns "exists" and ownership is realigned before publishing.
+    const revoked = await revokeAsset(kind, asset.id);
+    if (!revoked) {
+      console.error("[asset/publish] rollback revoke failed", asset.id);
+    }
     return mapError(err);
   }
 }
@@ -167,7 +191,17 @@ export async function DELETE(req: Request, ctx: Ctx) {
   if (!asset.publishedAt) return badRequest("Asset is not published");
 
   const kind = assetKindFor(asset.type);
-  if (kind) await revokeAsset(kind, asset.id);
+  if (kind) {
+    const revoked = await revokeAsset(kind, asset.id);
+    // Clearing locally while the registry still holds it would let the project
+    // be deleted and strand a real orphan registration.
+    if (!revoked) {
+      return Response.json(
+        { error: "Asset registry is unavailable, try again later" },
+        { status: 503 }
+      );
+    }
+  }
 
   await prisma.asset.update({
     where: { id: asset.id },
