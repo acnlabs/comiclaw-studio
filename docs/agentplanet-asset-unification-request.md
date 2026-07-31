@@ -2,7 +2,9 @@
 
 **发起方：** ComicLaw Studio  
 **状态：** 待 AgentPlanet 答复；答复前 ComicLaw 侧不会改动任何已登记资产  
-**相关文档：** 《ComicLaw × AgentPlanet 资产登记矩阵》、`asset-v1.md`、`agent-asset-registry.md`
+**相关文档：** 《ComicLaw × AgentPlanet 资产登记矩阵》、`COMICLAW_ASSET_REGISTRY_MATRIX.md`、`asset-v1.md`、`agent-asset-registry.md`
+
+> 已收到《资产产权登记对接说明》。**主路径已迁到 `/api/assets/registry`，上架已迁到 `/api/store/assets/products`**，兼容别名不再使用（见 §10）。第 6 节要 ComicLaw 确认的项在 §11 回复。
 
 ---
 
@@ -110,3 +112,47 @@ ComicLaw 目前有两张表都可以成为可交易主体：
 - 已发布资产的浏览入口
 
 付费授权（新增上架 + 下单 + 对账）会照搬角色那套幂等抢占与自愈，但**只新增、不改旧链路**。主体统一（`AgentCharacter` 降级）等本文件的答复。
+
+
+---
+
+## 10. 已按《对接说明》完成的改动
+
+| 项 | 之前 | 现在 |
+|---|---|---|
+| 登记主路径 | `/api/store/asset-registry` | **`/api/assets/registry`** |
+| 上架路径 | `/api/store/agent-assets/products` | **`/api/store/assets/products`**（含 `PATCH` / `unlist` / `order`） |
+| 鉴权头 | `X-Internal-Token` | 不变，已符合 |
+| 重复登记 409 | 已按 `exists` 处理 | 不变 |
+
+路径统一收在一个契约模块里，并有离线校验钉死「不得退回兼容别名」，避免新代码无声漂回旧路径（旧路径仍会 200，不会自己报错）。
+
+`GET /api/assets/registry/{asset_ref}` 我们**还没接**——目前没有需要读回登记态的场景，等做对账/诊断时再接。
+
+## 10.1 一处需要你们确认的基址口径
+
+《对接说明》§2 写「全球：以贵司现网 AgentPlanet Backend 为准（**如 api.acnlabs.dev**）」。我们实测（无 token，看路由是否存在）：
+
+| Host | `GET /api/assets/registry/{ref}` | 判断 |
+|---|---|---|
+| `api.agentplanet.org` | **401** | 路由存在（缺 token）——**这正是 ComicLaw 现网配置的基址** |
+| `api.acnlabs.dev` | **404** | 登记表**不在**这个 host 上（这是我们调 ACN 的地址） |
+| `api.acnlabs.cn` | **401** | CN 分区路由存在 |
+
+所以我们判断 §2 里的 `api.acnlabs.dev` 是笔误，全球仍走 `api.agentplanet.org`，**现网配置无需改动**。如果你们的意图是「登记表要迁到 ACN backend」，请明确告知——那会是一次基址变更，我们需要单独安排。
+
+## 11. 回复《对接说明》第 6 节
+
+| 问题 | ComicLaw 回复 |
+|---|---|
+| 栏目默认产权主体 | **官方栏目资产 `org`**（栏目已绑 ACN Org，收益进 Org 金库，符合共创语义）；**用户自建资产先 `user`**（Auth0 sub），绑定 Agent 后 `change-owner` 转 `agent` |
+| 栏目 `org_id` 全球 | `org_a3a067ed8b4342b6bc4b82c7be3ea12c`（《AI 漫记》，已在生产创建） |
+| 栏目 `org_id` CN | **暂无**。ComicLaw Studio 目前只有单一 `AGENTPLANET_API_URL` / `ACN_API_URL`，**跑不了双分区**；CN 要上线需要我们先做分区配置，再建 CN 侧 Org |
+| 若用 agent 持有：收款 agent_id | 现有 `CHARGE_PAYEE_AGENT_ID = 90f884c1-f7fd-4e6f-b375-84521539648a`（comiclaw-studio）是**用量扣款**收款方。按你们「产权 ≠ 扣款」的口径，我们**不打算复用它做资产产权**；官方资产倾向 `org` 持有，若必须用 agent，请为此**另开一个持有 Agent** |
+| 存量角色补登记 | **建议先观察**。现网只有 `licensePoints > 0` 才登记；免费角色从未登记，但也从未上架，强制模式不影响它们；一旦改价，上架前会自动补登记。真正需要处理的是 §5–§6 的 `asset_ref` 迁移 |
+| 对接环境优先级 | **先全球**（现网数据都在全球侧，且 CN 需要我们先改分区配置）。CN 的时间表请给一下，我们据此排分区改造 |
+| 预计联调窗口 | 待定，取决于 §6 的 `asset_ref` 迁移方案（尤其是能否支持 alias） |
+
+### 需要提醒的一点
+
+你们写「CN 生产默认未登记不可上架（`store_asset_registry_enforce=true`）」。ComicLaw 侧**登记失败不阻塞上架**（best effort，注释里写的是「观察模式对未登记资产放行」）。在 enforce 为真的环境里，这个假设不成立：登记失败会导致后续上架被挡，而我们当时不会报错。CN 接入前我们会把这条改成 fail-closed，但**前提是先确认 CN 的基址与 token**。

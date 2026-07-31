@@ -8,8 +8,13 @@ import {
   ASSET_SOURCE,
   assetRef,
   registerAssetPayload,
+  registryActionPath,
+  registryEntryPath,
+  REGISTRY_PATH,
   sellerFields,
   sellerMatchesOwner,
+  storeProductPath,
+  STORE_PRODUCTS_PATH,
   type AssetOwner,
 } from "../src/lib/assetRegistry";
 
@@ -91,5 +96,39 @@ assert.deepEqual(sellerFields(userOwner), {
   seller_id: "auth0|abc",
 });
 ok("agent sellers keep the legacy payload; new owner types carry their type");
+
+// The compat aliases still answer, so nothing fails loudly if new code drifts
+// back to them — pin the canonical paths instead.
+assert.equal(REGISTRY_PATH, "/api/assets/registry");
+assert.equal(STORE_PRODUCTS_PATH, "/api/store/assets/products");
+assert.ok(!REGISTRY_PATH.includes("/store/asset-registry"));
+assert.ok(!STORE_PRODUCTS_PATH.includes("agent-assets"));
+ok("registry and product paths are the canonical ones, not the aliases");
+
+// A ref contains colons, so it has to survive being put in a path segment.
+assert.equal(
+  registryEntryPath("comiclaw:scene:scene_001"),
+  "/api/assets/registry/comiclaw%3Ascene%3Ascene_001"
+);
+assert.equal(
+  registryActionPath("comiclaw:character:char_042", "change-owner"),
+  "/api/assets/registry/comiclaw%3Acharacter%3Achar_042/change-owner"
+);
+assert.equal(
+  registryActionPath("comiclaw:prop:p1", "revoke"),
+  "/api/assets/registry/comiclaw%3Aprop%3Ap1/revoke"
+);
+ok("asset refs are encoded into the path");
+
+assert.equal(storeProductPath("prod_1"), "/api/store/assets/products/prod_1");
+assert.equal(
+  storeProductPath("prod_1", "unlist"),
+  "/api/store/assets/products/prod_1/unlist"
+);
+assert.equal(
+  storeProductPath("prod_1", "order"),
+  "/api/store/assets/products/prod_1/order"
+);
+ok("store product paths cover listing, unlist and order");
 
 console.log("\nAll asset registry checks passed.");

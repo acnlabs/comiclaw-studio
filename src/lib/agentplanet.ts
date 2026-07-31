@@ -2,7 +2,12 @@ import {
   ASSET_SOURCE,
   assetRef,
   registerAssetPayload,
+  registryActionPath,
+  registryEntryPath,
+  REGISTRY_PATH,
   sellerFields,
+  storeProductPath,
+  STORE_PRODUCTS_PATH,
   type AssetKind,
   type AssetOwner,
   type RegisterAssetArgs,
@@ -95,7 +100,7 @@ export async function upsertAssetListing(args: {
 }): Promise<string | null> {
   try {
     if (args.storeProductId) {
-      const res = await storeFetch(`/api/store/agent-assets/products/${args.storeProductId}`, {
+      const res = await storeFetch(storeProductPath(args.storeProductId), {
         method: "PATCH",
         body: JSON.stringify({
           ...sellerFields(args.owner),
@@ -109,7 +114,7 @@ export async function upsertAssetListing(args: {
       // 商品不存在(如 Store 侧被清理)→ 走新建
       if (res.status !== 404) return null;
     }
-    const res = await storeFetch(`/api/store/agent-assets/products`, {
+    const res = await storeFetch(STORE_PRODUCTS_PATH, {
       method: "POST",
       body: JSON.stringify({
         seller_type: args.owner.type,
@@ -148,7 +153,8 @@ export async function verifyAgentExists(agentId: string): Promise<boolean | null
   }
 }
 
-// ---- 资产登记表(平台级产权账本;ap-backend /api/store/asset-registry)----
+// ---- 资产登记表(平台级产权账本)----
+// 主路径 /api/assets/registry;旧的 /api/store/asset-registry 仍兼容,新代码不再写。
 // 登记的是产权与指针。产权人可以是 user / agent / org;上架时 seller 必须与
 // 产权人一致,否则 Store 403。形象绑定(bound_agent_id)与产权分开维护。
 
@@ -157,7 +163,7 @@ export async function registerAsset(
   args: RegisterAssetArgs
 ): Promise<RegisterResult> {
   try {
-    const res = await storeFetch(`/api/store/asset-registry`, {
+    const res = await storeFetch(REGISTRY_PATH, {
       method: "POST",
       body: JSON.stringify(registerAssetPayload(args)),
     });
@@ -181,7 +187,7 @@ export async function patchAsset(
   if (Object.keys(body).length === 0) return;
   try {
     await storeFetch(
-      `/api/store/asset-registry/${encodeURIComponent(assetRef(kind, localId))}`,
+      registryEntryPath(assetRef(kind, localId)),
       { method: "PATCH", body: JSON.stringify(body) }
     );
   } catch {
@@ -202,7 +208,7 @@ export async function changeAssetOwner(
 ): Promise<boolean> {
   try {
     const res = await storeFetch(
-      `/api/store/asset-registry/${encodeURIComponent(assetRef(kind, localId))}/change-owner`,
+      registryActionPath(assetRef(kind, localId), "change-owner"),
       {
         method: "POST",
         body: JSON.stringify({
@@ -229,7 +235,7 @@ export async function revokeAsset(
 ): Promise<boolean> {
   try {
     const res = await storeFetch(
-      `/api/store/asset-registry/${encodeURIComponent(assetRef(kind, localId))}/revoke`,
+      registryActionPath(assetRef(kind, localId), "revoke"),
       { method: "POST", body: JSON.stringify({}) }
     );
     return res.ok || res.status === 404;
@@ -251,7 +257,7 @@ export async function getCharacterListing(
   storeProductId: string
 ): Promise<StoreListingStatus | null> {
   try {
-    const res = await storeFetch(`/api/store/agent-assets/products/${storeProductId}`);
+    const res = await storeFetch(storeProductPath(storeProductId));
     if (!res.ok) return null;
     return (await res.json()) as StoreListingStatus;
   } catch {
@@ -265,7 +271,7 @@ export async function unlistAssetListing(
   seller: AssetOwner
 ): Promise<void> {
   try {
-    await storeFetch(`/api/store/agent-assets/products/${storeProductId}/unlist`, {
+    await storeFetch(storeProductPath(storeProductId, "unlist"), {
       method: "POST",
       body: JSON.stringify(sellerFields(seller)),
     });
@@ -285,7 +291,7 @@ export async function createCastingOrder(args: {
 }): Promise<StoreOrder | null> {
   try {
     const res = await storeFetch(
-      `/api/store/agent-assets/products/${args.storeProductId}/order`,
+      storeProductPath(args.storeProductId, "order"),
       {
         method: "POST",
         body: JSON.stringify({
