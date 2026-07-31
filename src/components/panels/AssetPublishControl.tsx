@@ -10,13 +10,9 @@ import {
   PUBLISHED,
   PUBLISH_DRAFT,
 } from "@/lib/assetPublish";
+import AssetTransferControl from "@/components/panels/AssetTransferControl";
+import { ASSET_PUBLISH_CHANGED_EVENT } from "@/lib/assetEvents";
 import type { AssetData } from "@/lib/types";
-
-/**
- * A PRIVATE project is rendered from client-side state, where router.refresh()
- * cannot reach the fetch that produced it, so publishing announces itself.
- */
-export const ASSET_PUBLISH_CHANGED_EVENT = "asset-publish:changed";
 
 /**
  * Publish a project asset to the AgentPlanet registry.
@@ -129,6 +125,13 @@ export default function AssetPublishControl({
               : t("assetPublish.publish")}
         </button>
       </div>
+      {isPublished ? (
+        <AssetTransferControl
+          assetId={asset.id}
+          ownerType={asset.ownerType}
+          ownerId={asset.ownerId}
+        />
+      ) : null}
       {!isPublished && !inFlight ? (
         <p className="mt-1 text-[11px] leading-relaxed text-zinc-600">
           {t("assetPublish.hint")}
