@@ -60,7 +60,7 @@ export const DELETE = withAgentAuth(async (_req, ctx: Ctx) => {
 
   if (blocksProjectDelete(publishedAssets)) {
     return conflict(
-      `Project has ${publishedAssets} published assets; unpublish them before deleting`
+      `Project has ${publishedAssets} registered assets; withdraw them before deleting`
     );
   }
 

@@ -6,7 +6,7 @@ import {
   actorFromProductionAuth,
   assertCanDeleteContent,
 } from "@/lib/contentAuth";
-import { PUBLISH_DRAFT } from "@/lib/assetPublish";
+import { deletableState, PUBLISH_DRAFT } from "@/lib/assetPublish";
 import type { ProductionAuth } from "@/lib/acnAuth";
 
 type Ctx = { params: Promise<{ assetId: string }> };
@@ -37,6 +37,12 @@ export const DELETE = withProjectWorkerAuth(
     });
     if (!asset) return notFoundJson();
 
+    if (!deletableState(asset.publishState)) {
+      return conflict(
+        "This asset is registered (or being registered); withdraw it before deleting"
+      );
+    }
+
     const denied = assertCanDeleteContent(
       asset,
       asset.project,
@@ -53,7 +59,9 @@ export const DELETE = withProjectWorkerAuth(
       where: { id: assetId, publishState: PUBLISH_DRAFT },
     });
     if (removed.count === 0) {
-      return conflict("Unpublish this asset before deleting it");
+      return conflict(
+        "This asset is registered (or being registered); withdraw it before deleting"
+      );
     }
     emitProjectUpdate(asset.projectId, "asset.deleted");
     return Response.json({ deleted: true });
