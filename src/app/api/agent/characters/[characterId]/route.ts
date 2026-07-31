@@ -117,7 +117,15 @@ export const DELETE = withAgentAuth(async (_req, ctx: Ctx) => {
   // 先下架 Store 商品 + 注销产权登记(均 best effort),再删角色
   if (storeConfigured()) {
     if (exists.storeProductId) {
-      await unlistAssetListing(exists.storeProductId);
+      if (exists.acnAgentId) {
+        await unlistAssetListing(exists.storeProductId, exists.acnAgentId);
+      } else {
+        console.error(
+          "[characters] cannot unlist on delete, payee unknown",
+          characterId,
+          exists.storeProductId
+        );
+      }
     }
     await revokeAsset("character", characterId);
   }

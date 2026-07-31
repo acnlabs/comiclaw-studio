@@ -265,14 +265,17 @@ export async function getCharacterListing(
   }
 }
 
-// 下架商品(关闭付费/删除时)。best effort。端点只认 seller_id。
+// 下架商品(关闭付费/删除时)。best effort。
+// 端点只读 seller_id —— 是「只读这一个字段」,不是「不需要它」:它用来匹配卖家,
+// 不发会有下架失败、商品继续在售的风险,而失败在这里是被吞掉的。
 export async function unlistAssetListing(
-  storeProductId: string
+  storeProductId: string,
+  sellerId: string
 ): Promise<void> {
   try {
     await storeFetch(storeProductPath(storeProductId, "unlist"), {
       method: "POST",
-      body: JSON.stringify({}),
+      body: JSON.stringify({ seller_id: sellerId }),
     });
   } catch {
     // 忽略:下架失败不阻塞主流程,商品残留只影响目录展示

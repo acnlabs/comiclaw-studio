@@ -58,7 +58,7 @@ export async function syncCharacterListing(
     previous.acnAgentId &&
     current.acnAgentId !== previous.acnAgentId
   ) {
-    await unlistAssetListing(previous.storeProductId);
+    await unlistAssetListing(previous.storeProductId, previous.acnAgentId);
     if (current.acnAgentId) {
       await changeAssetOwner(
         "character",
@@ -117,7 +117,17 @@ export async function syncCharacterListing(
   }
 
   if (current.storeProductId) {
-    await unlistAssetListing(current.storeProductId);
+    if (current.acnAgentId) {
+      await unlistAssetListing(current.storeProductId, current.acnAgentId);
+    } else {
+      // 商品是当初以某个收款 Agent 建的,而那个 id 已经不在本地了,所以没法
+      // 匹配卖家去下架。留个响亮的日志:这条商品需要人工处理。
+      console.error(
+        "[characterListing] cannot unlist, payee unknown",
+        current.id,
+        current.storeProductId
+      );
+    }
   }
   return { character: changed ? current : null, registryBlocked: false };
 }

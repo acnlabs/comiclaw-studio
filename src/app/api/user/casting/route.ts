@@ -170,12 +170,13 @@ export async function GET(req: Request) {
 // 复用 syncCharacterListing:与主路径一致地先登记产权再上架,避免兜底
 // 路径产生未登记的商品。
 async function ensureListing(character: AgentCharacter): Promise<string | null> {
-  if (character.storeProductId) return character.storeProductId;
   if (!character.acnAgentId) return null; // 无收款方,无法上架
+
+  // 不能因为本地有 storeProductId 就直接下单:enforce 之前上架的商品可能从未
+  // 登记过,那样订单会在 Store 侧被挡,而我们这边看起来一切正常。每次都过一遍
+  // 同步,登记被拒就当作"没上架",回 NOT_LISTED。
   const { character: synced, registryBlocked } =
     await syncCharacterListing(character);
-  // enforce 打开时未登记资产不可上架,所以登记被拒就当作"没上架",让调用方
-  // 回 NOT_LISTED,而不是继续走下单
   if (registryBlocked) return null;
-  return synced?.storeProductId ?? null;
+  return synced?.storeProductId ?? character.storeProductId ?? null;
 }
