@@ -10,6 +10,34 @@
  *   PATCH `bound_agent_id`, change ownership with change-owner
  */
 
+/**
+ * Canonical paths. The registry graduated from `/api/store/asset-registry` to
+ * `/api/assets/registry`, and Store products from `/api/store/agent-assets` to
+ * `/api/store/assets`; the old ones remain as compat aliases, so keeping the
+ * paths in one place is what stops new code drifting back to them.
+ *
+ * Both hosts answer 401 (not 404) on these paths, i.e. the routes are live on
+ * the AgentPlanet backend and on the CN backend — not on the ACN backend.
+ */
+export const REGISTRY_PATH = "/api/assets/registry";
+export const STORE_PRODUCTS_PATH = "/api/store/assets/products";
+
+export function registryEntryPath(ref: string): string {
+  return `${REGISTRY_PATH}/${encodeURIComponent(ref)}`;
+}
+
+export function registryActionPath(
+  ref: string,
+  action: "change-owner" | "revoke"
+): string {
+  return `${registryEntryPath(ref)}/${action}`;
+}
+
+export function storeProductPath(productId: string, action?: "unlist" | "order"): string {
+  const base = `${STORE_PRODUCTS_PATH}/${productId}`;
+  return action ? `${base}/${action}` : base;
+}
+
 export type AssetKind = "character" | "scene" | "prop";
 
 export type AssetOwner =
