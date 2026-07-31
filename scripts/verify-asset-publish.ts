@@ -5,6 +5,7 @@
 import assert from "node:assert/strict";
 import {
   assetKindFor,
+  blocksAssetDelete,
   blocksProjectDelete,
   canPublishAsAuthor,
   checkPublishable,
@@ -114,6 +115,12 @@ assert.equal(deletableState("publishing"), false);
 assert.equal(deletableState("published"), false);
 assert.equal(deletableState("unpublishing"), false);
 ok("only a settled draft may be deleted");
+
+// Withdrawing makes an asset a draft again, so the licence rows are what would
+// disappear with it; they are the record that a grant happened.
+assert.equal(blocksAssetDelete(0), false);
+assert.equal(blocksAssetDelete(1), true);
+ok("a licensed asset cannot be deleted even once withdrawn");
 
 assert.deepEqual(
   checkPublishable({ type: "MYSTERY", publishState: "draft", versionIds: versions }),

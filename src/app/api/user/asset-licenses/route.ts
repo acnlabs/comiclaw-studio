@@ -16,6 +16,7 @@ import {
   copyAuthorFor,
   copyNotice,
 } from "@/lib/assetLicense";
+import { PUBLISHED } from "@/lib/assetPublish";
 
 const licenseSchema = z.object({
   assetId: z.string().trim().min(1).max(64),
@@ -91,9 +92,6 @@ export async function POST(req: Request) {
     return badRequest(message);
   }
 
-  const pinned = asset.publishedVersion;
-  if (!pinned) return badRequest("This asset has no published version yet");
-
   const author = copyAuthorFor({
     projectVisibility: project.visibility,
     licenseeSub: sub,
@@ -102,8 +100,22 @@ export async function POST(req: Request) {
   // The copy must happen exactly once even though a double click, a retry and a
   // second tab can all arrive together. Whoever wins the unique constraint (or
   // flips a stale pending row) is the one that copies.
+  //
+  // The eligibility read above is only a fast rejection: the owner can withdraw
+  // between it and the write, so the state is re-read inside a serializable
+  // transaction. Without that, licensing races a withdrawal and hands out a
+  // grant for an asset that is no longer published.
   try {
     const result = await prisma.$transaction(async (tx) => {
+      const live = await tx.asset.findFirst({
+        where: { id: asset.id, publishState: PUBLISHED },
+        select: {
+          publishedVersion: { select: { imageUrl: true, audioUrl: true } },
+        },
+      });
+      const pinned = live?.publishedVersion;
+      if (!pinned) return { withdrawn: true as const };
+
       if (existing) {
         const flipped = await tx.assetLicense.updateMany({
           where: { id: existing.id, status: { not: "GRANTED" } },
@@ -157,8 +169,11 @@ export async function POST(req: Request) {
         }),
         copied: true,
       };
-    });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
+    if ("withdrawn" in result) {
+      return conflict("This asset is no longer published");
+    }
     if (result.copied) emitProjectUpdate(project.id, "asset.created");
     return Response.json({ license: result.license }, { status: 201 });
   } catch (err) {
@@ -166,13 +181,17 @@ export async function POST(req: Request) {
       err instanceof Prisma.PrismaClientKnownRequestError &&
       err.code === "P2002"
     ) {
-      // A concurrent request got there first and has already copied.
+      // A concurrent request got there first. Only a granted row means the copy
+      // actually happened; anything else is still in progress.
       const license = await prisma.assetLicense.findUnique({
         where: {
           assetId_projectId: { assetId: asset.id, projectId: project.id },
         },
       });
-      if (license) return Response.json({ license, alreadyLicensed: true });
+      if (license?.status === "GRANTED") {
+        return Response.json({ license, alreadyLicensed: true });
+      }
+      if (license) return conflict("Licensing is in progress, try again");
     }
     return mapError(err);
   }

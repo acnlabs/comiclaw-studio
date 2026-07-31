@@ -62,6 +62,15 @@ export function deletableState(state: string): boolean {
   return state === PUBLISH_DRAFT;
 }
 
+/**
+ * A withdrawn asset is a draft again and therefore deletable, but its licence
+ * rows cascade with it. Those rows are the record that a grant happened — and
+ * paid receipts will live in the same table — so a licensed asset stays.
+ */
+export function blocksAssetDelete(grantedLicenseCount: number): boolean {
+  return grantedLicenseCount > 0;
+}
+
 export type PublishCheck =
   | { ok: true; versionId: string }
   | {
