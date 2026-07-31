@@ -44,9 +44,23 @@ export const POST = withAgentAuth(async (req) => {
       licensePoints: body.licensePoints ?? 0,
     },
   });
-  // 付费角色同步上架到 AgentPlanet Store(best effort;失败时授权前会兜底上架)
-  const synced = await syncCharacterListing(character);
-  return Response.json({ character: synced ?? character }, { status: 201 });
+  // 付费角色同步上架到 AgentPlanet Store。登记是 fail-closed:登记被拒就没上架,
+  // 必须回报,否则调用方以为设了价就在售(enforce 下实际买不了)。
+  const { character: synced, registryBlocked } =
+    await syncCharacterListing(character);
+  return Response.json(
+    {
+      character: synced ?? character,
+      ...(registryBlocked
+        ? {
+            listingBlocked: true,
+            listingError:
+              "Asset registry refused the registration, so the character is not listed for sale yet",
+          }
+        : {}),
+    },
+    { status: 201 }
+  );
 });
 
 // 角色列表(agent 查询)

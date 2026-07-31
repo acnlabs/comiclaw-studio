@@ -4,6 +4,8 @@ import { verifyUserToken } from "@/lib/userAuth";
 import {
   storeConfigured,
   createCastingOrder,
+  getAssetRegistration,
+  getCharacterListing,
   getCheckout,
   acceptCastingOrder,
   checkoutUrl,
@@ -170,8 +172,27 @@ export async function GET(req: Request) {
 // 复用 syncCharacterListing:与主路径一致地先登记产权再上架,避免兜底
 // 路径产生未登记的商品。
 async function ensureListing(character: AgentCharacter): Promise<string | null> {
-  if (character.storeProductId) return character.storeProductId;
   if (!character.acnAgentId) return null; // 无收款方,无法上架
-  const synced = await syncCharacterListing(character);
+
+  if (character.storeProductId) {
+    // 已有商品:这里只**确认**,不写。买家的下单动作不该改卖家的商品——
+    // 走一遍上架同步会把 is_active 置回 true,把卖家或审核方故意下架的商品
+    // 重新激活,还会覆盖名称与价格。
+    const [registration, listing] = await Promise.all([
+      // enforce 之前上架的商品可能从未登记过,那样订单会在 Store 侧被挡,
+      // 而我们这边看起来一切正常
+      getAssetRegistration("character", character.id),
+      getCharacterListing(character.storeProductId),
+    ]);
+    if (!registration) return null;
+    if (!listing?.is_active || listing.review_status === "rejected") return null;
+    return character.storeProductId;
+  }
+
+  // 还没有商品(如角色在 Store 接入前就已设置付费):兜底上架。这不会覆盖任何
+  // 既有商品,且 syncCharacterListing 内部对登记是 fail-closed 的。
+  const { character: synced, registryBlocked } =
+    await syncCharacterListing(character);
+  if (registryBlocked) return null;
   return synced?.storeProductId ?? null;
 }

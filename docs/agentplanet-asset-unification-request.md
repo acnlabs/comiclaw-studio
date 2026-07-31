@@ -1,7 +1,7 @@
 # 请求 AgentPlanet 协助：资产主体统一后的 `asset_ref` 迁移
 
 **发起方：** ComicLaw Studio
-**状态：** 待 AgentPlanet 答复；答复前 ComicLaw 侧不会改动任何已登记资产
+**状态：** 已收到 AgentPlanet 正式答复（2026-07-31）。回复见 §12，主体统一已解锁
 **相关文档：** 《ComicLaw × AgentPlanet 资产登记矩阵》、`COMICLAW_ASSET_REGISTRY_MATRIX.md`、`asset-v1.md`、`agent-asset-registry.md`
 
 > 已收到《资产产权登记对接说明》。**主路径已迁到 `/api/assets/registry`，上架已迁到 `/api/store/assets/products`**，兼容别名不再使用（见 §10）。第 6 节要 ComicLaw 确认的项在 §11 回复。
@@ -137,7 +137,7 @@ ComicLaw 目前有两张表都可以成为可交易主体：
 
 路径统一收在一个契约模块里，并有离线校验钉死「不得退回兼容别名」，避免新代码无声漂回旧路径（旧路径仍会 200，不会自己报错）。
 
-`GET /api/assets/registry/{asset_ref}` 我们**还没接**——目前没有需要读回登记态的场景，等做对账/诊断时再接。
+`GET /api/assets/registry/{asset_ref}` **已接**，用于下单前只读确认登记态，见 §12.6。
 
 ## 10.1 一处需要你们确认的基址口径
 
@@ -166,3 +166,58 @@ ComicLaw 目前有两张表都可以成为可交易主体：
 ### 需要提醒的一点
 
 你们写「CN 生产默认未登记不可上架（`store_asset_registry_enforce=true`）」。ComicLaw 侧**登记失败不阻塞上架**（best effort，注释里写的是「观察模式对未登记资产放行」）。在 enforce 为真的环境里，这个假设不成立：登记失败会导致后续上架被挡，而我们当时不会报错。CN 接入前我们会把这条改成 fail-closed，但**前提是先确认 CN 的基址与 token**。
+
+---
+
+## 12. 回复 AgentPlanet 正式答复的 §8
+
+### 12.1 主体统一：按「无对外存量」执行
+
+**是，按此执行**，但要说清当前状态：主体统一（角色付费上架改用 `Asset.id`）**还没做**，这一步是独立的一刀。
+
+- 项目资产发布（场景 / 道具 / 角色）**已经**按 `comiclaw:{kind}:{Asset.id}` 登记
+- 角色付费上架**目前仍用 `comiclaw:character:{AgentCharacter.id}`**，会在主体统一那一刀改掉
+- 测试期旧 ref 走 revoke → 重登记 → 重上架 → 回填本地 `storeProductId`，与你们建议一致
+
+一个前提要请你们**书面确认**：结论建立在「资产付费能力尚未对外推出、生产无真实用户存量」上。ComicLaw 侧看不到你们登记表与订单的全貌，所以这条前提由你们背书。**如果生产上其实存在真实已完成订单，revoke + 重上架会让那批订单的 `asset_ref` 与新登记项脱钩**，届时我们需要改回等 alias 的方案。
+
+### 12.2 fail-closed：已完成，本次即上线
+
+`store_asset_registry_enforce` 在两个环境都是 True，而我们此前登记失败仍会继续上架，属于现网隐患：客户设了价、以为在售，enforce 下实际不可买且**我们不会报错**。
+
+已改为 fail-closed：
+
+- 登记被拒（`failed`），或已存在但产权改绑没成功（`exists` + change-owner 失败）→ **不上架**
+- 角色创建 / 更新接口在响应里多带 `listingBlocked: true` 与 `listingError`，让 comiclaw 能明确告诉客户「价没生效」
+- 授权兜底上架路径遇到登记被拒时返回「未上架」，走既有的 `402 NOT_LISTED`，不再继续下单
+- 规则收在一个函数里并有离线校验，包含「已登记但产权仍属他人不得上架」这一条
+
+顺带修掉一个漏洞：删除角色时原先要求 `acnAgentId` 存在才下架商品，于是**没有收款方却有商品的角色永远下不掉架**。现在只要拿得到当初的收款 Agent 就下架；拿不到时打显式错误日志，需要人工处理（下架端点要用 `seller_id` 匹配卖家）。
+
+### 12.3 `seller_type` 已按你们口径归一
+
+确认「unlist / 商品 PATCH 只认 `seller_id`，多传 `seller_type` 会被忽略」后，这两个端点**统一只发 `seller_id`**（不再按 owner 类型分支）。建商品仍按示例同时发 `seller_type` + `seller_id`。
+
+这里我们理解成「只读这一个字段」而不是「不需要这个字段」——`seller_id` 仍会发，因为它是匹配卖家用的，不发有下架失败、商品继续在售的风险，而下架失败在我们这边是被吞掉的。若实际上 unlist 完全不需要 body，请告知，我们再简化。
+
+顺带暴露一个存量问题：商品是当初以某个收款 Agent 建的，如果本地 `acnAgentId` 后来被清空，我们就**无法匹配卖家去下架**。这类记录现在会打显式错误日志，需要人工处理；如果你们的清单里能带上商品的 seller，我们可以据此补齐。
+
+### 12.4 是否需要你们导出登记清单
+
+**需要。** 请导出一版全球 `source=comiclaw-studio` 的登记清单（含 `asset_ref` / `owner_type` / `owner_id` / 是否有在架商品）。我们用 `licensePoints > 0 OR storeProductId IS NOT NULL` 做交叉核对，把测试残留清干净，避免统一后留下指向 `AgentCharacter.id` 的孤儿登记项。
+
+### 12.5 CN 分区排期
+
+**暂无。** ComicLaw Studio 目前是单基址（`AGENTPLANET_API_URL` / `ACN_API_URL`），要接 CN 需要：分区配置（双基址 + 双 token）、CN 侧 Org 创建、以及产权主体在两区分别登记。CN 付费资产在此之前不接。有确定排期我们会单独同步。
+
+### 12.6 下单前会重新确认登记
+
+顺带修掉一处 enforce 相关隐患：原先本地只要有 `storeProductId` 就直接下单，而 enforce 之前上架的商品**可能从未登记**——那样订单会在你们侧被挡，我们这边看起来却一切正常。
+
+现在下单前会**只读地确认**两件事：`GET /api/assets/registry/{ref}` 确认确实登记过，`GET /api/store/assets/products/{id}` 确认商品在架且未被审核拒绝；任一不满足就回 `402 NOT_LISTED`。
+
+这里刻意不走「登记 → 上架」同步：那会把 `is_active` 置回 true，等于**买家的下单动作把卖家或审核方故意下架的商品重新激活**，还会覆盖名称与价格。所以 §12.7 提到的 GET 现在就接上了——这正是需要它的场合。
+
+### 12.7 `GET /api/assets/registry/{ref}` 已接
+
+按你们建议接上了，用途见 §12.6：下单前只读确认登记态。查不到或不可达都按「没登记」处理（fail-closed）。

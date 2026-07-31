@@ -5,7 +5,6 @@ import {
   registryActionPath,
   registryEntryPath,
   REGISTRY_PATH,
-  sellerFields,
   storeProductPath,
   STORE_PRODUCTS_PATH,
   type AssetKind,
@@ -103,7 +102,8 @@ export async function upsertAssetListing(args: {
       const res = await storeFetch(storeProductPath(args.storeProductId), {
         method: "PATCH",
         body: JSON.stringify({
-          ...sellerFields(args.owner),
+          // unlist 与商品 PATCH 只认 seller_id;多传 seller_type 会被忽略
+          seller_id: args.owner.id,
           name: args.name,
           description: args.tagline,
           credits_price: args.credits,
@@ -172,6 +172,33 @@ export async function registerAsset(
     return "failed";
   } catch {
     return "failed";
+  }
+}
+
+export interface AssetRegistration {
+  owner_type: string;
+  owner_id: string;
+}
+
+/**
+ * 读回登记态。用于「确认」而不是「写入」的场合——买家下单前要确认资产确实登记
+ * 过(enforce 下未登记不可下单),但绝不该顺手改卖家的商品。
+ * 查不到或不可达返回 null,调用方按「没登记」处理。
+ */
+export async function getAssetRegistration(
+  kind: AssetKind,
+  localId: string
+): Promise<AssetRegistration | null> {
+  try {
+    const res = await storeFetch(registryEntryPath(assetRef(kind, localId)));
+    if (!res.ok) return null;
+    const data = (await res.json()) as Partial<AssetRegistration> | null;
+    if (typeof data?.owner_type !== "string" || typeof data?.owner_id !== "string") {
+      return null;
+    }
+    return { owner_type: data.owner_type, owner_id: data.owner_id };
+  } catch {
+    return null;
   }
 }
 
@@ -265,15 +292,17 @@ export async function getCharacterListing(
   }
 }
 
-// 下架商品(关闭付费/删除时)。best effort。seller 仍须是当时的产权人。
+// 下架商品(关闭付费/删除时)。best effort。
+// 端点只读 seller_id —— 是「只读这一个字段」,不是「不需要它」:它用来匹配卖家,
+// 不发会有下架失败、商品继续在售的风险,而失败在这里是被吞掉的。
 export async function unlistAssetListing(
   storeProductId: string,
-  seller: AssetOwner
+  sellerId: string
 ): Promise<void> {
   try {
     await storeFetch(storeProductPath(storeProductId, "unlist"), {
       method: "POST",
-      body: JSON.stringify(sellerFields(seller)),
+      body: JSON.stringify({ seller_id: sellerId }),
     });
   } catch {
     // 忽略:下架失败不阻塞主流程,商品残留只影响目录展示

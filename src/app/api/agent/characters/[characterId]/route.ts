@@ -72,11 +72,23 @@ export const PATCH = withAgentAuth(async (req, ctx: Ctx) => {
   }
 
   // 付费状态/价格/收款方变更时同步 Store 商品(上架/改价/下架/改绑重上,best effort)
-  const synced = await syncCharacterListing(character, {
-    storeProductId: existing.storeProductId,
-    acnAgentId: existing.acnAgentId,
+  const { character: synced, registryBlocked } = await syncCharacterListing(
+    character,
+    {
+      storeProductId: existing.storeProductId,
+      acnAgentId: existing.acnAgentId,
+    }
+  );
+  return Response.json({
+    character: synced ?? character,
+    ...(registryBlocked
+      ? {
+          listingBlocked: true,
+          listingError:
+            "Asset registry refused the registration, so the character is not listed for sale yet",
+        }
+      : {}),
   });
-  return Response.json({ character: synced ?? character });
 });
 
 export const DELETE = withAgentAuth(async (_req, ctx: Ctx) => {
@@ -104,11 +116,16 @@ export const DELETE = withAgentAuth(async (_req, ctx: Ctx) => {
 
   // 先下架 Store 商品 + 注销产权登记(均 best effort),再删角色
   if (storeConfigured()) {
-    if (exists.storeProductId && exists.acnAgentId) {
-      await unlistAssetListing(exists.storeProductId, {
-        type: "agent",
-        id: exists.acnAgentId,
-      });
+    if (exists.storeProductId) {
+      if (exists.acnAgentId) {
+        await unlistAssetListing(exists.storeProductId, exists.acnAgentId);
+      } else {
+        console.error(
+          "[characters] cannot unlist on delete, payee unknown",
+          characterId,
+          exists.storeProductId
+        );
+      }
     }
     await revokeAsset("character", characterId);
   }
