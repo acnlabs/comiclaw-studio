@@ -9,16 +9,12 @@ import {
   unauthorized,
 } from "@/lib/auth";
 import { mapError, parseBody } from "@/lib/api";
-import { registerAsset, changeAssetOwner, revokeAsset } from "@/lib/agentplanet";
+import { runPublish, runWithdraw } from "@/lib/assetPublishFlow";
 import {
-  assetKindFor,
   canPublishAsAuthor,
   checkPublishable,
   resolvePublishOwner,
-  PUBLISHED,
   PUBLISH_DRAFT,
-  PUBLISH_IN_FLIGHT,
-  UNPUBLISH_IN_FLIGHT,
 } from "@/lib/assetPublish";
 
 type Ctx = { params: Promise<{ assetId: string }> };
@@ -35,12 +31,6 @@ const PUBLISH_ERRORS: Record<string, string> = {
   unknown_type: "This asset type cannot be published",
 };
 
-const registryUnavailable = () =>
-  Response.json(
-    { error: "Asset registry is unavailable, try again later" },
-    { status: 503 }
-  );
-
 async function loadOwnedAsset(assetId: string, sub: string) {
   const asset = await prisma.asset.findUnique({
     where: { id: assetId },
@@ -56,14 +46,7 @@ async function loadOwnedAsset(assetId: string, sub: string) {
         orderBy: { version: "desc" },
         select: { id: true },
       },
-      project: {
-        select: {
-          ownerUserId: true,
-          visibility: true,
-          acnOrgId: true,
-          column: { select: { acnOrgId: true } },
-        },
-      },
+      project: { select: { ownerUserId: true, visibility: true } },
     },
   });
   if (!asset) return { error: notFoundJson("Asset not found") } as const;
@@ -73,14 +56,7 @@ async function loadOwnedAsset(assetId: string, sub: string) {
   return { asset } as const;
 }
 
-/**
- * Publish a project asset as a tradable, registered asset.
- *
- * The local row moves draft → publishing → published. Claiming `publishing`
- * before touching AgentPlanet is what stops a concurrent delete or unpublish
- * from acting on an asset whose registration is still being created, and
- * undoing that claim is a local write rather than a remote call that may fail.
- */
+/** Publish a project asset the caller authored as a tradable, registered asset. */
 export async function POST(req: Request, ctx: Ctx) {
   const sub = await verifyUserToken(req);
   if (!sub) return unauthorized();
@@ -125,106 +101,18 @@ export async function POST(req: Request, ctx: Ctx) {
       : badRequest(message);
   }
 
-  // A project may override its column's Org, so prefer the project binding.
+  // Ownership follows the author, not the container it was made in.
   const owner = resolvePublishOwner({
-    columnAcnOrgId:
-      asset.project.acnOrgId ?? asset.project.column?.acnOrgId ?? null,
+    authorUserId: asset.authorUserId,
+    authorAgentId: asset.authorAgentId,
     publisherSub: sub,
   });
   if (!owner.ok) return badRequest("No owner principal available");
 
-  const kind = assetKindFor(asset.type);
-  if (!kind) return badRequest("This asset type cannot be published");
-
-  const claimed = await prisma.asset.updateMany({
-    where: { id: asset.id, publishState: PUBLISH_DRAFT },
-    data: {
-      publishState: PUBLISH_IN_FLIGHT,
-      ownerType: owner.owner.type,
-      ownerId: owner.owner.id,
-      publishedVersionId: check.versionId,
-    },
-  });
-  if (claimed.count === 0) {
-    return conflict("Asset was published or removed while this request ran");
-  }
-
-  // Only release the claim we made: another request may have moved the row on.
-  const releaseClaim = () =>
-    prisma.asset
-      .updateMany({
-        where: { id: asset.id, publishState: PUBLISH_IN_FLIGHT },
-        data: {
-          publishState: PUBLISH_DRAFT,
-          ownerType: null,
-          ownerId: null,
-          publishedVersionId: null,
-        },
-      })
-      .catch((err) =>
-        console.error("[asset/publish] failed to release claim", asset.id, err)
-      );
-
-  const registered = await registerAsset({
-    kind,
-    localId: asset.id,
-    owner: owner.owner,
-    displayName: asset.name,
-  });
-  if (registered === "failed") {
-    await releaseClaim();
-    return registryUnavailable();
-  }
-
-  // Registered earlier under a different principal (e.g. a retried publish
-  // after ownership moved) — realign so a later listing is not rejected.
-  if (registered === "exists") {
-    const realigned = await changeAssetOwner(kind, asset.id, owner.owner, "publish");
-    if (!realigned) {
-      await releaseClaim();
-      return Response.json(
-        {
-          error:
-            "Asset is registered to a different owner and could not be reassigned; try again later",
-        },
-        { status: 503 }
-      );
-    }
-  }
-
-  const settled = await prisma.asset.updateMany({
-    where: { id: asset.id, publishState: PUBLISH_IN_FLIGHT },
-    data: { publishState: PUBLISHED, publishedAt: new Date() },
-  });
-  if (settled.count === 0) {
-    // The row moved on under us; the registration stands and a retry realigns
-    // it, so do not revoke something another request may now depend on.
-    console.error("[asset/publish] claim lost before settling", asset.id);
-    return conflict("Asset changed while this request ran");
-  }
-
-  const updated = await prisma.asset.findUnique({
-    where: { id: asset.id },
-    select: {
-      id: true,
-      name: true,
-      type: true,
-      ownerType: true,
-      ownerId: true,
-      publishedVersionId: true,
-      publishedAt: true,
-      publishState: true,
-    },
-  });
-  return Response.json({ asset: updated }, { status: 201 });
+  return runPublish({ asset, owner: owner.owner, versionId: check.versionId });
 }
 
-/**
- * Withdraw a published asset from the registry.
- * published → unpublishing → draft, so an in-flight publish is never revoked
- * out from under itself and the local row only clears once AgentPlanet has
- * actually released the registration.
- */
+/** Withdraw a published asset from the registry. */
 export async function DELETE(req: Request, ctx: Ctx) {
   const sub = await verifyUserToken(req);
   if (!sub) return unauthorized();
@@ -241,36 +129,5 @@ export async function DELETE(req: Request, ctx: Ctx) {
     return badRequest("Asset is not published");
   }
 
-  const claimed = await prisma.asset.updateMany({
-    where: { id: asset.id, publishState: PUBLISHED },
-    data: { publishState: UNPUBLISH_IN_FLIGHT },
-  });
-  if (claimed.count === 0) {
-    return conflict("Asset is busy, try again in a moment");
-  }
-
-  const kind = assetKindFor(asset.type);
-  const revoked = kind ? await revokeAsset(kind, asset.id) : true;
-  if (!revoked) {
-    // Put it back: clearing locally while the registry still holds it would
-    // let the project be deleted and strand a real orphan registration.
-    await prisma.asset.updateMany({
-      where: { id: asset.id, publishState: UNPUBLISH_IN_FLIGHT },
-      data: { publishState: PUBLISHED },
-    });
-    return registryUnavailable();
-  }
-
-  await prisma.asset.updateMany({
-    where: { id: asset.id, publishState: UNPUBLISH_IN_FLIGHT },
-    data: {
-      publishState: PUBLISH_DRAFT,
-      ownerType: null,
-      ownerId: null,
-      publishedVersionId: null,
-      publishedAt: null,
-    },
-  });
-
-  return Response.json({ unpublished: true });
+  return runWithdraw(asset);
 }

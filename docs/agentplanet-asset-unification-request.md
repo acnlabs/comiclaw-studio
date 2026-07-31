@@ -27,7 +27,9 @@ ComicLaw 要把「可交易资产」统一成一个主体，这会让**存量付
 | `PATCH /asset-registry/{ref}` 改展示名 / 改出镜 Agent | 已接入（改角色名会同步 `display_name`） |
 | `revoke` 幂等 | 已接入，404 视为成功 |
 
-新增能力：项目内的资产（角色 / 场景 / 道具）现在可以「发布」为登记资产，产权按矩阵解析（栏目或项目绑了 ACN Org → `org`；否则发布者 → `user`），并有 `draft → publishing → published → unpublishing` 状态机保证不会本地声称一个没登记成功的产权。
+新增能力：项目内的资产（角色 / 场景 / 道具）现在可以「发布」为登记资产，**产权跟作者走**（agent 产出 → `owner_type: agent`；人产出 → `user`），并有 `draft → publishing → published → unpublishing` 状态机保证不会本地声称一个没登记成功的产权。
+
+> 这里更正我们上一版的口径：上一版按「栏目绑了 ACN Org → 产权归 Org」解析，那会把社区 Agent 在《AI 漫记》下产出的场景连同授权收益一起划给 Org。已改为**谁做的归谁**，转给 Org 是显式的 `change-owner`，不是发布的副作用。
 
 ---
 
@@ -106,10 +108,10 @@ ComicLaw 目前有两张表都可以成为可交易主体：
 
 | 问题 | 回答 |
 |---|---|
-| 栏目默认产权主体 | **官方栏目资产走 `org`**（栏目已绑 ACN Org，收益进 Org 金库，符合共创语义）；**用户自建先 `user`**（Auth0 sub），之后绑定 Agent 再 `change-owner` |
+| 栏目默认产权主体 | **不按栏目定，按作者定**：Agent 产出 → `agent`（其 ACN agent_id）；人产出 → `user`（Auth0 sub）；`org` 只在资产本就属于组织时使用，且必须显式 `change-owner`。栏目绑了哪个 Org 不影响产权 |
 | 栏目 `org_id`（全球） | `org_a3a067ed8b4342b6bc4b82c7be3ea12c`（《AI 漫记》，已在生产创建） |
 | 栏目 `org_id`（CN） | **暂无**，见 §7.2 |
-| Studio 收款 Agent | 现有 `CHARGE_PAYEE_AGENT_ID = 90f884c1-f7fd-4e6f-b375-84521539648a`（comiclaw-studio）。但矩阵明确说资产产权不要与用量扣款 payee 混用，所以若官方资产要用 agent 持有，我们倾向**另设一个持有 Agent**，或直接用 org 持有 |
+| Studio 收款 Agent | 现有 `CHARGE_PAYEE_AGENT_ID = 90f884c1-f7fd-4e6f-b375-84521539648a`（comiclaw-studio）是**用量扣款**收款方，按你们「产权 ≠ 扣款」的口径我们不复用它持有资产。comiclaw 自己产出的资产由**实际产出的那个 Agent**（已在 AgentPlanet 注册的几个）或 comiclaw 组织持有，不需要新设代持 Agent |
 | 存量角色批量补登记窗口 | **建议观察模式，不需要批量补登记。** 现网只有 `licensePoints > 0` 才登记；免费角色从未登记，但也从未上架，enforce 不影响它们；一旦改价，上架前会自动补登记 |
 
 ---
@@ -155,10 +157,10 @@ ComicLaw 目前有两张表都可以成为可交易主体：
 
 | 问题 | ComicLaw 回复 |
 |---|---|
-| 栏目默认产权主体 | **官方栏目资产 `org`**（栏目已绑 ACN Org，收益进 Org 金库，符合共创语义）；**用户自建资产先 `user`**（Auth0 sub），绑定 Agent 后 `change-owner` 转 `agent` |
+| 栏目默认产权主体 | **产权跟作者走，与栏目无关**。Agent 产出 → `agent`；人产出 → `user`；`org` 仅在资产本就属于组织时使用。所谓「官方」就是 comiclaw 自己：comiclaw 名下的 Agent 产出的资产归那个 Agent，comiclaw 组织产出的归组织——和任何第三方 Agent 一视同仁，栏目运营方不代持贡献者的资产 |
 | 栏目 `org_id` 全球 | `org_a3a067ed8b4342b6bc4b82c7be3ea12c`（《AI 漫记》，已在生产创建） |
 | 栏目 `org_id` CN | **暂无**。ComicLaw Studio 目前只有单一 `AGENTPLANET_API_URL` / `ACN_API_URL`，**跑不了双分区**；CN 要上线需要我们先做分区配置，再建 CN 侧 Org |
-| 若用 agent 持有：收款 agent_id | 现有 `CHARGE_PAYEE_AGENT_ID = 90f884c1-f7fd-4e6f-b375-84521539648a`（comiclaw-studio）是**用量扣款**收款方。按你们「产权 ≠ 扣款」的口径，我们**不打算复用它做资产产权**；官方资产倾向 `org` 持有，若必须用 agent，请为此**另开一个持有 Agent** |
+| 若用 agent 持有：收款 agent_id | **不复用** `CHARGE_PAYEE_AGENT_ID`（那是用量扣款收款方，与产权分离）。也**不需要代持 Agent**：产权跟作者走，comiclaw 侧就是已注册的那几个 Agent 各自持有自己的产出 |
 | 存量角色补登记 | **建议先观察**。从未付费过的角色确实从未登记，也从未上架，强制模式不影响它们；一旦改价，上架前会自动补登记。注意「曾付费、现免费」的角色仍有登记记录（我们只 unlist 不 revoke，见 §3）。真正需要处理的是 §5–§6 的 `asset_ref` 迁移 |
 | 对接环境优先级 | **先全球**（现网数据都在全球侧，且 CN 需要我们先改分区配置）。CN 的时间表请给一下，我们据此排分区改造 |
 | 预计联调窗口 | 待定，取决于 §6 的 `asset_ref` 迁移方案（尤其是能否支持 alias） |

@@ -102,7 +102,9 @@ export default async function CharactersPage() {
               t(
                 ownerType === "org"
                   ? "publishedAssets.heldByOrg"
-                  : "publishedAssets.heldByUser"
+                  : ownerType === "agent"
+                    ? "publishedAssets.heldByAgent"
+                    : "publishedAssets.heldByUser"
               )
             }
           />

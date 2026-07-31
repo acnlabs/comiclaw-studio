@@ -105,7 +105,9 @@ export default function AssetPublishControl({
           {isPublished
             ? asset.ownerType === "org"
               ? t("assetPublish.ownedByOrg")
-              : t("assetPublish.ownedByYou")
+              : asset.ownerType === "agent"
+                ? t("assetPublish.ownedByAgent")
+                : t("assetPublish.ownedByYou")
             : inFlight
               ? t("assetPublish.inFlight")
               : t("assetPublish.draft")}

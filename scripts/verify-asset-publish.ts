@@ -4,6 +4,7 @@
  */
 import assert from "node:assert/strict";
 import {
+  agentCanPublish,
   assetKindFor,
   blocksAssetDelete,
   blocksProjectDelete,
@@ -23,29 +24,55 @@ assert.equal(assetKindFor("PROP"), "prop");
 assert.equal(assetKindFor("SOMETHING_ELSE"), null);
 ok("asset types map onto the three registry kinds");
 
-// A column bound to an ACN Org owns what is published under it, so licensing
-// revenue reaches the Org treasury rather than the individual publisher.
+// Whoever made it owns it. An agent's contribution stays the agent's even when
+// it was made inside a column bound to an Org — deriving ownership from the
+// container would quietly transfer the creator's work, revenue included.
 assert.deepEqual(
   resolvePublishOwner({
-    columnAcnOrgId: "org_a3a067ed",
+    authorUserId: null,
+    authorAgentId: "agent-uuid",
     publisherSub: "auth0|abc",
   }),
-  { ok: true, owner: { type: "org", id: "org_a3a067ed" } }
+  { ok: true, owner: { type: "agent", id: "agent-uuid" } }
 );
-ok("column Org ownership wins over the publisher");
+ok("an agent-authored asset is owned by that agent");
 
 assert.deepEqual(
-  resolvePublishOwner({ columnAcnOrgId: null, publisherSub: "auth0|abc" }),
+  resolvePublishOwner({
+    authorUserId: "auth0|author",
+    authorAgentId: null,
+    publisherSub: "auth0|author",
+  }),
+  { ok: true, owner: { type: "user", id: "auth0|author" } }
+);
+ok("a human-authored asset is owned by that human");
+
+// Pre-authorship rows have no author; canPublishAsAuthor already limits those
+// to the project owner's own PRIVATE work.
+assert.deepEqual(
+  resolvePublishOwner({
+    authorUserId: null,
+    authorAgentId: null,
+    publisherSub: "auth0|abc",
+  }),
   { ok: true, owner: { type: "user", id: "auth0|abc" } }
 );
 assert.deepEqual(
-  resolvePublishOwner({ columnAcnOrgId: "   ", publisherSub: "auth0|abc" }),
+  resolvePublishOwner({
+    authorUserId: "   ",
+    authorAgentId: "   ",
+    publisherSub: "auth0|abc",
+  }),
   { ok: true, owner: { type: "user", id: "auth0|abc" } }
 );
-ok("without an Org the publisher holds it as user");
+ok("a pre-authorship row falls to the publisher");
 
 assert.deepEqual(
-  resolvePublishOwner({ columnAcnOrgId: null, publisherSub: null }),
+  resolvePublishOwner({
+    authorUserId: null,
+    authorAgentId: null,
+    publisherSub: null,
+  }),
   { ok: false, reason: "no_principal" }
 );
 ok("refuses to publish with no principal to own it");
@@ -190,5 +217,38 @@ assert.equal(
   "a pre-authorship row on a PUBLIC entry may be an agent contribution"
 );
 ok("only the author may publish; legacy rows are claimable only in PRIVATE");
+
+// An agent publishes its own work and nothing else. A Studio key does not
+// stand in for it: publishing opens the asset to licensing, which is the
+// owner's call.
+assert.equal(
+  agentCanPublish({
+    authorAgentId: "agent-a",
+    actor: { kind: "agent", agentId: "agent-a" },
+  }),
+  true
+);
+assert.equal(
+  agentCanPublish({
+    authorAgentId: "agent-a",
+    actor: { kind: "agent", agentId: "agent-b" },
+  }),
+  false
+);
+assert.equal(
+  agentCanPublish({
+    authorAgentId: "agent-a",
+    actor: { kind: "studio_key" },
+  }),
+  false
+);
+assert.equal(
+  agentCanPublish({
+    authorAgentId: null,
+    actor: { kind: "agent", agentId: "agent-a" },
+  }),
+  false
+);
+ok("an agent publishes only what it authored, and ops cannot do it for them");
 
 console.log("\nAll asset publish checks passed.");

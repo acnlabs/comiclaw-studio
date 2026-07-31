@@ -26,19 +26,27 @@ export type OwnerResolution =
   | { ok: false; reason: "no_principal" };
 
 /**
- * Who owns a newly published asset.
+ * Who owns a newly published asset: whoever made it.
  *
- * Per the registration matrix: assets under a column that is bound to an ACN
- * Org belong to that Org, so licensing revenue lands in the Org treasury.
- * Otherwise the human publisher holds it as `user` and can hand it to an agent
- * later via change-owner.
+ * Deliberately *not* the column's Org. Deriving ownership from the container
+ * would take a community creator's scene published under an Org-bound column
+ * and hand it to that Org — licensing revenue included. Ownership follows the
+ * author, and moving it to an Org stays an explicit act (change-owner), not a
+ * side effect of where the work happened to be made.
+ *
+ * `publisherSub` only covers pre-authorship rows, which `canPublishAsAuthor`
+ * already restricts to the project owner's own PRIVATE work.
  */
 export function resolvePublishOwner(args: {
-  columnAcnOrgId: string | null;
+  authorUserId: string | null;
+  authorAgentId: string | null;
   publisherSub: string | null;
 }): OwnerResolution {
-  const orgId = args.columnAcnOrgId?.trim();
-  if (orgId) return { ok: true, owner: { type: "org", id: orgId } };
+  const agentId = args.authorAgentId?.trim();
+  if (agentId) return { ok: true, owner: { type: "agent", id: agentId } };
+
+  const authorSub = args.authorUserId?.trim();
+  if (authorSub) return { ok: true, owner: { type: "user", id: authorSub } };
 
   const sub = args.publisherSub?.trim();
   if (sub) return { ok: true, owner: { type: "user", id: sub } };
@@ -136,4 +144,18 @@ export function canPublishAsAuthor(args: {
   return (
     args.authorKey === LEGACY_AUTHOR_KEY && args.projectVisibility !== "PUBLIC"
   );
+}
+
+/**
+ * The agent-side counterpart. An agent publishes its own work and nothing
+ * else — not even a Studio key stands in for it, because publishing opens the
+ * asset to licensing and that is the owner's call to make.
+ */
+export function agentCanPublish(args: {
+  authorAgentId: string | null;
+  actor: { kind: "studio_key" } | { kind: "agent"; agentId: string };
+}): boolean {
+  if (args.actor.kind === "studio_key") return false;
+  const author = args.authorAgentId?.trim();
+  return Boolean(author) && author === args.actor.agentId.trim();
 }
