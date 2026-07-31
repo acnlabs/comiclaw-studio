@@ -51,6 +51,7 @@ async function loadOwnedAsset(assetId: string, sub: string) {
       project: {
         select: {
           ownerUserId: true,
+          visibility: true,
           acnOrgId: true,
           column: { select: { acnOrgId: true } },
         },
@@ -84,7 +85,13 @@ export async function POST(req: Request, ctx: Ctx) {
   if ("error" in loaded) return loaded.error;
   const { asset } = loaded;
 
-  if (!canPublishAsAuthor({ ...asset, publisherSub: sub })) {
+  if (
+    !canPublishAsAuthor({
+      ...asset,
+      projectVisibility: asset.project.visibility,
+      publisherSub: sub,
+    })
+  ) {
     return forbidden(
       "Only the asset's author can publish it; contributors keep their own work"
     );
@@ -114,8 +121,37 @@ export async function POST(req: Request, ctx: Ctx) {
   const kind = assetKindFor(asset.type);
   if (!kind) return badRequest("This asset type cannot be published");
 
-  // Register before marking it published locally: if the registry rejects it,
-  // the asset stays a draft rather than claiming an ownership we never got.
+  // Claim locally first. The claim is what stops a concurrent delete from
+  // removing the row while we talk to AgentPlanet, and rolling a local claim
+  // back is a reliable write — rolling a remote registration back is not.
+  const claimed = await prisma.asset.updateMany({
+    where: { id: asset.id, publishedAt: null },
+    data: {
+      ownerType: owner.owner.type,
+      ownerId: owner.owner.id,
+      publishedVersionId: check.versionId,
+      publishedAt: new Date(),
+    },
+  });
+  if (claimed.count === 0) {
+    return conflict("Asset was published or removed while this request ran");
+  }
+
+  const releaseClaim = () =>
+    prisma.asset
+      .updateMany({
+        where: { id: asset.id },
+        data: {
+          ownerType: null,
+          ownerId: null,
+          publishedVersionId: null,
+          publishedAt: null,
+        },
+      })
+      .catch((err) =>
+        console.error("[asset/publish] failed to release claim", asset.id, err)
+      );
+
   const registered = await registerAsset({
     kind,
     localId: asset.id,
@@ -123,16 +159,19 @@ export async function POST(req: Request, ctx: Ctx) {
     displayName: asset.name,
   });
   if (registered === "failed") {
+    await releaseClaim();
     return Response.json(
       { error: "Asset registry is unavailable, try again later" },
       { status: 503 }
     );
   }
+
   // Registered earlier under a different principal (e.g. a retried publish
   // after ownership moved) — realign so a later listing is not rejected.
   if (registered === "exists") {
     const realigned = await changeAssetOwner(kind, asset.id, owner.owner, "publish");
     if (!realigned) {
+      await releaseClaim();
       return Response.json(
         {
           error:
@@ -143,36 +182,19 @@ export async function POST(req: Request, ctx: Ctx) {
     }
   }
 
-  try {
-    const updated = await prisma.asset.update({
-      where: { id: asset.id },
-      data: {
-        ownerType: owner.owner.type,
-        ownerId: owner.owner.id,
-        publishedVersionId: check.versionId,
-        publishedAt: new Date(),
-      },
-      select: {
-        id: true,
-        name: true,
-        type: true,
-        ownerType: true,
-        ownerId: true,
-        publishedVersionId: true,
-        publishedAt: true,
-      },
-    });
-    return Response.json({ asset: updated }, { status: 201 });
-  } catch (err) {
-    // Do not leave a registration pointing at an asset we failed to mark.
-    // If this revoke also fails the ref stays registered, which a retry heals:
-    // register returns "exists" and ownership is realigned before publishing.
-    const revoked = await revokeAsset(kind, asset.id);
-    if (!revoked) {
-      console.error("[asset/publish] rollback revoke failed", asset.id);
-    }
-    return mapError(err);
-  }
+  const updated = await prisma.asset.findUniqueOrThrow({
+    where: { id: asset.id },
+    select: {
+      id: true,
+      name: true,
+      type: true,
+      ownerType: true,
+      ownerId: true,
+      publishedVersionId: true,
+      publishedAt: true,
+    },
+  });
+  return Response.json({ asset: updated }, { status: 201 });
 }
 
 /** Withdraw a published asset from the registry. */

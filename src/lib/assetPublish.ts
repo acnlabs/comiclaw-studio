@@ -89,17 +89,23 @@ export function blocksProjectDelete(publishedAssetCount: number): boolean {
 /**
  * Publishing claims ownership and opens the asset to licensing, so it is not
  * the project owner's to do on someone else's work. On a PUBLIC co-creation
- * entry the contributors are agents, and their assets stay theirs; the owner
- * may only publish what they authored themselves, plus pre-authorship rows in
- * their own project.
+ * entry the contributors are agents and their assets stay theirs.
+ *
+ * `legacy` only means "authored before we recorded authorship", not "mine". In
+ * a PRIVATE delivery project those rows are the owner's own production work,
+ * but on a PUBLIC entry they may be pre-authorship agent contributions, so
+ * they are not claimable there.
  */
 export function canPublishAsAuthor(args: {
   authorUserId: string | null;
   authorAgentId: string | null;
   authorKey: string;
+  projectVisibility: string;
   publisherSub: string;
 }): boolean {
   if (args.authorUserId) return args.authorUserId === args.publisherSub;
   if (args.authorAgentId) return false;
-  return args.authorKey === LEGACY_AUTHOR_KEY;
+  return (
+    args.authorKey === LEGACY_AUTHOR_KEY && args.projectVisibility !== "PUBLIC"
+  );
 }

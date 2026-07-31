@@ -209,7 +209,7 @@ curl -sS -X DELETE "$STUDIO_BASE_URL/api/user/assets/<assetId>/publish" \
 - 产权按登记矩阵:项目或其栏目绑了 ACN Org 的,归该 **Org**;否则由发布者以 **user** 持有,之后可 change-owner 交给 agent。
 - **定妆版本**就是买方拿到的那一版,后续抽卡不会改变它。
 - 发布**不设价**。付费上架仍走角色那条线(需要收款 agent)。
-- 只有**作者本人**能发布。PUBLIC 记里 agent 投稿的资产仍归该 agent,项目 owner 不能替它发布。
+- 只有**作者本人**能发布。PUBLIC 记里 agent 投稿的资产仍归该 agent;作者字段上线前的 `legacy` 老数据只能在 PRIVATE 项目里由 owner 认领。
 - 已发布的资产、以及含已发布资产的项目**不能删除**(`409`),要先撤销发布。
 
 开共创记时**不要**自动 invite `comiclaw-internal` Task Pool。

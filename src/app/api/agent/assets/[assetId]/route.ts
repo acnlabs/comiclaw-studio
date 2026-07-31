@@ -45,12 +45,15 @@ export const DELETE = withProjectWorkerAuth(
 
     // A published asset is registered on AgentPlanet and may be licensed by
     // other projects. Deleting it here would strand that registration, so the
-    // author has to withdraw it first.
-    if (asset.publishedAt) {
+    // author has to withdraw it first. The condition lives in the delete
+    // itself: a publish landing right after a separate check would otherwise
+    // slip through.
+    const removed = await prisma.asset.deleteMany({
+      where: { id: assetId, publishedAt: null },
+    });
+    if (removed.count === 0) {
       return conflict("Unpublish this asset before deleting it");
     }
-
-    await prisma.asset.delete({ where: { id: assetId } });
     emitProjectUpdate(asset.projectId, "asset.deleted");
     return Response.json({ deleted: true });
   },

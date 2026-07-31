@@ -113,6 +113,7 @@ assert.equal(
     authorUserId: me,
     authorAgentId: null,
     authorKey: `user:${me}`,
+    projectVisibility: "PUBLIC",
     publisherSub: me,
   }),
   true
@@ -122,6 +123,7 @@ assert.equal(
     authorUserId: "auth0|someone-else",
     authorAgentId: null,
     authorKey: "user:auth0|someone-else",
+    projectVisibility: "PUBLIC",
     publisherSub: me,
   }),
   false
@@ -131,20 +133,35 @@ assert.equal(
     authorUserId: null,
     authorAgentId: "agent-contributor",
     authorKey: "agent:agent-contributor",
+    projectVisibility: "PUBLIC",
     publisherSub: me,
   }),
   false,
   "an agent's contribution is not the project owner's to sell"
+);
+
+// `legacy` means authorship predates the field, not that the owner made it.
+assert.equal(
+  canPublishAsAuthor({
+    authorUserId: null,
+    authorAgentId: null,
+    authorKey: "legacy",
+    projectVisibility: "PRIVATE",
+    publisherSub: me,
+  }),
+  true
 );
 assert.equal(
   canPublishAsAuthor({
     authorUserId: null,
     authorAgentId: null,
     authorKey: "legacy",
+    projectVisibility: "PUBLIC",
     publisherSub: me,
   }),
-  true
+  false,
+  "a pre-authorship row on a PUBLIC entry may be an agent contribution"
 );
-ok("only the author may publish; legacy rows fall to the project owner");
+ok("only the author may publish; legacy rows are claimable only in PRIVATE");
 
 console.log("\nAll asset publish checks passed.");
