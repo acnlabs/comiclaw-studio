@@ -4,6 +4,8 @@ import { verifyUserToken } from "@/lib/userAuth";
 import {
   storeConfigured,
   createCastingOrder,
+  getAssetRegistration,
+  getCharacterListing,
   getCheckout,
   acceptCastingOrder,
   checkoutUrl,
@@ -172,11 +174,25 @@ export async function GET(req: Request) {
 async function ensureListing(character: AgentCharacter): Promise<string | null> {
   if (!character.acnAgentId) return null; // 无收款方,无法上架
 
-  // 不能因为本地有 storeProductId 就直接下单:enforce 之前上架的商品可能从未
-  // 登记过,那样订单会在 Store 侧被挡,而我们这边看起来一切正常。每次都过一遍
-  // 同步,登记被拒就当作"没上架",回 NOT_LISTED。
+  if (character.storeProductId) {
+    // 已有商品:这里只**确认**,不写。买家的下单动作不该改卖家的商品——
+    // 走一遍上架同步会把 is_active 置回 true,把卖家或审核方故意下架的商品
+    // 重新激活,还会覆盖名称与价格。
+    const [registration, listing] = await Promise.all([
+      // enforce 之前上架的商品可能从未登记过,那样订单会在 Store 侧被挡,
+      // 而我们这边看起来一切正常
+      getAssetRegistration("character", character.id),
+      getCharacterListing(character.storeProductId),
+    ]);
+    if (!registration) return null;
+    if (!listing?.is_active || listing.review_status === "rejected") return null;
+    return character.storeProductId;
+  }
+
+  // 还没有商品(如角色在 Store 接入前就已设置付费):兜底上架。这不会覆盖任何
+  // 既有商品,且 syncCharacterListing 内部对登记是 fail-closed 的。
   const { character: synced, registryBlocked } =
     await syncCharacterListing(character);
   if (registryBlocked) return null;
-  return synced?.storeProductId ?? character.storeProductId ?? null;
+  return synced?.storeProductId ?? null;
 }

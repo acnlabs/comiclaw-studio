@@ -175,6 +175,33 @@ export async function registerAsset(
   }
 }
 
+export interface AssetRegistration {
+  owner_type: string;
+  owner_id: string;
+}
+
+/**
+ * 读回登记态。用于「确认」而不是「写入」的场合——买家下单前要确认资产确实登记
+ * 过(enforce 下未登记不可下单),但绝不该顺手改卖家的商品。
+ * 查不到或不可达返回 null,调用方按「没登记」处理。
+ */
+export async function getAssetRegistration(
+  kind: AssetKind,
+  localId: string
+): Promise<AssetRegistration | null> {
+  try {
+    const res = await storeFetch(registryEntryPath(assetRef(kind, localId)));
+    if (!res.ok) return null;
+    const data = (await res.json()) as Partial<AssetRegistration> | null;
+    if (typeof data?.owner_type !== "string" || typeof data?.owner_id !== "string") {
+      return null;
+    }
+    return { owner_type: data.owner_type, owner_id: data.owner_id };
+  } catch {
+    return null;
+  }
+}
+
 /** 改展示名 / 改出镜 Agent。产权变更不走这里,走 change-owner。 */
 export async function patchAsset(
   kind: AssetKind,
