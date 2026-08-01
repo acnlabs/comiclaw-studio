@@ -287,10 +287,11 @@ ComicLaw 目前有两张表都可以成为可交易主体：
 
 对方给出的全球清单（`source=comiclaw-studio`）：1 条 active（`comiclaw:character:cmrklsrc00001l604lxd730hb`，漫剧大虾，owner `agent:390287c9-…`）+ 4 条 revoked 测试项；商品 11 条全部已下架，无在售；订单 3 completed + 1 pending，均为测试。
 
-待办（未开工，见 §15）：
-1. 主体统一那一刀：角色付费上架改用 `comiclaw:character:{Asset.id}`
-2. 漫剧大虾：revoke 旧 ref → 以新 `Asset.id` register → 按需重新上架并回填 `storeProductId`
-3. 用他们的清单与本地 `licensePoints > 0 OR storeProductId IS NOT NULL` 求差集，清测试残留
+已完成：主体统一那一刀（角色的登记与上架改用 `comiclaw:character:{Asset.id}`）。
+
+**关于漫剧大虾，我们改了做法。** 你们建议按 revoke 旧 ref → register 新 ref 迁移，我们最初也写了带回滚与续做的搬迁逻辑。但重读你们给的清单后发现前提不成立：**11 个商品全部已下架、无在售，4 笔订单全是测试单**。ComicLaw 目前处于开发阶段、尚未面向市场，这些登记本身就是测试记录。
+
+所以我们只做一件事：**注销掉指向角色 id 的旧登记**。角色仍在定价的话，下一次上架同步（改一次价即可）会自动以新主体重新登记并上架——我们已验证过这条路。如果你们认为漫剧大虾那条登记有必须保留的历史意义（例如已计入某个统计），请告诉我们，我们改回搬迁。
 
 ---
 
