@@ -7,7 +7,6 @@ const zh = {
   "nav.recommend": "推荐",
   "nav.series": "短剧",
   "nav.assets": "资产",
-  "nav.journal": "漫记",
   "nav.coCreate": "共创",
   "nav.studio": "Studio",
   "nav.chatWithComiclaw": "找 comiclaw 聊聊",
@@ -15,7 +14,6 @@ const zh = {
   "nav.logout": "退出",
   "nav.credits": "Credits",
   "nav.creditsTitle": "Credits 收支明细",
-  "nav.myProjects": "我的项目",
 
   // 通用
   "common.video": "短视频",
@@ -443,7 +441,6 @@ const en: Record<MessageKey, string> = {
   "nav.recommend": "For You",
   "nav.series": "Series",
   "nav.assets": "Assets",
-  "nav.journal": "Journal",
   "nav.coCreate": "Collab",
   "nav.studio": "Studio",
   "nav.chatWithComiclaw": "Chat with comiclaw",
@@ -451,7 +448,6 @@ const en: Record<MessageKey, string> = {
   "nav.logout": "Sign out",
   "nav.credits": "Credits",
   "nav.creditsTitle": "Credits activity",
-  "nav.myProjects": "My Projects",
 
   "common.video": "Video",
   "common.series": "Series",

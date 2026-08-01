@@ -9,10 +9,16 @@ import UserMenu from "@/components/UserMenu";
 import { CHAT_OPEN_EVENT } from "@/components/ChatWidget";
 import type { MessageKey } from "@/lib/i18n";
 
-const MENUS: { href: string; labelKey: MessageKey }[] = [
+const MENUS: {
+  href: string;
+  labelKey: MessageKey;
+  /** Other paths this menu owns, so a detail page still lights up its section */
+  alsoOwns?: string[];
+}[] = [
   { href: "/", labelKey: "nav.recommend" },
   { href: "/series", labelKey: "nav.series" },
-  { href: "/assets", labelKey: "nav.assets" },
+  // Character detail pages keep their own path until characters become assets.
+  { href: "/assets", labelKey: "nav.assets", alsoOwns: ["/characters"] },
   { href: "/columns", labelKey: "nav.coCreate" },
   { href: "/studio", labelKey: "nav.studio" },
 ];
@@ -22,8 +28,11 @@ export default function SiteNav() {
   const { isAuthenticated, loginWithRedirect } = useAuth0();
   const { t } = useT();
 
-  const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname.startsWith(href);
+  const isActive = (m: (typeof MENUS)[number]) =>
+    m.href === "/"
+      ? pathname === "/"
+      : pathname.startsWith(m.href) ||
+        (m.alsoOwns ?? []).some((p) => pathname.startsWith(p));
 
   return (
     <div className="sticky top-0 z-20 border-b border-zinc-800/80 bg-[#0b0b10]/90 backdrop-blur">
@@ -37,11 +46,11 @@ export default function SiteNav() {
               key={m.href}
               href={m.href}
               className={`relative flex h-full items-center px-3 text-sm font-medium transition-colors ${
-                isActive(m.href) ? "text-accent" : "text-zinc-400 hover:text-zinc-200"
+                isActive(m) ? "text-accent" : "text-zinc-400 hover:text-zinc-200"
               }`}
             >
               {t(m.labelKey)}
-              {isActive(m.href) && (
+              {isActive(m) && (
                 <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-accent" />
               )}
             </Link>
