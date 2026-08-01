@@ -87,6 +87,8 @@ export const updateColumnSchema = z.object({
    * 「人类在 Studio 侧用 Auth0 sub 做栏目治理,与 Org.owner 对齐」的那一半。
    */
   ownerUserId: optionalStr,
+  /** 栏目的编辑 agent:可用自己的 ACN 身份开一记,不必持有 STUDIO_API_KEY */
+  editorAgentId: optionalStr,
 });
 
 export const createProjectSchema = z.object({
