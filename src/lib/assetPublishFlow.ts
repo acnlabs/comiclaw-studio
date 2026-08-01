@@ -91,7 +91,7 @@ export async function runPublish(args: {
   // Registered earlier under a different principal (e.g. a retried publish
   // after ownership moved) — realign so a later listing is not rejected.
   if (registered === "exists") {
-    const realigned = await changeAssetOwner(kind, asset.id, owner, "publish");
+    const realigned = await changeAssetOwner(kind, asset.id, owner);
     if (!realigned) {
       await releaseClaim();
       return Response.json(

@@ -9,6 +9,7 @@ import {
   STORE_PRODUCTS_PATH,
   type AssetKind,
   type AssetOwner,
+  type ChangeOwnerReason,
   type RegisterAssetArgs,
   type RegisterResult,
 } from "@/lib/assetRegistry";
@@ -231,7 +232,9 @@ export async function changeAssetOwner(
   kind: AssetKind,
   localId: string,
   owner: AssetOwner,
-  reason = "rebind"
+  // 只有 rebind | admin 会被接受;sale 由对方的订单闭环独占。传别的词会被拒,
+  // 而调用方是 fail-closed 的,所以拒绝会直接变成用户看到的 503。
+  reason: ChangeOwnerReason = "rebind"
 ): Promise<boolean> {
   try {
     const res = await storeFetch(

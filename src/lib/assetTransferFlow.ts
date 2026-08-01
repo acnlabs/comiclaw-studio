@@ -49,7 +49,10 @@ export async function runTransfer(args: {
   const kind = assetKindFor(asset.type);
   if (!kind) return badRequest("This asset type cannot be transferred");
 
-  const moved = await changeAssetOwner(kind, asset.id, to, "transfer");
+  // `rebind`, not a descriptive word: the registry's reason vocabulary is
+  // closed, and a free handover between principals is exactly a rebind. Paid
+  // handovers are not ours to record — they run inside AgentPlanet's order flow.
+  const moved = await changeAssetOwner(kind, asset.id, to);
   if (!moved) {
     return Response.json(
       { error: "Asset registry is unavailable, try again later" },
