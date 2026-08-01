@@ -1,29 +1,32 @@
-import { withAdminSession } from "@/lib/adminSession";
+import { checkApiKey, unauthorized } from "@/lib/auth";
 import {
   planCharacterRefMigration,
   runCharacterRefMigration,
 } from "@/lib/characterRefMigration";
 
 /**
- * Run the character registry cutover from the browser.
+ * One-off endpoint for the character registry cutover, same shape as
+ * `/api/admin/migrate`: `STUDIO_API_KEY` as a bearer, one curl, no session.
  *
- * The credentials this needs — the production database and the AgentPlanet
- * internal token — are already here on the server. Making someone dig them out
- * to run a script from a laptop is both more work and more exposure than
- * clicking a button behind the ops session.
+ * It runs here rather than from a laptop because the credentials it needs —
+ * the production database and the AgentPlanet internal token — are already on
+ * the server, and copying them out to run a script is both extra work and
+ * extra exposure. It is not a page: this moves one row, once.
+ *
+ * GET is a read-only probe of the live registry; POST does the move and can be
+ * called again to resume anything left half-finished.
  */
-
-/** What would move. Read-only: probes the live registry, changes nothing. */
-export const GET = withAdminSession(async () => {
+export async function GET(req: Request) {
+  if (!checkApiKey(req)) return unauthorized();
   return Response.json(await planCharacterRefMigration());
-});
+}
 
-/** Do it. Re-runnable, and resumes anything left half-finished. */
-export const POST = withAdminSession(async () => {
+export async function POST(req: Request) {
+  if (!checkApiKey(req)) return unauthorized();
   const results = await runCharacterRefMigration();
   return Response.json({
     results,
     moved: results.filter((r) => r.ok).length,
     failed: results.filter((r) => !r.ok).length,
   });
-});
+}
