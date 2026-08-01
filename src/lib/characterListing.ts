@@ -7,6 +7,7 @@ import {
   changeAssetOwner,
 } from "@/lib/agentplanet";
 import { mayListAfterRegistration, type AssetOwner } from "@/lib/assetRegistry";
+import { ensureBackingAsset } from "@/lib/characterAssetSync";
 import type { AgentCharacter } from "@prisma/client";
 
 // 角色今天只支持 agent 产权(收款方 = 角色所属智能体)。org / user 产权由
@@ -48,6 +49,26 @@ export async function syncCharacterListing(
 ): Promise<ListingSyncResult> {
   if (!storeConfigured()) return unchanged();
 
+  // The registry subject is the backing asset, not the character row: one
+  // `comiclaw:character:*` namespace can only mean one id space. A character
+  // with no backing asset has nothing to register, and registering it under
+  // its own id again would put the ambiguity straight back.
+  const subjectId = character.assetId ?? (await ensureBackingAsset(character.id));
+  if (!subjectId) {
+    console.error("[characterListing] no backing asset to register", character.id);
+    return { character: null, registryBlocked: true };
+  }
+
+  // A Store product carries the asset_ref it was created with, so the legacy
+  // product (created under the character's own id) can never be reused for the
+  // new subject — PATCHing it would just reactivate a listing that points at
+  // the old ref. The product that belongs to the subject lives on the asset.
+  const subject = await prisma.asset.findUnique({
+    where: { id: subjectId },
+    select: { storeProductId: true },
+  });
+  const subjectProductId = subject?.storeProductId ?? null;
+
   let current = character;
   let changed = false;
 
@@ -62,7 +83,7 @@ export async function syncCharacterListing(
     if (current.acnAgentId) {
       await changeAssetOwner(
         "character",
-        current.id,
+        subjectId,
         agentOwner(current.acnAgentId)
       );
     }
@@ -79,7 +100,7 @@ export async function syncCharacterListing(
     const owner = agentOwner(current.acnAgentId);
     const reg = await registerAsset({
       kind: "character",
-      localId: current.id,
+      localId: subjectId,
       owner,
       displayName: current.name,
       // 出镜 Agent 与产权分开:角色由该智能体出镜,同时也是当前收款方
@@ -87,7 +108,7 @@ export async function syncCharacterListing(
     });
     const ownerRealigned =
       reg === "exists"
-        ? await changeAssetOwner("character", current.id, owner)
+        ? await changeAssetOwner("character", subjectId, owner)
         : false;
     if (!mayListAfterRegistration({ registration: reg, ownerRealigned })) {
       console.error("[characterListing] registry blocked listing", current.id, reg);
@@ -95,16 +116,31 @@ export async function syncCharacterListing(
     }
 
     const productId = await upsertAssetListing({
-      storeProductId: current.storeProductId,
+      storeProductId: subjectProductId,
       kind: "character",
-      localId: current.id,
+      localId: subjectId,
       name: current.name,
       tagline: current.tagline,
       imageUrl: current.imageUrl,
       owner,
       credits: current.licensePoints,
     });
-    if (productId && productId !== current.storeProductId) {
+    if (!productId) {
+      return { character: changed ? current : null, registryBlocked: true };
+    }
+    if (productId !== subjectProductId) {
+      await prisma.asset.update({
+        where: { id: subjectId },
+        data: { storeProductId: productId },
+      });
+    }
+    // The character's own product predates the cutover and points at the old
+    // ref. Now that the subject has its own listing, take the old one down so
+    // the same character is not on sale twice.
+    if (current.storeProductId && current.storeProductId !== productId) {
+      await unlistAssetListing(current.storeProductId, owner.id);
+    }
+    if (productId !== current.storeProductId) {
       return {
         character: await prisma.agentCharacter.update({
           where: { id: current.id },
