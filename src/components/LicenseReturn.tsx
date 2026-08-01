@@ -135,7 +135,7 @@ export default function LicenseReturn({
         {confirmState === "dead" ? t("casting.orderDead") : t("castingReturn.failedHint")}
       </p>
       <Link
-        href="/characters"
+        href="/assets"
         className="mt-6 rounded-full bg-accent px-5 py-2 text-sm font-medium text-zinc-950 transition-opacity hover:opacity-90"
       >
         {t("castingReturn.backToCast")}

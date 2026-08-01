@@ -118,7 +118,7 @@ export default function AssetLicenseButton({
       <button
         type="button"
         onClick={() =>
-          loginWithRedirect({ appState: { returnTo: pathname || "/characters" } })
+          loginWithRedirect({ appState: { returnTo: pathname || "/assets" } })
         }
         className="rounded-full border border-zinc-600 px-3.5 py-1 text-xs text-zinc-300 transition hover:border-zinc-400"
       >

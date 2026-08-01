@@ -89,7 +89,7 @@ export default function CharacterDetailView({
       {/* 顶部导航条:返回 + 缩略图切换 + 上/下一个角色(桌面端固定,不随任何内容滚动) */}
       <div className="mb-4 flex shrink-0 items-center gap-3 border-b border-zinc-800 pb-4">
         <Link
-          href="/characters"
+          href="/assets"
           aria-label="back"
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-700 text-zinc-400 transition-colors hover:border-zinc-500 hover:text-zinc-200"
         >
