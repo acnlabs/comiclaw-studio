@@ -173,20 +173,21 @@ export async function GET(req: Request) {
 // 路径产生未登记的商品。
 async function ensureListing(character: AgentCharacter): Promise<string | null> {
   if (!character.acnAgentId) return null; // 无收款方,无法上架
-  if (!character.assetId) return null; // 还没有可登记的主体
 
   if (character.storeProductId) {
     // 已有商品:这里只**确认**,不写。买家的下单动作不该改卖家的商品——
     // 走一遍上架同步会把 is_active 置回 true,把卖家或审核方故意下架的商品
     // 重新激活,还会覆盖名称与价格。
-    const [registration, listing] = await Promise.all([
-      // enforce 之前上架的商品可能从未登记过,那样订单会在 Store 侧被挡,
-      // 而我们这边看起来一切正常
-      // The registry subject is the backing asset.
-      getAssetRegistration("character", character.assetId ?? character.id),
+    // 登记主体已切到背后的资产,但迁移脚本跑之前,存量角色的登记与商品仍挂在
+    // 角色自己的 id 上。两个主体都认——只认新的会让未迁移的付费角色直接买不了。
+    const [onAsset, onCharacter, listing] = await Promise.all([
+      character.assetId
+        ? getAssetRegistration("character", character.assetId)
+        : Promise.resolve(null),
+      getAssetRegistration("character", character.id),
       getCharacterListing(character.storeProductId),
     ]);
-    if (!registration) return null;
+    if (!onAsset && !onCharacter) return null;
     if (!listing?.is_active || listing.review_status === "rejected") return null;
     return character.storeProductId;
   }

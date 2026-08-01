@@ -59,6 +59,16 @@ export async function syncCharacterListing(
     return { character: null, registryBlocked: true };
   }
 
+  // A Store product carries the asset_ref it was created with, so the legacy
+  // product (created under the character's own id) can never be reused for the
+  // new subject — PATCHing it would just reactivate a listing that points at
+  // the old ref. The product that belongs to the subject lives on the asset.
+  const subject = await prisma.asset.findUnique({
+    where: { id: subjectId },
+    select: { storeProductId: true },
+  });
+  const subjectProductId = subject?.storeProductId ?? null;
+
   let current = character;
   let changed = false;
 
@@ -106,7 +116,7 @@ export async function syncCharacterListing(
     }
 
     const productId = await upsertAssetListing({
-      storeProductId: current.storeProductId,
+      storeProductId: subjectProductId,
       kind: "character",
       localId: subjectId,
       name: current.name,
@@ -115,7 +125,22 @@ export async function syncCharacterListing(
       owner,
       credits: current.licensePoints,
     });
-    if (productId && productId !== current.storeProductId) {
+    if (!productId) {
+      return { character: changed ? current : null, registryBlocked: true };
+    }
+    if (productId !== subjectProductId) {
+      await prisma.asset.update({
+        where: { id: subjectId },
+        data: { storeProductId: productId },
+      });
+    }
+    // The character's own product predates the cutover and points at the old
+    // ref. Now that the subject has its own listing, take the old one down so
+    // the same character is not on sale twice.
+    if (current.storeProductId && current.storeProductId !== productId) {
+      await unlistAssetListing(current.storeProductId, owner.id);
+    }
+    if (productId !== current.storeProductId) {
       return {
         character: await prisma.agentCharacter.update({
           where: { id: current.id },

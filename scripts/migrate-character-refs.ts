@@ -70,32 +70,51 @@ async function main() {
 
   for (const c of characters) {
     const assetId = c.assetId!;
-    const [oldReg, newReg] = await Promise.all([
+    const [oldReg, newReg, asset] = await Promise.all([
       getAssetRegistration("character", c.id),
       getAssetRegistration("character", assetId),
+      prisma.asset.findUnique({
+        where: { id: assetId },
+        select: { storeProductId: true },
+      }),
     ]);
 
-    if (!oldReg) {
-      // Never registered under its own id, or already retired.
+    // A run that died after step 3 leaves no old registration to find, but the
+    // job is not done: the character is priced, the new ref exists and nothing
+    // is on sale. Resuming has to be driven by that state, not by the presence
+    // of the old ref, or those characters stay unsellable forever.
+    const needsMove = Boolean(oldReg);
+    const needsListing =
+      Boolean(newReg) && c.licensePoints > 0 && !asset?.storeProductId;
+    if (!needsMove && !needsListing) {
       skipped++;
       continue;
     }
 
-    const owner: AssetOwner = { type: oldReg.owner_type as AssetOwner["type"], id: oldReg.owner_id };
+    const source = oldReg ?? newReg!;
+    const owner: AssetOwner = {
+      type: source.owner_type as AssetOwner["type"],
+      id: source.owner_id,
+    };
     console.log(
-      `${c.name} (${c.id})\n  旧 ref 产权: ${owner.type}:${owner.id}` +
-        `\n  新 ref: ${newReg ? "已登记" : "未登记"}` +
-        `\n  商品: ${c.storeProductId ?? "无"}  价: ${c.licensePoints}`
+      `${c.name} (${c.id})\n  产权: ${owner.type}:${owner.id}` +
+        `\n  旧 ref: ${oldReg ? "仍在登记" : "已注销"}` +
+        `  新 ref: ${newReg ? "已登记" : "未登记"}` +
+        `\n  旧商品: ${c.storeProductId ?? "无"}  新商品: ${asset?.storeProductId ?? "无"}  价: ${c.licensePoints}`
     );
 
     if (!APPLY) {
       pending++;
-      console.log("  → 将：下架旧商品 → 登记新 ref → 注销旧 ref → 以新 ref 上架\n");
+      console.log(
+        needsMove
+          ? "  → 将：下架旧商品 → 登记新 ref → 注销旧 ref → 以新 ref 上架\n"
+          : "  → 续做：上一轮已迁好登记，只补以新 ref 上架\n"
+      );
       continue;
     }
 
     // 1. stop sales under the old subject
-    if (c.storeProductId) {
+    if (needsMove && c.storeProductId) {
       await unlistAssetListing(c.storeProductId, owner.id);
     }
 
@@ -118,16 +137,20 @@ async function main() {
     }
 
     // 3. retire the old subject
-    const revoked = await revokeAsset("character", c.id);
-    if (!revoked) {
-      console.error("  ✗ 旧 ref 注销失败；新 ref 已登记，重跑本脚本会接着做");
-      continue;
+    if (oldReg) {
+      const revoked = await revokeAsset("character", c.id);
+      if (!revoked) {
+        console.error("  ✗ 旧 ref 注销失败；新 ref 已登记，重跑本脚本会接着做");
+        continue;
+      }
     }
 
     // 4. sell under the new subject
     if (c.licensePoints > 0) {
       const productId = await upsertAssetListing({
-        storeProductId: null, // the old product belongs to the old ref
+        // Never reuse the character's own product: it carries the old
+        // asset_ref, so PATCHing it would relist the retired subject.
+        storeProductId: asset?.storeProductId ?? null,
         kind: "character",
         localId: assetId,
         name: c.name,

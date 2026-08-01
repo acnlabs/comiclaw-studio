@@ -133,10 +133,12 @@ export const DELETE = withAgentAuth(async (_req, ctx: Ctx) => {
         );
       }
     }
-    // Revoke the backing asset's registration. A character registered before
-    // the cutover also has an entry under its own id; the migration script
-    // retires those, and revoke is idempotent either way.
+    // Both subjects: the backing asset, and — for a character registered
+    // before the cutover whose migration has not run yet — its own id. Revoke
+    // is idempotent (404 counts as success), so retiring both is free and
+    // leaving either behind would strand a registration.
     if (exists.assetId) await revokeAsset("character", exists.assetId);
+    await revokeAsset("character", characterId);
   }
   await prisma.agentCharacter.delete({ where: { id: characterId } });
   await deleteBackingAsset(exists.assetId);
