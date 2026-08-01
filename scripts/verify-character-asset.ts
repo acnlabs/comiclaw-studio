@@ -4,6 +4,7 @@
  */
 import assert from "node:assert/strict";
 import { artworkChanged, backingAssetInput } from "../src/lib/characterAsset";
+import { managedByCharacter } from "../src/lib/assetPublish";
 import { LEGACY_AUTHOR_KEY } from "../src/lib/authorKey";
 
 function ok(label: string) {
@@ -60,5 +61,14 @@ assert.equal(
   "a changed voice sample is a new take too"
 );
 ok("replaced artwork is recorded as a new take, not an overwrite");
+
+// The generic asset flow must not touch a character's backing asset: pricing,
+// listing and the payee all live on the character. Two entry points would let
+// one subject be registered under two ids, which is what the backing asset
+// exists to prevent.
+assert.equal(managedByCharacter({ character: { id: "c1" } }), true);
+assert.equal(managedByCharacter({ character: null }), false);
+assert.equal(managedByCharacter({}), false);
+ok("a character's backing asset is off-limits to the generic asset flow");
 
 console.log("\nAll character-asset checks passed.");

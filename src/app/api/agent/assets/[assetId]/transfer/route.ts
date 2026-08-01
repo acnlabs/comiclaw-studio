@@ -1,10 +1,11 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { badRequest, extractBearer, notFoundJson, serverError } from "@/lib/auth";
+import { badRequest, conflict, extractBearer, notFoundJson, serverError } from "@/lib/auth";
 import { mapError, parseBody, withProjectWorkerAuth } from "@/lib/api";
 import { productionAgentId, type ProductionAuth } from "@/lib/acnAuth";
 import { isAgentOrgMember } from "@/lib/acnOrg";
 import { checkTransfer } from "@/lib/assetTransfer";
+import { managedByCharacter } from "@/lib/assetPublish";
 import { refuseTransfer, runTransfer } from "@/lib/assetTransferFlow";
 
 /**
@@ -54,9 +55,15 @@ export const POST = withProjectWorkerAuth(
         publishState: true,
         ownerType: true,
         ownerId: true,
+        character: { select: { id: true } },
       },
     });
     if (!asset) return notFoundJson("Asset not found");
+    if (managedByCharacter(asset)) {
+      return conflict(
+        "This asset backs a marketplace character; transfer it on the character instead"
+      );
+    }
 
     let member: boolean;
     try {

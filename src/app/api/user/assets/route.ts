@@ -21,6 +21,10 @@ export async function GET(req: Request) {
 
   const assets = await prisma.asset.findMany({
     where: {
+      // A character's backing asset is the same thing as the character listed
+      // just above it on this page, and its listing is managed there. Showing
+      // it twice would offer two ways to register one subject.
+      character: { is: null },
       OR: [
         { authorUserId: sub },
         { ownerType: "user", ownerId: sub },

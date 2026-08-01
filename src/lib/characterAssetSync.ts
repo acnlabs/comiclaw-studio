@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { withRetry } from "@/lib/api";
+import { PUBLISH_DRAFT } from "@/lib/assetPublish";
 import {
   artworkChanged,
   backingAssetInput,
@@ -45,10 +47,22 @@ export async function ensureBackingAsset(characterId: string): Promise<string | 
     },
     select: { id: true },
   });
-  await prisma.agentCharacter.update({
-    where: { id: character.id },
+
+  // Two concurrent callers can both see a null assetId. Only the one that
+  // actually claims the slot keeps its asset; the loser cleans up after
+  // itself rather than leaving a stray standalone asset behind.
+  const claimed = await prisma.agentCharacter.updateMany({
+    where: { id: character.id, assetId: null },
     data: { assetId: asset.id },
   });
+  if (claimed.count === 0) {
+    await prisma.asset.delete({ where: { id: asset.id } }).catch(() => {});
+    const winner = await prisma.agentCharacter.findUnique({
+      where: { id: character.id },
+      select: { assetId: true },
+    });
+    return winner?.assetId ?? null;
+  }
   return asset.id;
 }
 
@@ -82,16 +96,26 @@ export async function syncBackingAsset(characterId: string): Promise<void> {
   });
 
   const latest = character.asset.versions[0] ?? null;
-  if (artworkChanged(latest, character)) {
+  if (!artworkChanged(latest, character)) return;
+
+  const assetId = character.asset.id;
+  // Version numbers are unique per asset, so a concurrent take has to be
+  // renumbered rather than lost.
+  await withRetry(async () => {
+    const head = await prisma.assetVersion.findFirst({
+      where: { assetId },
+      orderBy: { version: "desc" },
+      select: { version: true },
+    });
     await prisma.assetVersion.create({
       data: {
-        assetId: character.asset.id,
-        version: (latest?.version ?? 0) + 1,
+        assetId,
+        version: (head?.version ?? 0) + 1,
         imageUrl: character.imageUrl,
         audioUrl: character.audioUrl,
       },
     });
-  }
+  });
 }
 
 /** Best-effort wrapper: character writes must not fail on bookkeeping. */
@@ -105,4 +129,34 @@ export async function trackCharacterAsset(
   } catch (err) {
     console.error("[characterAsset] failed to track backing asset", characterId, err);
   }
+}
+
+/**
+ * A character's backing asset goes with it.
+ *
+ * The FK only nulls the link, so without this the asset lingers as a
+ * standalone draft that nobody recognises. Licensed or registered assets are
+ * left alone and reported: those are commitments to other people, and the
+ * character delete path already refuses to strand a registration.
+ */
+export async function deleteBackingAsset(assetId: string | null): Promise<void> {
+  if (!assetId) return;
+  const asset = await prisma.asset.findUnique({
+    where: { id: assetId },
+    select: {
+      publishState: true,
+      _count: { select: { licenses: true, shotRefs: true } },
+    },
+  });
+  if (!asset) return;
+  if (asset.publishState !== PUBLISH_DRAFT || asset._count.licenses > 0) {
+    console.error(
+      "[characterAsset] backing asset kept: still registered or licensed",
+      assetId
+    );
+    return;
+  }
+  await prisma.asset.delete({ where: { id: assetId } }).catch((err) => {
+    console.error("[characterAsset] failed to delete backing asset", assetId, err);
+  });
 }

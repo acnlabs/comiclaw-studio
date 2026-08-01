@@ -21,6 +21,16 @@ export function assetKindFor(type: string): AssetKind | null {
   return ASSET_KIND_BY_TYPE[type] ?? null;
 }
 
+/**
+ * A character's registration is managed through the character path — pricing,
+ * listing and the payee all live there. Offering the generic publish flow on
+ * its backing asset would let the same character be registered twice under two
+ * ids, which is the ambiguity the backing asset exists to remove.
+ */
+export function managedByCharacter(asset: { character?: unknown | null }): boolean {
+  return Boolean(asset.character);
+}
+
 export type OwnerResolution =
   | { ok: true; owner: AssetOwner }
   | { ok: false; reason: "no_principal" };

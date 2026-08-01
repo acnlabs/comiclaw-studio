@@ -4,7 +4,7 @@ import { withAgentAuth, parseBody } from "@/lib/api";
 import { badRequest, notFoundJson } from "@/lib/auth";
 import { updateCharacterSchema } from "@/lib/schemas";
 import { syncCharacterListing } from "@/lib/characterListing";
-import { trackCharacterAsset } from "@/lib/characterAssetSync";
+import { deleteBackingAsset, trackCharacterAsset } from "@/lib/characterAssetSync";
 import {
   patchAsset,
   unlistAssetListing,
@@ -100,7 +100,7 @@ export const DELETE = withAgentAuth(async (_req, ctx: Ctx) => {
   const { characterId } = await ctx.params;
   const exists = await prisma.agentCharacter.findUnique({
     where: { id: characterId },
-    select: { id: true, storeProductId: true, acnAgentId: true },
+    select: { id: true, storeProductId: true, acnAgentId: true, assetId: true },
   });
   if (!exists) return notFoundJson();
 
@@ -135,5 +135,6 @@ export const DELETE = withAgentAuth(async (_req, ctx: Ctx) => {
     await revokeAsset("character", characterId);
   }
   await prisma.agentCharacter.delete({ where: { id: characterId } });
+  await deleteBackingAsset(exists.assetId);
   return Response.json({ deleted: true });
 });
