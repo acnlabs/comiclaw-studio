@@ -1,7 +1,7 @@
 # 请求 AgentPlanet 协助：资产主体统一后的 `asset_ref` 迁移
 
 **发起方：** ComicLaw Studio
-**状态：** 已收到 AgentPlanet 正式答复（2026-07-31）。回复见 §12，主体统一已解锁
+**状态：** 已收到 AgentPlanet 两份答复（2026-07-31 / 08-01）。§12 解锁主体统一，§14 答复付费转让
 **相关文档：** 《ComicLaw × AgentPlanet 资产登记矩阵》、`COMICLAW_ASSET_REGISTRY_MATRIX.md`、`asset-v1.md`、`agent-asset-registry.md`
 
 > 已收到《资产产权登记对接说明》。**主路径已迁到 `/api/assets/registry`，上架已迁到 `/api/store/assets/products`**，兼容别名不再使用（见 §10）。第 6 节要 ComicLaw 确认的项在 §11 回复。
@@ -235,7 +235,7 @@ ComicLaw 目前有两张表都可以成为可交易主体：
 
 ---
 
-## 13. 新问题：付费**转让**（所有权交易）走哪条订单？
+## 13. 付费**转让**（所有权交易）走哪条订单？ — 已答复，见 §14
 
 付费**授权**（使用权）已经跑通：`/api/store/assets/products` 上架 → 下单 → checkout 支付 → 我们确认后 `accept-external` 放款。
 
@@ -247,3 +247,61 @@ ComicLaw 目前有两张表都可以成为可交易主体：
 4. 一个资产同时「在售使用权」又「在售所有权」时，你们希望是两个商品还是一个商品两种购买方式？
 
 在你们答复前我们**不会**上线付费转让；现网的转让是免费的、且只在产权人本人（或 Org 治理人）发起时才可能发生。
+
+---
+
+## 14. AgentPlanet 回执（2026-08-01）与我们的动作
+
+### 14.1 一条打脸现网代码的：`change-owner` 的 reason 是封闭词表
+
+只接受 `rebind | admin`，`sale` 显式拒绝。我们此前一直在发描述性的词（`transfer` / `publish` / `listing`），读起来顺但会被拒——而这些调用方全是 fail-closed 的，拒绝会直接变成用户看到的 503。**#63 的转让在现网因此是坏的**（尚无人使用）。
+
+已修（PR #65）：reason 收成 `"rebind" | "admin"` 联合类型，调用方不再造词，离线校验钉死白名单并把我们发明过的那几个词列为反例。用严格按白名单拒绝的桩验证：`transfer` → 503，`rebind` → 200。
+
+### 14.2 付费转让：不要自己拼
+
+对方明确：**不要用「license 商品收款 → 我们再调 change-owner」充当付费转让**——缺行锁防双卖、缺退款回滚归属、缺与 `order_id` 绑定的 sale 流水。要等他们第二阶段的 `order_intent=transfer` 闭环（`agent-asset-registry.md` §2.5）。
+
+我们的决定：**付费转让不上线**，等对方交付。现网免费转让（`change-owner` + `rebind`，仅产权人/Org 治理人发起）与他们的口径一致，保持。
+
+若要排期，需要我们回复期望窗口。
+
+### 14.3 结算口径（与我们的授权账本对齐）
+
+| 情形 | 归属 |
+|---|---|
+| 已支付 / 已 completed 的订单 | 按订单快照的 seller 结算，不因后续转让改收款方 |
+| 已授出的使用权 | 平台不撤销；**认可我们的口径：转让不能撕毁已卖出的授权** |
+| 转让后的新授权 / 新上架 | 须由新 owner 作为 seller 重新上架，收益归新产权人 |
+| 尚未 accept 的在途订单 | 仍结给订单快照上的原 seller（通常是转让前的产权人） |
+
+一句话：钱跟订单快照走，产权跟登记表走。
+
+我们侧对应：转让时以旧 seller 下架旧商品、以新产权人重新上架（PR #64），与「新 owner 须自己重新上架」一致；对方还会在 `change-owner` 成功时自动下架旧 owner 名下该 `asset_ref` 的活跃商品，我们的显式下架是幂等的双保险。已授出的 `AssetLicense` 不因转让作废，与他们认可的口径一致。
+
+### 14.4 同一资产同时卖两种权利
+
+第二阶段两个商品（同一 `asset_ref`，`listing_intent` 分别为 `license` / `transfer`），不做「一个商品两种买法」。目录必须按该字段分流展示。**现网没有这个字段**，所以在 transfer 上线前不能靠文案硬区分却走同一 license 结算——我们不会这么做。
+
+### 14.5 全球登记清单与清理
+
+对方给出的全球清单（`source=comiclaw-studio`）：1 条 active（`comiclaw:character:cmrklsrc00001l604lxd730hb`，漫剧大虾，owner `agent:390287c9-…`）+ 4 条 revoked 测试项；商品 11 条全部已下架，无在售；订单 3 completed + 1 pending，均为测试。
+
+待办（未开工，见 §15）：
+1. 主体统一那一刀：角色付费上架改用 `comiclaw:character:{Asset.id}`
+2. 漫剧大虾：revoke 旧 ref → 以新 `Asset.id` register → 按需重新上架并回填 `storeProductId`
+3. 用他们的清单与本地 `licensePoints > 0 OR storeProductId IS NOT NULL` 求差集，清测试残留
+
+---
+
+## 15. 主体统一开工前要先定的一件事
+
+`Asset.projectId` 是**必填**的——资产属于某个项目。而 `AgentCharacter` 可以独立存在（`sourceProjectId` 可空，角色市场里直接创建的角色就没有来源项目）。把 `AgentCharacter` 降级成 `Asset` 之前，必须先回答这些无主角色挂在哪里：
+
+| 方案 | 代价 |
+|---|---|
+| A. `Asset.projectId` 改为可空 | 影响面最大：大量查询、级联删除、edit-own 判定都假定资产有项目 |
+| B. 给每个独立角色建一个隐藏的容器项目 | 数据模型不动，但凭空多出一批用户看不见的项目，列表/配额/删除都要特判 |
+| C. 保留 `AgentCharacter` 作市场主体，只让登记 ref 指向我们物化出来的 `Asset` | 改动最小，但「两套 id」这个原始问题只是换了个位置，没消掉 |
+
+这三条各有各的债，选哪条会决定后面所有迁移脚本的形状，所以先定再动。
