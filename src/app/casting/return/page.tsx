@@ -1,4 +1,4 @@
-import CastingReturn from "@/components/CastingReturn";
+import LicenseReturn from "@/components/LicenseReturn";
 import NotFound from "@/app/not-found";
 
 export default async function CastingReturnPage({
@@ -8,5 +8,11 @@ export default async function CastingReturnPage({
 }) {
   const { characterId, projectId } = await searchParams;
   if (!characterId || !projectId) return <NotFound />;
-  return <CastingReturn characterId={characterId} projectId={projectId} />;
+  return (
+    <LicenseReturn
+      confirmPath="/api/user/casting/confirm"
+      payload={{ characterId, projectId }}
+      returnTo={`/casting/return?characterId=${encodeURIComponent(characterId)}&projectId=${encodeURIComponent(projectId)}`}
+    />
+  );
 }

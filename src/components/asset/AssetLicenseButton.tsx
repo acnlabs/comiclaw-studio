@@ -16,15 +16,18 @@ interface MyProject {
 /**
  * License a published asset into one of your projects.
  *
- * Free for now, so there is no payment leg: pick a project and the pinned
- * version is copied in. Mirrors the casting picker so the two feel the same.
+ * Free assets are copied in on the spot. Priced ones answer 402 with a
+ * checkout link: the buyer pays on AgentPlanet and the licence lands when they
+ * return, or on the next visit if they never do.
  */
 export default function AssetLicenseButton({
   assetId,
   assetName,
+  licensePoints = 0,
 }: {
   assetId: string;
   assetName: string;
+  licensePoints?: number;
 }) {
   const { isAuthenticated, isLoading, getAccessTokenSilently, loginWithRedirect } =
     useAuth0();
@@ -35,6 +38,7 @@ export default function AssetLicenseButton({
   const [licensed, setLicensed] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [payingFor, setPayingFor] = useState<string | null>(null);
   const inFlight = useRef(false);
 
   const authHeader = async () => ({
@@ -82,10 +86,19 @@ export default function AssetLicenseButton({
         headers: { ...h, "Content-Type": "application/json" },
         body: JSON.stringify({ assetId, projectId }),
       });
+      const data = (await res.json().catch(() => null)) as {
+        error?: string;
+        checkoutUrl?: string;
+      } | null;
+      if (res.status === 402 && data?.checkoutUrl) {
+        // Paid: send them to AgentPlanet to spend Credits. Reopening this
+        // picker afterwards settles the licence even if they never come back
+        // through the return page.
+        window.open(data.checkoutUrl, "_blank", "noopener");
+        setPayingFor(projectId);
+        return;
+      }
       if (!res.ok) {
-        const data = (await res.json().catch(() => null)) as {
-          error?: string;
-        } | null;
         setError(data?.error || t("assetLicense.error"));
         return;
       }
@@ -121,7 +134,11 @@ export default function AssetLicenseButton({
         onClick={() => setOpen(true)}
         className="rounded-full bg-accent px-3.5 py-1 text-xs font-medium text-zinc-950 transition hover:opacity-90"
       >
-        {t("assetLicense.addToProject")}
+        {licensePoints > 0
+          ? `${t("assetLicense.buy")} · ${t("assetLicense.price", {
+              credits: String(licensePoints),
+            })}`
+          : t("assetLicense.addToProject")}
       </button>
 
       <Modal open={open} onClose={() => setOpen(false)}>
@@ -132,6 +149,9 @@ export default function AssetLicenseButton({
           {t("assetLicense.copyNote", { name: assetName })}
         </p>
 
+        {payingFor ? (
+          <p className="mt-3 text-sm text-accent">{t("assetLicense.payPrompt")}</p>
+        ) : null}
         {error ? <p className="mt-3 text-sm text-red-400">{error}</p> : null}
 
         {projects === null ? (
