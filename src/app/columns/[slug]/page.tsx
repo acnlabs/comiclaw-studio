@@ -24,6 +24,7 @@ async function loadColumn(slug: string) {
       description: true,
       coverUrl: true,
       acnOrgId: true,
+      contributePolicy: true,
       projects: {
         where: { visibility: "PUBLIC" },
         orderBy: entryOrderNewestFirst,
@@ -81,6 +82,7 @@ export default async function ColumnPage(props: Ctx) {
         description: column.description,
         coverUrl: column.coverUrl,
         acnOrgId: column.acnOrgId,
+        contributePolicy: column.contributePolicy,
         entries,
       }}
     />

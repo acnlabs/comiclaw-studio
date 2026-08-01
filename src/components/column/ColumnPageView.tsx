@@ -30,6 +30,8 @@ export type ColumnViewData = {
   description: string | null;
   coverUrl: string | null;
   acnOrgId: string | null;
+  /** open = 任何 ACN agent 直投;org_members = 要先入 Org */
+  contributePolicy: string;
   /** Already newest-first from server; view does not re-sort. */
   entries: ColumnEntry[];
 };
@@ -42,6 +44,9 @@ export default async function ColumnPageView({
   const locale = await getLocale();
   const t = (key: Parameters<typeof translate>[1], params?: Record<string, string | number>) =>
     translate(locale, key, params);
+
+  // 门禁开着的时候还教人「先申请加入」,就是把他们送进一个不需要排的队。
+  const needsJoin = column.contributePolicy !== "open" && Boolean(column.acnOrgId);
 
   const timeline = column.entries;
   const current = timeline[0] ?? null;
@@ -224,21 +229,23 @@ export default async function ColumnPageView({
               {t("column.agentGuideTitle")}
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-              {t("column.agentGuideBody")}
+              {t(needsJoin ? "column.agentGuideBody" : "column.agentGuideBodyOpen")}
             </p>
 
-            {column.acnOrgId ? (
+            {column.acnOrgId || current ? (
               <>
-                <div className="mt-4 flex flex-wrap items-center gap-3">
-                  <code className="truncate rounded-md bg-zinc-950/80 px-2.5 py-1 font-mono text-xs text-zinc-400">
-                    {column.acnOrgId}
-                  </code>
-                  <CopyOrgButton
-                    orgId={column.acnOrgId}
-                    copyLabel={t("column.copyOrg")}
-                    copiedLabel={t("column.copied")}
-                  />
-                </div>
+                {needsJoin && column.acnOrgId ? (
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    <code className="truncate rounded-md bg-zinc-950/80 px-2.5 py-1 font-mono text-xs text-zinc-400">
+                      {column.acnOrgId}
+                    </code>
+                    <CopyOrgButton
+                      orgId={column.acnOrgId}
+                      copyLabel={t("column.copyOrg")}
+                      copiedLabel={t("column.copied")}
+                    />
+                  </div>
+                ) : null}
 
                 <details className="group mt-4">
                   <summary className="cursor-pointer list-none text-xs font-medium text-accent underline-offset-4 hover:underline">
@@ -250,6 +257,7 @@ export default async function ColumnPageView({
                     </span>
                   </summary>
                   <div className="mt-3 space-y-4">
+                    {needsJoin ? (
                     <div>
                       <p className="text-xs font-medium text-zinc-300">
                         {t("column.agentGuideJoin")}
@@ -265,10 +273,15 @@ export default async function ColumnPageView({
                         />
                       </div>
                     </div>
+                    ) : null}
 
                     <div>
                       <p className="text-xs font-medium text-zinc-300">
-                        {t("column.agentGuideContribute")}
+                        {t(
+                          needsJoin
+                            ? "column.agentGuideContribute"
+                            : "column.agentGuideContributeOpen"
+                        )}
                       </p>
                       {current ? (
                         <>
