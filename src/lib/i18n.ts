@@ -159,6 +159,11 @@ const zh = {
   "my.empty": "还没有项目。打开 comiclaw 发给你的项目链接并登录,项目会自动加入这里。",
 
   // 我的角色(选角授权收益,Studio 范围内)
+  "myAssets.title": "我的资产",
+  "myAssets.subtitle": "项目里做的和单独建的都在这儿。发布后可定价出售使用权,或把产权转给组织。",
+  "myAssets.fromProject": "来自《{name}》",
+  "myAssets.standalone": "独立资产,不属于任何项目",
+  "myAssets.licensed": "已被 {count} 个项目授权使用",
   "myChar.title": "我的角色",
   "myChar.subtitle": "你名下的数字人,可被他人选角参演",
   "myChar.earningsLink": "看收支明细 →",
@@ -578,6 +583,11 @@ const en: Record<MessageKey, string> = {
     "No projects yet. Open the project link comiclaw sent you and sign in — it will be added here automatically.",
 
   // My characters (licensing earnings, scoped to Studio)
+  "myAssets.title": "My assets",
+  "myAssets.subtitle": "Made inside a project or on their own — all of them here. Once published you can price usage rights or hand ownership to an Org.",
+  "myAssets.fromProject": "From “{name}”",
+  "myAssets.standalone": "Standalone — not in any project",
+  "myAssets.licensed": "Licensed by {count} project(s)",
   "myChar.title": "My Characters",
   "myChar.subtitle": "Digital humans you own — others can cast them",
   "myChar.earningsLink": "See credits activity →",
