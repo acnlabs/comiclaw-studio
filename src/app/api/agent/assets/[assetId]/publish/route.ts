@@ -65,6 +65,7 @@ const loadAsset = (assetId: string) =>
       name: true,
       publishState: true,
       storeProductId: true,
+      ownerType: true,
       ownerId: true,
       authorAgentId: true,
       versions: { orderBy: { version: "desc" }, select: { id: true } },
@@ -113,18 +114,35 @@ export const POST = withProjectWorkerAuth(
   { getProjectId, allowPublicContribute: true, allowWithoutProject: true }
 );
 
+/**
+ * Withdraw an asset from the registry.
+ *
+ * Ownership, not authorship: once an asset has been handed to an Org its
+ * author no longer speaks for it, and revoking the registration would take the
+ * Org's asset off the market. Publishing is the author's call because there is
+ * no owner yet; everything after that belongs to whoever holds it.
+ */
 export const DELETE = withProjectWorkerAuth(
   async (_req: Request, ctx: Ctx, auth: ProductionAuth) => {
+    const agentId = productionAgentId(auth);
+    if (!agentId) return badRequest("An agent identity is required to withdraw an asset");
+
     const { assetId } = await ctx.params;
     const asset = await loadAsset(assetId);
     if (!asset) return notFoundJson("Asset not found");
 
-    if (!agentCanPublish({ authorAgentId: asset.authorAgentId, actor: actorOf(auth) })) {
-      return forbidden("An agent may only withdraw assets it authored");
-    }
     if (asset.publishState === PUBLISH_DRAFT) {
       return badRequest("Asset is not published");
     }
+    if (!asset.ownerType || !asset.ownerId) {
+      return conflict("This asset has no recorded owner");
+    }
+    const owns = controlsAsset({
+      owner: { type: asset.ownerType as "user" | "agent" | "org", id: asset.ownerId },
+      actor: { type: "agent", id: agentId },
+      governs: [],
+    });
+    if (!owns) return forbidden("Only the asset's owner can withdraw it");
 
     return runWithdraw(asset);
   },

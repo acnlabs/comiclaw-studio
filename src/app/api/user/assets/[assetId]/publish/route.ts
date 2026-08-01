@@ -166,19 +166,19 @@ export async function DELETE(req: Request, ctx: Ctx) {
   if (asset.publishState === PUBLISH_DRAFT) {
     return badRequest("Asset is not published");
   }
-  // Inside a project the owner speaks for its assets; outside one, withdrawing
-  // from the registry is the recorded owner's call and nobody else's.
-  if (!asset.project) {
-    const owns =
-      asset.ownerType && asset.ownerId
-        ? controlsAsset({
-            owner: { type: asset.ownerType as "user" | "agent" | "org", id: asset.ownerId },
-            actor: { type: "user", id: sub },
-            governs: await governedOrgIds(sub),
-          })
-        : false;
-    if (!owns) return forbidden("Only the asset's owner can withdraw it");
-  }
+  // Ownership, not the project. Publishing is the author's call because there
+  // is no owner yet; after that, revoking the registration is the holder's.
+  // Otherwise a project owner could take a contributor's registered asset off
+  // the market — they cannot claim it, but they could destroy it.
+  const owns =
+    asset.ownerType && asset.ownerId
+      ? controlsAsset({
+          owner: { type: asset.ownerType as "user" | "agent" | "org", id: asset.ownerId },
+          actor: { type: "user", id: sub },
+          governs: await governedOrgIds(sub),
+        })
+      : false;
+  if (!owns) return forbidden("Only the asset's owner can withdraw it");
 
   return runWithdraw(asset);
 }
