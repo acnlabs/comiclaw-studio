@@ -28,7 +28,10 @@ export const ACN_TASK_HEADER = "x-acn-task-id";
 export type ProductionAuth =
   | { kind: "studio_key" }
   | { kind: "acn_worker"; agentId: string; acnTaskId: string }
-  /** PUBLIC 共创投稿:有 ACN 身份、无 Task 绑定;Org 门禁在业务层再校验 */
+  /**
+   * 有 ACN 身份、无 Task 绑定:PUBLIC 共创投稿,或操作一个不属于任何项目的资产。
+   * 两种情形都没有 Task 可以绑,门禁(Org 成员 / 作者 / 产权人)在业务层校验。
+   */
   | { kind: "acn_contributor"; agentId: string };
 
 export type WorkerAccess = "read" | "write";

@@ -3,7 +3,7 @@
  * Run: npx tsx scripts/verify-asset-transfer.ts
  */
 import assert from "node:assert/strict";
-import { checkTransfer } from "../src/lib/assetTransfer";
+import { checkTransfer, controlsAsset } from "../src/lib/assetTransfer";
 
 function ok(label: string) {
   console.log(`✓ ${label}`);
@@ -121,5 +121,33 @@ assert.deepEqual(
   { ok: false, reason: "no_owner" }
 );
 ok("a published row with no usable owner is refused, not guessed at");
+
+// Withdrawing a published asset is the holder's call, not the maker's. After a
+// handover the author is still the author, and if authorship were enough they
+// could revoke the registration of something the Org now owns — they could not
+// take it back, but they could destroy it. Same shape as a project owner
+// revoking a contributor's asset.
+const heldByOrg = { type: "org", id: ORG } as const;
+assert.equal(
+  controlsAsset({ owner: heldByOrg, actor: ALICE, governs: [] }),
+  false,
+  "the agent that made it cannot act for the Org that now holds it"
+);
+assert.equal(
+  controlsAsset({ owner: heldByOrg, actor: HUMAN, governs: [ORG] }),
+  true,
+  "the Org's governor can"
+);
+assert.equal(
+  controlsAsset({ owner: ALICE, actor: ALICE, governs: [] }),
+  true,
+  "before any handover the maker still holds it"
+);
+assert.equal(
+  controlsAsset({ owner: { type: "user", id: "auth0|maker" }, actor: HUMAN, governs: [ORG] }),
+  false,
+  "governing an Org says nothing about someone else's personal asset"
+);
+ok("acting for an asset follows who holds it, not who made it");
 
 console.log("\nAll asset transfer checks passed.");

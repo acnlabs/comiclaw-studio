@@ -130,17 +130,20 @@ export function blocksProjectDelete(unsettledAssetCount: number): boolean {
  * `legacy` only means "authored before we recorded authorship", not "mine". In
  * a PRIVATE delivery project those rows are the owner's own production work,
  * but on a PUBLIC entry they may be pre-authorship agent contributions, so
- * they are not claimable there.
+ * they are not claimable there. With no project at all there is no delivery
+ * relationship to lean on either, so a `legacy` row is claimable by nobody.
  */
 export function canPublishAsAuthor(args: {
   authorUserId: string | null;
   authorAgentId: string | null;
   authorKey: string;
-  projectVisibility: string;
+  /** null when the asset lives outside any project */
+  projectVisibility: string | null;
   publisherSub: string;
 }): boolean {
   if (args.authorUserId) return args.authorUserId === args.publisherSub;
   if (args.authorAgentId) return false;
+  if (!args.projectVisibility) return false;
   return (
     args.authorKey === LEGACY_AUTHOR_KEY && args.projectVisibility !== "PUBLIC"
   );

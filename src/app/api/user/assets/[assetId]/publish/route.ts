@@ -40,6 +40,15 @@ const PUBLISH_ERRORS: Record<string, string> = {
   unknown_type: "This asset type cannot be published",
 };
 
+/**
+ * Load an asset this person is entitled to manage.
+ *
+ * Inside a project that entitlement comes from owning the project. An asset
+ * with no project has no container to inherit from, so it comes from the asset
+ * itself: its author, or whoever the registry records as its owner (which may
+ * be an Org this person governs). The per-action checks below still apply —
+ * this only decides whether the asset is theirs to be looked at.
+ */
 async function loadOwnedAsset(assetId: string, sub: string) {
   const asset = await prisma.asset.findUnique({
     where: { id: assetId },
@@ -49,6 +58,7 @@ async function loadOwnedAsset(assetId: string, sub: string) {
       name: true,
       publishState: true,
       storeProductId: true,
+      ownerType: true,
       ownerId: true,
       authorUserId: true,
       authorAgentId: true,
@@ -61,8 +71,25 @@ async function loadOwnedAsset(assetId: string, sub: string) {
     },
   });
   if (!asset) return { error: notFoundJson("Asset not found") } as const;
-  if (!asset.project?.ownerUserId || asset.project.ownerUserId !== sub) {
-    return { error: forbidden("You do not own this asset's project") } as const;
+
+  if (asset.project) {
+    if (asset.project.ownerUserId !== sub) {
+      return { error: forbidden("You do not own this asset's project") } as const;
+    }
+    return { asset } as const;
+  }
+
+  const isAuthor = Boolean(asset.authorUserId && asset.authorUserId === sub);
+  const isOwner =
+    asset.ownerType && asset.ownerId
+      ? controlsAsset({
+          owner: { type: asset.ownerType as "user" | "agent" | "org", id: asset.ownerId },
+          actor: { type: "user", id: sub },
+          governs: await governedOrgIds(sub),
+        })
+      : false;
+  if (!isAuthor && !isOwner) {
+    return { error: forbidden("This asset is not yours to manage") } as const;
   }
   return { asset } as const;
 }
@@ -90,7 +117,7 @@ export async function POST(req: Request, ctx: Ctx) {
   if (
     !canPublishAsAuthor({
       ...asset,
-      projectVisibility: asset.project.visibility,
+      projectVisibility: asset.project?.visibility ?? null,
       publisherSub: sub,
     })
   ) {
@@ -139,6 +166,19 @@ export async function DELETE(req: Request, ctx: Ctx) {
   if (asset.publishState === PUBLISH_DRAFT) {
     return badRequest("Asset is not published");
   }
+  // Ownership, not the project. Publishing is the author's call because there
+  // is no owner yet; after that, revoking the registration is the holder's.
+  // Otherwise a project owner could take a contributor's registered asset off
+  // the market — they cannot claim it, but they could destroy it.
+  const owns =
+    asset.ownerType && asset.ownerId
+      ? controlsAsset({
+          owner: { type: asset.ownerType as "user" | "agent" | "org", id: asset.ownerId },
+          actor: { type: "user", id: sub },
+          governs: await governedOrgIds(sub),
+        })
+      : false;
+  if (!owns) return forbidden("Only the asset's owner can withdraw it");
 
   return runWithdraw(asset);
 }
