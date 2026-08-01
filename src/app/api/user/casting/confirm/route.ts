@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { verifyUserToken } from "@/lib/userAuth";
 import { getCheckout, acceptCastingOrder } from "@/lib/agentplanet";
-import { grantLicense } from "@/lib/casting";
+import { castingSubjectId, grantLicense } from "@/lib/casting";
 import { unauthorized, badRequest, notFoundJson } from "@/lib/auth";
 
 // 付费授权的支付确认:客户在 AgentPlanet checkout 用 Credits 付款后回来调用。
@@ -17,11 +17,15 @@ export async function POST(req: Request) {
 
   const character = await prisma.agentCharacter.findUnique({
     where: { id: characterId },
-    select: { assetId: true },
+    select: { id: true, assetId: true },
   });
-  const license = character?.assetId
+  // Resolve the subject the same way checkout did — minting it if the create
+  // hook never got to it. Looking only at a stored assetId would answer
+  // "License not found" to someone who has already paid.
+  const assetId = character ? await castingSubjectId(character) : null;
+  const license = assetId
     ? await prisma.assetLicense.findUnique({
-        where: { assetId_projectId: { assetId: character.assetId, projectId } },
+        where: { assetId_projectId: { assetId, projectId } },
         include: { asset: { include: { character: true } } },
       })
     : null;

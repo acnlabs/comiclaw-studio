@@ -59,9 +59,10 @@ export async function grantLicense(args: {
     sub,
     points,
     orderId,
-    // A character is licensable by its own rules, not by publish state, and it
-    // has no pinned take — the licensee gets the artwork as it stands.
-    source: "latest",
+    // Straight off the character: its backing asset mirrors artwork on a
+    // best-effort hook, and a buyer who just paid should get what the
+    // storefront showed them, not whatever the mirror last managed to write.
+    artwork: { imageUrl: character.imageUrl, audioUrl: character.audioUrl },
     note: CAST_NOTE,
   });
 

@@ -29,15 +29,19 @@ export async function GET(req: Request) {
   // rights through AssetLicense. Before the merge this only counted casting,
   // so someone who sold a scene saw nothing here at all.
   //
-  // Who earned it is the asset's seller — the registered owner if there is
-  // one, otherwise whoever made it (a character's backing asset is not
-  // registered until it is priced).
+  // Whose earnings these are:
+  //  - the registered owner, when that is a person
+  //  - the character's owner, whoever the payee agent is — a paid character
+  //    settles into its agent's wallet, but the person who owns the character
+  //    is who this page is explaining it to (unchanged from before the merge)
+  //  - the maker, for an asset that is not registered to anyone yet
   const earnedWhere: Prisma.AssetLicenseWhereInput = {
     status: "GRANTED",
     licenseeSub: { not: sub },
     asset: {
       OR: [
         { ownerType: "user", ownerId: sub },
+        { character: { ownerUserId: sub } },
         { ownerType: null, authorUserId: sub },
       ],
     },
