@@ -48,6 +48,8 @@ export const GET = withAgentAuth(async () => {
       acnOrgId: c.acnOrgId,
       acnSubnetId: c.acnSubnetId,
       contributePolicy: c.contributePolicy,
+      // 认领之后要能确认认领生效了,否则运维只能盲改
+      ownerUserId: c.ownerUserId,
       projectCount: c._count.projects,
       createdAt: c.createdAt,
       updatedAt: c.updatedAt,
