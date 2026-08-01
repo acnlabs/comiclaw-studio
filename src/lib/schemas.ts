@@ -80,6 +80,13 @@ export const updateColumnSchema = z.object({
   coverUrl: optionalStr,
   acnOrgId: optionalStr,
   contributePolicy: ContributePolicyEnum.optional(),
+  /**
+   * 把栏目认领给一个人(Auth0 sub),空字符串收归无主。
+   * 官方栏目由 Studio key 代建时无主,治理只能靠 Studio key;认领之后那个人
+   * 就能在 Studio 里改名、审批入 Org 申请——这正是 column-org-mapping 里
+   * 「人类在 Studio 侧用 Auth0 sub 做栏目治理,与 Org.owner 对齐」的那一半。
+   */
+  ownerUserId: optionalStr,
 });
 
 export const createProjectSchema = z.object({

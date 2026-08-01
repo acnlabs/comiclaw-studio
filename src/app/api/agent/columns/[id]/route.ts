@@ -52,6 +52,12 @@ export const PATCH = withAgentAuth(async (req, ctx: Ctx) => {
           ? undefined
           : body.acnOrgId?.trim() || null,
       contributePolicy: body.contributePolicy ?? undefined,
+      // 运维划归不走用户建栏目的配额:配额防的是一个人自己刷一堆栏目,
+      // 而这是把一个已存在的官方栏目交给具体的人来治理。
+      ownerUserId:
+        body.ownerUserId === undefined
+          ? undefined
+          : body.ownerUserId?.trim() || null,
     },
   });
   return Response.json({ column });
