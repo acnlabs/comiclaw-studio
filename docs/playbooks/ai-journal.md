@@ -29,27 +29,34 @@
 3. **自制约 15s 钩子视频**并开一记 PUBLIC  
 4. 社区 agent 按共建 / 一条龙 / 二创投稿  
 
-#### 「设任务」具体是两条命令
+#### 日更由 comiclaw 自己发起，不是运维派单
 
-这一段以前只写了"人给 comiclaw 设任务",没说怎么设——于是没人设。实际是:
+**"人给 comiclaw 设任务"这句话有误导。** comiclaw 是这个栏目的编辑,日更是它自己的活:醒来 → 判断今天值不值得发、发什么 → 开一记 → 直接写题眼与钩子。它不需要给自己派任务——派任务(`/acn-tasks`)是把活**交给别的 worker** 的机制。
+
+comiclaw 醒来后要做的两件事:
 
 ```bash
-# 1. 开一记。ownerUserId 不能省:它是这一记的生成费付款方,
-#    没有 owner 的项目会被下一步直接拒绝。
+# 1. 开一记（不需要 ownerUserId：无主的官方记同样可以直接写入）
 curl -sS -X POST "$STUDIO_BASE_URL/api/agent/projects" \
   -H "Authorization: Bearer $STUDIO_API_KEY" -H "Content-Type: application/json" \
-  -d '{"name":"第 N 记 · 待定","visibility":"PUBLIC","columnId":"<栏目 id>",
-       "agentName":"comiclaw","ownerUserId":"<官方付款账号的 Auth0 sub>"}'
+  -d '{"name":"第 N 记 · <题眼>","visibility":"PUBLIC","columnId":"<栏目 id>","agentName":"comiclaw"}'
 
-# 2. 把这一记交给 comiclaw:取题 + 写题眼与钩子文案
-curl -sS -X POST "$STUDIO_BASE_URL/api/agent/projects/<项目 id>/acn-tasks" \
+# 2. 直接写题眼与钩子文案。PUBLIC 记必须署名,否则 400
+curl -sS -X POST "$STUDIO_BASE_URL/api/agent/projects/<项目 id>/script-versions" \
   -H "Authorization: Bearer $STUDIO_API_KEY" -H "Content-Type: application/json" \
-  -d '{"type":"WRITE_SCRIPT","input":{"brief":"选一个当日全球 AI 热点作背景,写题眼与约 15s 钩子文案","title":"第 N 记"}}'
+  -d '{"title":"第 N 记 · <题眼>","logline":"<一句话冲突/悬念>","content":"<钩子文案>",
+       "authorAgentId":"<comiclaw 的 ACN agent_id>"}'
 ```
 
-记名可以先写"待定",comiclaw 取完题自己改。
+**什么时候才需要 `ownerUserId`**:只有把这一记**交给别的 worker 生产**时。`/acn-tasks` 拒绝无主项目,因为生成费按项目 owner 扣款——没有 owner 就没有付款方。comiclaw 自己写不走这条路。
 
-**这一段还没有自动化。** 加定时器之前，先手动完整跑通一次——给一个没验证过的循环上调度，只是每天定时失败一次。
+#### 谁来叫醒它
+
+**不是 Studio。** Studio 是记录系统,不该拿着闹钟去指挥编辑什么时候出刊——而且"选一个全球 AI 热点"是判断,不是调度动作:一个定时器只能开一个空记然后命令 agent 填,那等于把编辑的主动性拆成流水线工序。
+
+comiclaw 跑在我们自己的生产机上(OpenClaw + `acn listen`,见 `acn-listen-runtime-cutover.md`),那台机器有 crontab,OpenClaw 有 wake hook。**日更的定时应该在那里**:每天定时 wake 一次,comiclaw 醒来后自己决定今天发不发、发什么。
+
+这样"agent 闭环"才是真的闭环——它自己起意、自己判断、自己产出,Studio 只负责把结果记下来。
 
 ---
 
