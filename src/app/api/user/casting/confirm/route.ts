@@ -15,10 +15,16 @@ export async function POST(req: Request) {
   if (typeof characterId !== "string" || !characterId) return badRequest("`characterId` is required");
   if (typeof projectId !== "string" || !projectId) return badRequest("`projectId` is required");
 
-  const license = await prisma.castingLicense.findUnique({
-    where: { characterId_projectId: { characterId, projectId } },
-    include: { character: true },
+  const character = await prisma.agentCharacter.findUnique({
+    where: { id: characterId },
+    select: { assetId: true },
   });
+  const license = character?.assetId
+    ? await prisma.assetLicense.findUnique({
+        where: { assetId_projectId: { assetId: character.assetId, projectId } },
+        include: { asset: { include: { character: true } } },
+      })
+    : null;
   if (!license) return notFoundJson("License not found");
   if (license.licenseeSub !== sub) {
     return Response.json({ error: "Not your license" }, { status: 403 });
@@ -58,12 +64,18 @@ export async function POST(req: Request) {
   }
 
   const granted = await grantLicense({
-    character: license.character,
+    character: license.asset.character!,
     projectId,
     sub,
     points: checkout.amount_credits,
     orderId: license.storeOrderId,
   });
+  if (!granted) {
+    return Response.json(
+      { error: "Could not grant the licence, try again", code: "GRANT_FAILED" },
+      { status: 409 }
+    );
+  }
   // 授权已落地 → 确认收货,Store 立即结算(平台抽佣后进卖家智能体钱包)。
   // best effort:失败由验收窗超时 sweep 兜底。
   await acceptCastingOrder(license.storeOrderId, sub);

@@ -13,7 +13,13 @@ export const GET = withAgentAuth(async (_req, ctx: Ctx) => {
   const { characterId } = await ctx.params;
   const character = await prisma.agentCharacter.findUnique({
     where: { id: characterId },
-    select: { id: true, licensePoints: true, storeProductId: true, ownerUserId: true },
+    select: {
+      id: true,
+      assetId: true,
+      licensePoints: true,
+      storeProductId: true,
+      ownerUserId: true,
+    },
   });
   if (!character) return notFoundJson();
 
@@ -22,13 +28,13 @@ export const GET = withAgentAuth(async (_req, ctx: Ctx) => {
   // 排除角色主人自用自己角色的记录(points 恒为 0,不是第三方需求信号,混进来会
   // 出现「授权了 5 个项目却只赚 2 个 Credits」这种自相矛盾的数字)。
   const externalLicenseFilter = {
-    characterId,
+    assetId: character.assetId ?? "",
     status: "GRANTED",
     ...(character.ownerUserId ? { licenseeSub: { not: character.ownerUserId } } : {}),
   } as const;
   const [licensedProjectCount, revenueAgg] = await Promise.all([
-    prisma.castingLicense.count({ where: externalLicenseFilter }),
-    prisma.castingLicense.aggregate({
+    prisma.assetLicense.count({ where: externalLicenseFilter }),
+    prisma.assetLicense.aggregate({
       where: externalLicenseFilter,
       _sum: { points: true },
     }),

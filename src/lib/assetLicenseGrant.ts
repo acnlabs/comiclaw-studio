@@ -32,6 +32,17 @@ export async function grantAssetLicense(args: {
   sub: string;
   points: number;
   orderId: string | null;
+  /**
+   * Which take the licensee gets, and what makes the asset licensable.
+   *
+   * A project asset is licensable because it was published, and what you get
+   * is the take pinned at publish. A marketplace character answers to its own
+   * rules (public, open for casting, priced) and has no pinned take, so it
+   * hands over its current one.
+   */
+  source?: "published" | "latest";
+  /** Where the copy says it came from; defaults to the asset wording. */
+  note?: string;
 }): Promise<GrantResult> {
   const { asset, projectId, sub, points, orderId } = args;
   const uniqueWhere = { assetId_projectId: { assetId: asset.id, projectId } };
@@ -43,13 +54,26 @@ export async function grantAssetLicense(args: {
   try {
     const result = await prisma.$transaction(
       async (tx) => {
-        const live = await tx.asset.findFirst({
-          where: { id: asset.id, publishState: PUBLISHED },
-          select: {
-            publishedVersion: { select: { imageUrl: true, audioUrl: true } },
-          },
-        });
-        const pinned = live?.publishedVersion;
+        const live =
+          args.source === "latest"
+            ? await tx.asset.findFirst({
+                where: { id: asset.id },
+                select: {
+                  versions: {
+                    orderBy: { version: "desc" },
+                    take: 1,
+                    select: { imageUrl: true, audioUrl: true },
+                  },
+                },
+              })
+            : await tx.asset.findFirst({
+                where: { id: asset.id, publishState: PUBLISHED },
+                select: {
+                  publishedVersion: { select: { imageUrl: true, audioUrl: true } },
+                },
+              });
+        const pinned =
+          live && "versions" in live ? live.versions[0] : live?.publishedVersion;
         if (!pinned) return { withdrawn: true as const };
 
         const flipped = await tx.assetLicense.updateMany({
@@ -89,7 +113,7 @@ export async function grantAssetLicense(args: {
                 version: 1,
                 imageUrl: pinned.imageUrl,
                 audioUrl: pinned.audioUrl,
-                notes: copyNotice(asset.name),
+                notes: args.note ?? copyNotice(asset.name),
               },
             },
           },
@@ -133,7 +157,17 @@ export async function reconcilePendingAssetLicenses(sub: string): Promise<void> 
   const pending = await prisma.assetLicense.findMany({
     where: { licenseeSub: sub, status: "PENDING_PAYMENT", storeOrderId: { not: null } },
     include: {
-      asset: { select: { id: true, name: true, description: true, type: true } },
+      asset: {
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          type: true,
+          // A character's asset has no pinned take and is licensable by the
+          // character's own rules, so it hands over its current artwork.
+          character: { select: { id: true } },
+        },
+      },
       project: { select: { visibility: true } },
     },
   });
@@ -157,6 +191,7 @@ export async function reconcilePendingAssetLicenses(sub: string): Promise<void> 
           sub,
           points: checkout.amount_credits,
           orderId: license.storeOrderId,
+          source: license.asset.character ? "latest" : "published",
         });
         if (granted.ok) await acceptCastingOrder(license.storeOrderId, sub);
       } else if (

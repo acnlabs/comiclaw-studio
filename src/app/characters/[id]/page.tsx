@@ -29,13 +29,15 @@ export default async function CharacterDetailPage(props: {
           select: { id: true, title: true, coverUrl: true, kind: true },
         })
       : Promise.resolve([]),
-    prisma.castingLicense.count({
-      where: {
-        characterId: id,
-        status: "GRANTED",
-        ...(c.ownerUserId ? { licenseeSub: { not: c.ownerUserId } } : {}),
-      },
-    }),
+    c.assetId
+      ? prisma.assetLicense.count({
+          where: {
+            assetId: c.assetId,
+            status: "GRANTED",
+            ...(c.ownerUserId ? { licenseeSub: { not: c.ownerUserId } } : {}),
+          },
+        })
+      : Promise.resolve(0),
   ]);
   const workMap = new Map<string, { id: string; title: string; coverUrl: string | null; kind: string }>();
   for (const w of [...castWorks.map((cw) => cw.work), ...sourceWorks]) {
