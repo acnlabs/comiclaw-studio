@@ -8,7 +8,7 @@ import { AUTH0_AUDIENCE } from "@/lib/auth0";
 import type { ProjectData } from "@/lib/types";
 import StudioWorkspace from "@/components/StudioWorkspace";
 import PrivacyToggle from "@/components/PrivacyToggle";
-import { ASSET_PUBLISH_CHANGED_EVENT } from "@/components/panels/AssetPublishControl";
+import { ASSET_PUBLISH_CHANGED_EVENT } from "@/lib/assetEvents";
 
 // 私密项目的客户端渲染:验证登录用户是主人后,通过用户 API 拉取全量数据
 export default function PrivateProject({ shareToken }: { shareToken: string }) {
