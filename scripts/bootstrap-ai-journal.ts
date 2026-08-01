@@ -11,6 +11,12 @@
  *   BOOTSTRAP_ORG_MODE  create | none | attach   default create
  *   BOOTSTRAP_ACN_ORG_ID  required when orgMode=attach
  *   BOOTSTRAP_SKIP_ENTRY  set to 1 to only ensure the column
+ *   OFFICIAL_OWNER_SUB    optional. Auth0 sub that pays for generation on this
+ *                         column's entries. comiclaw does not need it — as the
+ *                         column's editor it writes directly and signs as
+ *                         itself. It is only required to *delegate* an entry to
+ *                         a paid worker through ACN tasks, which bill the
+ *                         project owner.
  *
  * Run:
  *   npx tsx scripts/bootstrap-ai-journal.ts
@@ -20,6 +26,7 @@ const BASE =
   process.env.STUDIO_BASE_URL?.replace(/\/$/, "") ||
   "https://studio.comiclaw.acnlabs.org";
 const KEY = process.env.STUDIO_API_KEY?.trim();
+const OWNER = process.env.OFFICIAL_OWNER_SUB?.trim();
 const SLUG = "ai-journal";
 const NAME = "AI 漫记";
 const DESCRIPTION =
@@ -156,6 +163,16 @@ async function main() {
     return;
   }
 
+  // No owner is fine: comiclaw writes the entry itself, signing as its own
+  // agent. An owner is only needed to delegate the entry to a paid worker
+  // through ACN tasks, which bill the project owner.
+  if (!OWNER) {
+    console.log(
+      "note: OFFICIAL_OWNER_SUB not set — the entry has no owner. comiclaw can " +
+        "still write it directly; delegating it to a paid worker via /acn-tasks cannot."
+    );
+  }
+
   const entry = await api("POST", "/api/agent/projects", {
     name: "第 1 记 · 开栏",
     description:
@@ -163,6 +180,7 @@ async function main() {
     visibility: "PUBLIC",
     columnId,
     agentName: "comiclaw",
+    ...(OWNER ? { ownerUserId: OWNER } : {}),
   });
   if (entry.status !== 201 && entry.status !== 200) {
     console.error("create first entry failed", entry.status, entry.json);
