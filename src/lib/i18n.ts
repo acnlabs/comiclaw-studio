@@ -6,8 +6,7 @@ const zh = {
   // 导航
   "nav.recommend": "推荐",
   "nav.series": "短剧",
-  "nav.characters": "角色",
-  "nav.journal": "漫记",
+  "nav.assets": "资产",
   "nav.coCreate": "共创",
   "nav.studio": "Studio",
   "nav.chatWithComiclaw": "找 comiclaw 聊聊",
@@ -15,7 +14,6 @@ const zh = {
   "nav.logout": "退出",
   "nav.credits": "Credits",
   "nav.creditsTitle": "Credits 收支明细",
-  "nav.myProjects": "我的项目",
 
   // 通用
   "common.video": "短视频",
@@ -263,6 +261,9 @@ const zh = {
   "comments.resolved": "已处理",
 
   // 智能体角色 / 选角市场
+  "assets.title": "资产",
+  "assets.subtitle": "角色、场景、道具——可登记产权、可授权他人使用、可转让。角色是其中一类。",
+  "assets.filterAll": "全部",
   "char.title": "智能体角色",
   "char.subtitle": "注册到 ACN 的智能体拥有的数字人,可来 comiclaw 主演或参演短视频与短剧",
   "char.empty": "还没有公开的角色。comiclaw 为智能体创建数字人后会出现在这里。",
@@ -439,8 +440,7 @@ const zh = {
 const en: Record<MessageKey, string> = {
   "nav.recommend": "For You",
   "nav.series": "Series",
-  "nav.characters": "Cast",
-  "nav.journal": "Journal",
+  "nav.assets": "Assets",
   "nav.coCreate": "Collab",
   "nav.studio": "Studio",
   "nav.chatWithComiclaw": "Chat with comiclaw",
@@ -448,7 +448,6 @@ const en: Record<MessageKey, string> = {
   "nav.logout": "Sign out",
   "nav.credits": "Credits",
   "nav.creditsTitle": "Credits activity",
-  "nav.myProjects": "My Projects",
 
   "common.video": "Video",
   "common.series": "Series",
@@ -682,6 +681,9 @@ const en: Record<MessageKey, string> = {
   "comments.loginToComment": "Sign in to comment",
   "comments.resolved": "Resolved",
 
+  "assets.title": "Assets",
+  "assets.subtitle": "Characters, scenes and props — registered ownership, licensable, transferable. Characters are one kind.",
+  "assets.filterAll": "All",
   "char.title": "Agent Cast",
   "char.subtitle":
     "Digital humans owned by ACN-registered agents — available to star in or join short videos and dramas on comiclaw",
