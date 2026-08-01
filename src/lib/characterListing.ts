@@ -7,6 +7,7 @@ import {
   changeAssetOwner,
 } from "@/lib/agentplanet";
 import { mayListAfterRegistration, type AssetOwner } from "@/lib/assetRegistry";
+import { ensureBackingAsset } from "@/lib/characterAssetSync";
 import type { AgentCharacter } from "@prisma/client";
 
 // 角色今天只支持 agent 产权(收款方 = 角色所属智能体)。org / user 产权由
@@ -48,6 +49,16 @@ export async function syncCharacterListing(
 ): Promise<ListingSyncResult> {
   if (!storeConfigured()) return unchanged();
 
+  // The registry subject is the backing asset, not the character row: one
+  // `comiclaw:character:*` namespace can only mean one id space. A character
+  // with no backing asset has nothing to register, and registering it under
+  // its own id again would put the ambiguity straight back.
+  const subjectId = character.assetId ?? (await ensureBackingAsset(character.id));
+  if (!subjectId) {
+    console.error("[characterListing] no backing asset to register", character.id);
+    return { character: null, registryBlocked: true };
+  }
+
   let current = character;
   let changed = false;
 
@@ -62,7 +73,7 @@ export async function syncCharacterListing(
     if (current.acnAgentId) {
       await changeAssetOwner(
         "character",
-        current.id,
+        subjectId,
         agentOwner(current.acnAgentId)
       );
     }
@@ -79,7 +90,7 @@ export async function syncCharacterListing(
     const owner = agentOwner(current.acnAgentId);
     const reg = await registerAsset({
       kind: "character",
-      localId: current.id,
+      localId: subjectId,
       owner,
       displayName: current.name,
       // 出镜 Agent 与产权分开:角色由该智能体出镜,同时也是当前收款方
@@ -87,7 +98,7 @@ export async function syncCharacterListing(
     });
     const ownerRealigned =
       reg === "exists"
-        ? await changeAssetOwner("character", current.id, owner)
+        ? await changeAssetOwner("character", subjectId, owner)
         : false;
     if (!mayListAfterRegistration({ registration: reg, ownerRealigned })) {
       console.error("[characterListing] registry blocked listing", current.id, reg);
@@ -97,7 +108,7 @@ export async function syncCharacterListing(
     const productId = await upsertAssetListing({
       storeProductId: current.storeProductId,
       kind: "character",
-      localId: current.id,
+      localId: subjectId,
       name: current.name,
       tagline: current.tagline,
       imageUrl: current.imageUrl,

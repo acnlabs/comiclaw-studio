@@ -312,6 +312,25 @@ export async function unlistAssetListing(
   }
 }
 
+/**
+ * 把下架的商品放回在售。只翻 is_active,不碰名称与价格——回滚场景下我们手上
+ * 未必有商品的当前文案,拿默认值去 PATCH 会把卖家的商品改花。
+ */
+export async function relistAssetListing(
+  storeProductId: string,
+  sellerId: string
+): Promise<boolean> {
+  try {
+    const res = await storeFetch(storeProductPath(storeProductId), {
+      method: "PATCH",
+      body: JSON.stringify({ seller_id: sellerId, is_active: true }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 // 为一次付费授权创建待支付订单,license_ref 随单携带便于对账。
 // returnUrl 是可选的支付完成后跳转回调(Store/checkout 前端若支持,会在支付
 // 成功后把浏览器带回这个地址;目前 AgentPlanet 前端尚未实现跳转,传了也无副作用,

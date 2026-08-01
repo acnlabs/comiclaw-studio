@@ -173,6 +173,7 @@ export async function GET(req: Request) {
 // 路径产生未登记的商品。
 async function ensureListing(character: AgentCharacter): Promise<string | null> {
   if (!character.acnAgentId) return null; // 无收款方,无法上架
+  if (!character.assetId) return null; // 还没有可登记的主体
 
   if (character.storeProductId) {
     // 已有商品:这里只**确认**,不写。买家的下单动作不该改卖家的商品——
@@ -181,7 +182,8 @@ async function ensureListing(character: AgentCharacter): Promise<string | null> 
     const [registration, listing] = await Promise.all([
       // enforce 之前上架的商品可能从未登记过,那样订单会在 Store 侧被挡,
       // 而我们这边看起来一切正常
-      getAssetRegistration("character", character.id),
+      // The registry subject is the backing asset.
+      getAssetRegistration("character", character.assetId ?? character.id),
       getCharacterListing(character.storeProductId),
     ]);
     if (!registration) return null;

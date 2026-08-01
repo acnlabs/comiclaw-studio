@@ -70,9 +70,10 @@ export const PATCH = withAgentAuth(async (req, ctx: Ctx) => {
   // 改名要同步登记表的展示名,否则平台目录会一直显示旧名。响应不依赖它,
   // 放到响应之后跑,Store 慢或不可达时不拖慢改名。未登记过的 ref 会 404,
   // 被 patchAsset 吞掉,所以无需先判断是否登记。
-  if (body.name !== undefined && storeConfigured()) {
+  if (body.name !== undefined && storeConfigured() && character.assetId) {
+    const subjectId = character.assetId;
     after(() =>
-      patchAsset("character", characterId, { displayName: character.name })
+      patchAsset("character", subjectId, { displayName: character.name })
     );
   }
 
@@ -132,7 +133,10 @@ export const DELETE = withAgentAuth(async (_req, ctx: Ctx) => {
         );
       }
     }
-    await revokeAsset("character", characterId);
+    // Revoke the backing asset's registration. A character registered before
+    // the cutover also has an entry under its own id; the migration script
+    // retires those, and revoke is idempotent either way.
+    if (exists.assetId) await revokeAsset("character", exists.assetId);
   }
   await prisma.agentCharacter.delete({ where: { id: characterId } });
   await deleteBackingAsset(exists.assetId);
