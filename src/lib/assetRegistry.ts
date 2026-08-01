@@ -47,6 +47,23 @@ export type AssetOwner =
 
 export const ASSET_SOURCE = "comiclaw-studio";
 
+/**
+ * Reasons the registry accepts on change-owner.
+ *
+ * The vocabulary is closed on AgentPlanet's side and `sale` is explicitly
+ * refused: a paid handover has to run inside their order flow, which holds the
+ * row lock, ties the move to an order id and can roll it back on refund.
+ * Inventing a descriptive reason here (`"transfer"`, `"listing"`, …) reads
+ * fine and gets the call rejected, which our fail-closed callers turn into a
+ * user-visible 503.
+ */
+export const CHANGE_OWNER_REASONS = ["rebind", "admin"] as const;
+export type ChangeOwnerReason = (typeof CHANGE_OWNER_REASONS)[number];
+
+export function isChangeOwnerReason(value: string): value is ChangeOwnerReason {
+  return (CHANGE_OWNER_REASONS as readonly string[]).includes(value);
+}
+
 /** Namespace is derived from the source's first segment and must stay in sync. */
 export function assetRef(kind: AssetKind, localId: string): string {
   return `comiclaw:${kind}:${localId}`;

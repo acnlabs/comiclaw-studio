@@ -11,6 +11,8 @@ import {
   mayListAfterRegistration,
   registryActionPath,
   registryEntryPath,
+  CHANGE_OWNER_REASONS,
+  isChangeOwnerReason,
   REGISTRY_PATH,
   sellerMatchesOwner,
   storeProductPath,
@@ -138,5 +140,19 @@ assert.equal(
   "an existing entry still owned by someone else must not be listed"
 );
 ok("listing is fail-closed on the registry");
+
+// AgentPlanet closed this vocabulary and refuses `sale` outright: a paid
+// handover belongs to their order flow, which holds the row lock, ties the move
+// to an order id and can roll it back on refund. A descriptive word reads fine
+// here and comes back rejected — which our fail-closed callers turn into a 503.
+assert.deepEqual([...CHANGE_OWNER_REASONS], ["rebind", "admin"]);
+for (const invented of ["sale", "transfer", "publish", "listing", "realign"]) {
+  assert.equal(
+    isChangeOwnerReason(invented),
+    false,
+    `${invented} is not a reason the registry accepts`
+  );
+}
+ok("change-owner only ever sends a reason the registry accepts");
 
 console.log("\nAll asset registry checks passed.");
