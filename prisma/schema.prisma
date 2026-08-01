@@ -19,6 +19,10 @@ model Column {
   coverUrl    String?
   // 创建者 Auth0 sub;官方栏目可为空(Studio key 代建)
   ownerUserId String?
+  // 栏目的编辑 agent(如《AI 漫记》的 comiclaw)。它可以用自己的 ACN 身份开一记,
+  // 不必持有全权的 STUDIO_API_KEY——把运维密钥交给一个会被 prompt 影响的 agent
+  // 是不对的,而没有它日更的第一步就走不通。
+  editorAgentId String?
   // 可选默认协作组织(ACN Org);非唯一——多栏目可挂同一 Org
   acnOrgId    String?
   acnSubnetId String? // Org fence subnet 镜像,便于展示

@@ -58,6 +58,10 @@ export const PATCH = withAgentAuth(async (req, ctx: Ctx) => {
         body.ownerUserId === undefined
           ? undefined
           : body.ownerUserId?.trim() || null,
+      editorAgentId:
+        body.editorAgentId === undefined
+          ? undefined
+          : body.editorAgentId?.trim() || null,
     },
   });
   return Response.json({ column });
