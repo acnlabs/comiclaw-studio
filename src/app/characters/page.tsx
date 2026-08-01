@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getLocale } from "@/lib/locale";
 import { translate } from "@/lib/i18n";
 import MyCharacters from "@/components/MyCharacters";
+import MyAssets from "@/components/asset/MyAssets";
 import PublishedAssetGrid from "@/components/asset/PublishedAssetGrid";
 import { PUBLISHED } from "@/lib/assetPublish";
 
@@ -42,6 +43,7 @@ export default async function CharactersPage() {
       <p className="mt-1 mb-8 max-w-3xl text-sm text-zinc-500">{t("char.subtitle")}</p>
 
       <MyCharacters />
+      <MyAssets />
 
       {characters.length === 0 ? (
         <div className="mt-10 rounded-2xl border border-dashed border-zinc-800 py-20 text-center text-sm text-zinc-500">
