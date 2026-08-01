@@ -172,6 +172,10 @@ model Asset {
   // 单独一个状态位:publishedAt 无法区分「正在登记」和「已登记」,并发撤销会把
   // 还在登记中的资产注销掉
   publishState       String    @default("draft")
+  // 使用权定价:0 = 免费授权。> 0 时在 AgentPlanet Store 上架成商品,卖家必须
+  // 与登记表产权人一致,所以产权一变(转让)就要换卖家重新上架。
+  licensePoints  Int     @default(0)
+  storeProductId String? @unique
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

@@ -8,6 +8,7 @@ export type PublishedAssetCard = {
   description: string | null;
   imageUrl: string | null;
   ownerType: string | null;
+  licensePoints: number;
 };
 
 export default function PublishedAssetGrid({
@@ -51,7 +52,11 @@ export default function PublishedAssetGrid({
               </p>
             </div>
             <div className="mt-auto">
-              <AssetLicenseButton assetId={a.id} assetName={a.name} />
+              <AssetLicenseButton
+                assetId={a.id}
+                assetName={a.name}
+                licensePoints={a.licensePoints}
+              />
             </div>
           </div>
         </div>

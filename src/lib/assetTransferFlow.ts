@@ -2,6 +2,8 @@ import { prisma } from "@/lib/db";
 import { badRequest, conflict, forbidden } from "@/lib/auth";
 import { changeAssetOwner } from "@/lib/agentplanet";
 import { assetKindFor, PUBLISHED } from "@/lib/assetPublish";
+import { saveListing, syncAssetListing } from "@/lib/assetListing";
+import { LISTED_ASSET } from "@/lib/assetPublishFlow";
 import type { TransferCheck, TransferRefusal } from "@/lib/assetTransfer";
 import type { AssetOwner } from "@/lib/assetRegistry";
 
@@ -52,8 +54,8 @@ export async function runTransfer(args: {
   // `rebind`, not a descriptive word: the registry's reason vocabulary is
   // closed, and a free handover between principals is exactly a rebind. Paid
   // handovers are not ours to record — they run inside AgentPlanet's order flow.
-  const moved = await changeAssetOwner(kind, asset.id, to);
-  if (!moved) {
+  const reassigned = await changeAssetOwner(kind, asset.id, to);
+  if (!reassigned) {
     return Response.json(
       { error: "Asset registry is unavailable, try again later" },
       { status: 503 }
@@ -80,7 +82,27 @@ export async function runTransfer(args: {
     );
   }
 
-  return Response.json({ transferred: true, owner: ownerJson(to) });
+  // A Store product's seller is fixed, so a sold-through asset has to be
+  // relisted under its new owner. Skipping this would keep paying the previous
+  // one for licences of an asset they no longer hold.
+  const moved = await prisma.asset.findUniqueOrThrow({
+    where: { id: asset.id },
+    select: LISTED_ASSET,
+  });
+  const sync = await syncAssetListing(moved, { type: from.type, id: from.id });
+  await saveListing(asset.id, sync);
+
+  return Response.json({
+    transferred: true,
+    owner: ownerJson(to),
+    ...(sync.blocked
+      ? {
+          listingBlocked: true,
+          listingError:
+            "Ownership moved, but the asset is no longer on sale: relisting under the new owner failed. Set the price again to retry.",
+        }
+      : {}),
+  });
 }
 
 const ownerJson = (o: AssetOwner) => ({ ownerType: o.type, ownerId: o.id });

@@ -1,6 +1,12 @@
 import { prisma } from "@/lib/db";
 import { conflict } from "@/lib/auth";
-import { changeAssetOwner, registerAsset, revokeAsset } from "@/lib/agentplanet";
+import {
+  changeAssetOwner,
+  registerAsset,
+  revokeAsset,
+  unlistAssetListing,
+} from "@/lib/agentplanet";
+import { syncAssetListing, saveListing } from "@/lib/assetListing";
 import type { AssetOwner } from "@/lib/assetRegistry";
 import {
   assetKindFor,
@@ -17,7 +23,13 @@ import {
  * other.
  */
 
-type PublishTarget = { id: string; type: string; name: string };
+type PublishTarget = {
+  id: string;
+  type: string;
+  name: string;
+  storeProductId?: string | null;
+  ownerId?: string | null;
+};
 
 const registryUnavailable = () =>
   Response.json(
@@ -115,21 +127,42 @@ export async function runPublish(args: {
     return conflict("Asset changed while this request ran");
   }
 
-  const updated = await prisma.asset.findUnique({
+  const updated = await prisma.asset.findUniqueOrThrow({
     where: { id: asset.id },
-    select: {
-      id: true,
-      name: true,
-      type: true,
-      ownerType: true,
-      ownerId: true,
-      publishedVersionId: true,
-      publishedAt: true,
-      publishState: true,
-    },
+    select: LISTED_ASSET,
   });
-  return Response.json({ asset: updated }, { status: 201 });
+
+  // A price set while the asset was a draft only reaches the Store now: it had
+  // nothing to be listed under before it was registered.
+  const sync = await syncAssetListing(updated);
+  await saveListing(asset.id, sync);
+
+  return Response.json(
+    {
+      asset: { ...updated, storeProductId: sync.storeProductId },
+      ...(sync.blocked ? { listingBlocked: true, listingError: LISTING_BLOCKED } : {}),
+    },
+    { status: 201 }
+  );
 }
+
+/** Everything the Store sync needs, plus what clients render. */
+export const LISTED_ASSET = {
+  id: true,
+  name: true,
+  description: true,
+  type: true,
+  ownerType: true,
+  ownerId: true,
+  publishedVersionId: true,
+  publishedAt: true,
+  publishState: true,
+  licensePoints: true,
+  storeProductId: true,
+} as const;
+
+export const LISTING_BLOCKED =
+  "Published, but not on sale: the asset registry did not back the listing. Try again later.";
 
 /**
  * published → unpublishing → draft, so an in-flight publish is never revoked
@@ -143,6 +176,13 @@ export async function runWithdraw(asset: PublishTarget): Promise<Response> {
   });
   if (claimed.count === 0) {
     return conflict("Asset is busy, try again in a moment");
+  }
+
+  // Take the product down before the registration goes: a live product whose
+  // registration was revoked is still buyable, and the order would land on an
+  // asset nobody can deliver.
+  if (asset.storeProductId && asset.ownerId) {
+    await unlistAssetListing(asset.storeProductId, asset.ownerId);
   }
 
   const kind = assetKindFor(asset.type);
@@ -165,6 +205,7 @@ export async function runWithdraw(asset: PublishTarget): Promise<Response> {
       ownerId: null,
       publishedVersionId: null,
       publishedAt: null,
+      storeProductId: null,
     },
   });
 

@@ -9,12 +9,21 @@ import {
   unauthorized,
 } from "@/lib/auth";
 import { mapError, parseBody } from "@/lib/api";
-import { runPublish, runWithdraw } from "@/lib/assetPublishFlow";
+import {
+  LISTED_ASSET,
+  LISTING_BLOCKED,
+  runPublish,
+  runWithdraw,
+} from "@/lib/assetPublishFlow";
+import { saveListing, syncAssetListing } from "@/lib/assetListing";
+import { controlsAsset } from "@/lib/assetTransfer";
+import { governedOrgIds } from "@/lib/orgGovernance";
 import {
   canPublishAsAuthor,
   checkPublishable,
   resolvePublishOwner,
   PUBLISH_DRAFT,
+  PUBLISHED,
 } from "@/lib/assetPublish";
 
 type Ctx = { params: Promise<{ assetId: string }> };
@@ -39,6 +48,8 @@ async function loadOwnedAsset(assetId: string, sub: string) {
       type: true,
       name: true,
       publishState: true,
+      storeProductId: true,
+      ownerId: true,
       authorUserId: true,
       authorAgentId: true,
       authorKey: true,
@@ -130,4 +141,57 @@ export async function DELETE(req: Request, ctx: Ctx) {
   }
 
   return runWithdraw(asset);
+}
+
+const priceSchema = z.object({
+  /** Credits a licensee pays for usage rights; 0 keeps it free. */
+  licensePoints: z.number().int().min(0).max(1_000_000),
+});
+
+/** Price the usage rights of an asset you own (or your Org owns). */
+export async function PATCH(req: Request, ctx: Ctx) {
+  const sub = await verifyUserToken(req);
+  if (!sub) return unauthorized();
+
+  const { assetId: rawId } = await ctx.params;
+  const assetId = rawId?.trim();
+  if (!assetId) return notFoundJson();
+
+  let body: z.infer<typeof priceSchema>;
+  try {
+    body = await parseBody(req, priceSchema);
+  } catch (err) {
+    return mapError(err);
+  }
+
+  const asset = await prisma.asset.findUnique({
+    where: { id: assetId },
+    select: LISTED_ASSET,
+  });
+  if (!asset) return notFoundJson("Asset not found");
+  if (asset.publishState !== PUBLISHED) {
+    return badRequest("Publish the asset before pricing it");
+  }
+  if (!asset.ownerType || !asset.ownerId) {
+    return conflict("This asset has no recorded owner");
+  }
+  const controls = controlsAsset({
+    owner: { type: asset.ownerType as "user" | "agent" | "org", id: asset.ownerId },
+    actor: { type: "user", id: sub },
+    governs: await governedOrgIds(sub),
+  });
+  if (!controls) return forbidden("Only the asset's owner can price it");
+
+  const priced = await prisma.asset.update({
+    where: { id: asset.id },
+    data: { licensePoints: body.licensePoints },
+    select: LISTED_ASSET,
+  });
+  const sync = await syncAssetListing(priced);
+  await saveListing(asset.id, sync);
+
+  return Response.json({
+    asset: { ...priced, storeProductId: sync.storeProductId },
+    ...(sync.blocked ? { listingBlocked: true, listingError: LISTING_BLOCKED } : {}),
+  });
 }

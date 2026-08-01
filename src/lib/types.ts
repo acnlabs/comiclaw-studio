@@ -55,6 +55,7 @@ export interface AssetData {
   publishState?: string;
   publishedVersionId?: string | null;
   ownerType?: string | null;
+  licensePoints?: number;
   ownerId?: string | null;
   versions: AssetVersionData[]; // 按 version 倒序
 }

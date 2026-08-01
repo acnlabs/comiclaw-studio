@@ -10,6 +10,7 @@ import {
   PUBLISHED,
   PUBLISH_DRAFT,
 } from "@/lib/assetPublish";
+import AssetPriceControl from "@/components/panels/AssetPriceControl";
 import AssetTransferControl from "@/components/panels/AssetTransferControl";
 import { ASSET_PUBLISH_CHANGED_EVENT } from "@/lib/assetEvents";
 import type { AssetData } from "@/lib/types";
@@ -125,6 +126,12 @@ export default function AssetPublishControl({
               : t("assetPublish.publish")}
         </button>
       </div>
+      {isPublished ? (
+        <AssetPriceControl
+          assetId={asset.id}
+          licensePoints={asset.licensePoints ?? 0}
+        />
+      ) : null}
       {isPublished ? (
         <AssetTransferControl
           assetId={asset.id}

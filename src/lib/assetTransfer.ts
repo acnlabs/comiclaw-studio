@@ -39,6 +39,21 @@ export type TransferCheck =
 const isOwnerType = (v: string | null): v is AssetOwner["type"] =>
   v === "user" || v === "agent" || v === "org";
 
+/**
+ * Whether a principal may act for the asset's owner — hand it on, or price it.
+ * An Org's assets answer to whoever governs the Org, not to its members.
+ */
+export function controlsAsset(args: {
+  owner: AssetOwner;
+  actor: { type: "user" | "agent"; id: string };
+  governs: string[];
+}): boolean {
+  if (args.owner.type === args.actor.type && args.owner.id === args.actor.id) {
+    return true;
+  }
+  return args.owner.type === "org" && args.governs.includes(args.owner.id);
+}
+
 export function checkTransfer(args: {
   asset: { publishState: string; ownerType: string | null; ownerId: string | null };
   actor: { type: "user" | "agent"; id: string };
@@ -59,10 +74,9 @@ export function checkTransfer(args: {
     id: args.asset.ownerId.trim(),
   };
 
-  const holdsIt = from.type === args.actor.type && from.id === args.actor.id;
-  const governsHolder =
-    from.type === "org" && args.entitlement.takeFrom.includes(from.id);
-  if (!holdsIt && !governsHolder) return { ok: false, reason: "not_owner" };
+  if (!controlsAsset({ owner: from, actor: args.actor, governs: args.entitlement.takeFrom })) {
+    return { ok: false, reason: "not_owner" };
+  }
 
   const to: AssetOwner =
     args.target.kind === "org"

@@ -5,6 +5,7 @@ import { notFoundJson, unauthorized } from "@/lib/auth";
 import { mapError, parseBody } from "@/lib/api";
 import { checkTransfer } from "@/lib/assetTransfer";
 import { refuseTransfer, runTransfer } from "@/lib/assetTransferFlow";
+import { governedOrgIds } from "@/lib/orgGovernance";
 
 /**
  * Hand a published asset to one of your Orgs, or take one back.
@@ -48,11 +49,7 @@ export async function POST(req: Request, ctx: Ctx) {
   });
   if (!asset) return notFoundJson("Asset not found");
 
-  const governed = await prisma.column.findMany({
-    where: { ownerUserId: sub, acnOrgId: { not: null } },
-    select: { acnOrgId: true },
-  });
-  const orgIds = governed.flatMap((c) => (c.acnOrgId ? [c.acnOrgId] : []));
+  const orgIds = await governedOrgIds(sub);
 
   const move = checkTransfer({
     asset,

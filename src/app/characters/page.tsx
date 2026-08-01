@@ -30,6 +30,7 @@ export default async function CharactersPage() {
         name: true,
         description: true,
         ownerType: true,
+        licensePoints: true,
         publishedVersion: { select: { imageUrl: true } },
       },
     }),
@@ -96,6 +97,7 @@ export default async function CharactersPage() {
               description: a.description,
               imageUrl: a.publishedVersion?.imageUrl ?? null,
               ownerType: a.ownerType,
+              licensePoints: a.licensePoints,
             }))}
             typeLabel={(key) => t(key)}
             ownerLabel={(ownerType) =>

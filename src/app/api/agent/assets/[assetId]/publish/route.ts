@@ -3,12 +3,20 @@ import { prisma } from "@/lib/db";
 import { badRequest, conflict, forbidden, notFoundJson } from "@/lib/auth";
 import { mapError, parseBody, withProjectWorkerAuth } from "@/lib/api";
 import { productionAgentId, type ProductionAuth } from "@/lib/acnAuth";
-import { runPublish, runWithdraw } from "@/lib/assetPublishFlow";
+import {
+  LISTED_ASSET,
+  LISTING_BLOCKED,
+  runPublish,
+  runWithdraw,
+} from "@/lib/assetPublishFlow";
+import { saveListing, syncAssetListing } from "@/lib/assetListing";
+import { controlsAsset } from "@/lib/assetTransfer";
 import {
   agentCanPublish,
   checkPublishable,
   resolvePublishOwner,
   PUBLISH_DRAFT,
+  PUBLISHED,
 } from "@/lib/assetPublish";
 
 /**
@@ -56,6 +64,8 @@ const loadAsset = (assetId: string) =>
       type: true,
       name: true,
       publishState: true,
+      storeProductId: true,
+      ownerId: true,
       authorAgentId: true,
       versions: { orderBy: { version: "desc" }, select: { id: true } },
     },
@@ -117,6 +127,60 @@ export const DELETE = withProjectWorkerAuth(
     }
 
     return runWithdraw(asset);
+  },
+  { getProjectId, allowPublicContribute: true }
+);
+
+const priceSchema = z.object({
+  licensePoints: z.number().int().min(0).max(1_000_000),
+});
+
+/** Price the usage rights of an asset this agent owns. */
+export const PATCH = withProjectWorkerAuth(
+  async (req: Request, ctx: Ctx, auth: ProductionAuth) => {
+    const agentId = productionAgentId(auth);
+    if (!agentId) return badRequest("An agent identity is required to price an asset");
+
+    let body: z.infer<typeof priceSchema>;
+    try {
+      body = await parseBody(req, priceSchema);
+    } catch (err) {
+      return mapError(err);
+    }
+
+    const { assetId } = await ctx.params;
+    const asset = await prisma.asset.findUnique({
+      where: { id: assetId },
+      select: LISTED_ASSET,
+    });
+    if (!asset) return notFoundJson("Asset not found");
+    if (asset.publishState !== PUBLISHED) {
+      return badRequest("Publish the asset before pricing it");
+    }
+    if (!asset.ownerType || !asset.ownerId) {
+      return conflict("This asset has no recorded owner");
+    }
+    // No Org branch here: an agent prices what it holds itself. Pricing an
+    // Org's asset is the governor's call, same as transferring one out.
+    const controls = controlsAsset({
+      owner: { type: asset.ownerType as "user" | "agent" | "org", id: asset.ownerId },
+      actor: { type: "agent", id: agentId },
+      governs: [],
+    });
+    if (!controls) return forbidden("Only the asset's owner can price it");
+
+    const priced = await prisma.asset.update({
+      where: { id: asset.id },
+      data: { licensePoints: body.licensePoints },
+      select: LISTED_ASSET,
+    });
+    const sync = await syncAssetListing(priced);
+    await saveListing(asset.id, sync);
+
+    return Response.json({
+      asset: { ...priced, storeProductId: sync.storeProductId },
+      ...(sync.blocked ? { listingBlocked: true, listingError: LISTING_BLOCKED } : {}),
+    });
   },
   { getProjectId, allowPublicContribute: true }
 );

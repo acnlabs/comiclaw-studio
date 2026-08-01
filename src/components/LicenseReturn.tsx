@@ -12,17 +12,26 @@ type ConfirmState = "checking" | "success" | "notPaid" | "dead" | "error";
 // 支付跳转回调落地页:AgentPlanet checkout 支付成功后(若其前端支持 return_url)
 // 会把浏览器带到这里,自动完成授权确认,免去客户手动切回 Studio 点确认。
 // 即使 AgentPlanet 暂未实现跳转,这个页面本身独立可用(直接访问也能手动重试确认)。
-export default function CastingReturn({
-  characterId,
-  projectId,
+//
+// 角色选角与资产授权共用:两者的确认语义完全一样(向 Store 核实订单 → 落授权),
+// 分成两个页面只会让其中一个的修复漏掉另一个。
+export default function LicenseReturn({
+  confirmPath,
+  payload,
+  returnTo,
 }: {
-  characterId: string;
-  projectId: string;
+  confirmPath: string;
+  payload: Record<string, string>;
+  returnTo: string;
 }) {
   const { isAuthenticated, isLoading, getAccessTokenSilently, loginWithRedirect } = useAuth0();
   const { t } = useT();
   const [confirmState, setConfirmState] = useState<ConfirmState>("checking");
   const attempted = useRef(false);
+
+  // The page rebuilds `payload` every render, so key the callback on its
+  // contents rather than its identity.
+  const payloadJson = JSON.stringify(payload);
 
   const confirm = useCallback(async () => {
     setConfirmState("checking");
@@ -30,10 +39,10 @@ export default function CastingReturn({
       const token = await getAccessTokenSilently({
         authorizationParams: { audience: AUTH0_AUDIENCE },
       });
-      const res = await fetch("/api/user/casting/confirm", {
+      const res = await fetch(confirmPath, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ characterId, projectId }),
+        body: payloadJson,
       });
       if (res.ok) {
         setConfirmState("success");
@@ -44,7 +53,7 @@ export default function CastingReturn({
     } catch {
       setConfirmState("error");
     }
-  }, [getAccessTokenSilently, characterId, projectId]);
+  }, [getAccessTokenSilently, confirmPath, payloadJson]);
 
   // 只在已登录时触发确认;未登录/加载中的展示由渲染时直接派生,不经 state,
   // 避免在 effect 里为这两种情况调用 setState。
@@ -68,9 +77,7 @@ export default function CastingReturn({
         <h1 className="mt-4 text-2xl font-bold text-zinc-50">{t("castingReturn.needLogin")}</h1>
         <button
           onClick={() =>
-            loginWithRedirect({
-              appState: { returnTo: `/casting/return?characterId=${characterId}&projectId=${projectId}` },
-            })
+            loginWithRedirect({ appState: { returnTo } })
           }
           className="mt-6 rounded-full bg-accent px-5 py-2 text-sm font-medium text-zinc-950 transition-opacity hover:opacity-90"
         >
