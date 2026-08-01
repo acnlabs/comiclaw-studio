@@ -76,5 +76,5 @@ export const POST = withProjectWorkerAuth(
 
     return runTransfer({ asset, move });
   },
-  { getProjectId, allowPublicContribute: true }
+  { getProjectId, allowPublicContribute: true, allowWithoutProject: true }
 );

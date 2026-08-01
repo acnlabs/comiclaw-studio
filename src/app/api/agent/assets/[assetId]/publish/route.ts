@@ -110,7 +110,7 @@ export const POST = withProjectWorkerAuth(
 
     return runPublish({ asset, owner: owner.owner, versionId: check.versionId });
   },
-  { getProjectId, allowPublicContribute: true }
+  { getProjectId, allowPublicContribute: true, allowWithoutProject: true }
 );
 
 export const DELETE = withProjectWorkerAuth(
@@ -128,7 +128,7 @@ export const DELETE = withProjectWorkerAuth(
 
     return runWithdraw(asset);
   },
-  { getProjectId, allowPublicContribute: true }
+  { getProjectId, allowPublicContribute: true, allowWithoutProject: true }
 );
 
 const priceSchema = z.object({
@@ -182,5 +182,5 @@ export const PATCH = withProjectWorkerAuth(
       ...(sync.blocked ? { listingBlocked: true, listingError: LISTING_BLOCKED } : {}),
     });
   },
-  { getProjectId, allowPublicContribute: true }
+  { getProjectId, allowPublicContribute: true, allowWithoutProject: true }
 );

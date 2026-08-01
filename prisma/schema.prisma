@@ -154,7 +154,10 @@ model ScriptVersion {
 
 model Asset {
   id          String   @id @default(cuid())
-  projectId   String
+  // 可空:资产不一定属于某个项目。角色市场里直接建的角色没有来源项目,登记与
+  // 交易照常进行,只是没有容器可以继承权限——这类资产的权限只能来自它自己
+  // (作者可改删,登记产权人可发布/定价/转让)。
+  projectId   String?
   type        String // CHARACTER | SCENE | PROP
   name        String
   description String?
@@ -179,7 +182,7 @@ model Asset {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  project  Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project  Project?       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   versions AssetVersion[] @relation("AssetVersions")
   licenses AssetLicense[]
   publishedVersion AssetVersion? @relation("AssetPublishedVersion", fields: [publishedVersionId], references: [id], onDelete: SetNull)

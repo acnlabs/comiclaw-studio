@@ -40,6 +40,12 @@ export function withProjectWorkerAuth<Ctx>(
      * (内容投稿/改自己的内容)。charge / 项目设置等勿开。
      */
     allowPublicContribute?: boolean;
+    /**
+     * 为 true 时:资源没有项目也放进来(身份认证照做,但不做项目绑定)。
+     * 只给「权限来自资源自身」的路由开——处理函数必须自己校验作者/产权人,
+     * 因为这里已经没有项目可以校验了。不开的路由维持 404。
+     */
+    allowWithoutProject?: boolean;
   }
 ): (req: Request, ctx: Ctx) => Promise<Response> {
   return async (req, ctx) => {
@@ -49,11 +55,15 @@ export function withProjectWorkerAuth<Ctx>(
     const projectId = options?.getProjectId
       ? await options.getProjectId(req, ctx)
       : await defaultProjectIdFromParams(ctx);
-    if (!projectId) return notFoundJson();
+    if (!projectId && !options?.allowWithoutProject) return notFoundJson();
 
     let auth: ProductionAuth;
     if (identity.kind === "studio_key") {
       auth = { kind: "studio_key" };
+    } else if (!projectId) {
+      // No project to bind to, so this is identity only: the handler decides
+      // whether this agent is the asset's author or owner.
+      auth = { kind: "acn_contributor", agentId: identity.agentId };
     } else {
       const acnTaskId = options?.getAcnTaskId
         ? await options.getAcnTaskId(req, ctx)

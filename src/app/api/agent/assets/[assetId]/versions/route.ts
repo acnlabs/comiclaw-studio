@@ -54,11 +54,12 @@ export const POST = withProjectWorkerAuth(
       });
     });
 
-    emitProjectUpdate(asset.projectId, "asset.version.created");
+    if (asset.projectId) emitProjectUpdate(asset.projectId, "asset.version.created");
     return Response.json({ assetVersion: created }, { status: 201 });
   },
   {
     allowPublicContribute: true,
+    allowWithoutProject: true,
     getProjectId: async (_req, ctx) => {
       const { assetId } = await ctx.params;
       const asset = await prisma.asset.findUnique({

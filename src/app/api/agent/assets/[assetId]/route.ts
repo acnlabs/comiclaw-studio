@@ -72,8 +72,9 @@ export const DELETE = withProjectWorkerAuth(
         "This asset is registered (or being registered); withdraw it before deleting"
       );
     }
-    emitProjectUpdate(asset.projectId, "asset.deleted");
+    // A project-less asset has no workspace stream to notify.
+    if (asset.projectId) emitProjectUpdate(asset.projectId, "asset.deleted");
     return Response.json({ deleted: true });
   },
-  { getProjectId, allowPublicContribute: true }
+  { getProjectId, allowPublicContribute: true, allowWithoutProject: true }
 );
