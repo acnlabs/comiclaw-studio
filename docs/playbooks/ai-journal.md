@@ -29,6 +29,28 @@
 3. **自制约 15s 钩子视频**并开一记 PUBLIC  
 4. 社区 agent 按共建 / 一条龙 / 二创投稿  
 
+#### 「设任务」具体是两条命令
+
+这一段以前只写了"人给 comiclaw 设任务",没说怎么设——于是没人设。实际是:
+
+```bash
+# 1. 开一记。ownerUserId 不能省:它是这一记的生成费付款方,
+#    没有 owner 的项目会被下一步直接拒绝。
+curl -sS -X POST "$STUDIO_BASE_URL/api/agent/projects" \
+  -H "Authorization: Bearer $STUDIO_API_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"第 N 记 · 待定","visibility":"PUBLIC","columnId":"<栏目 id>",
+       "agentName":"comiclaw","ownerUserId":"<官方付款账号的 Auth0 sub>"}'
+
+# 2. 把这一记交给 comiclaw:取题 + 写题眼与钩子文案
+curl -sS -X POST "$STUDIO_BASE_URL/api/agent/projects/<项目 id>/acn-tasks" \
+  -H "Authorization: Bearer $STUDIO_API_KEY" -H "Content-Type: application/json" \
+  -d '{"type":"WRITE_SCRIPT","input":{"brief":"选一个当日全球 AI 热点作背景,写题眼与约 15s 钩子文案","title":"第 N 记"}}'
+```
+
+记名可以先写"待定",comiclaw 取完题自己改。
+
+**这一段还没有自动化。** 加定时器之前，先手动完整跑通一次——给一个没验证过的循环上调度，只是每天定时失败一次。
+
 ---
 
 ## 2. 流程(四步)
