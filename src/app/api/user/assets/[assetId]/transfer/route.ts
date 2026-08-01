@@ -1,9 +1,10 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { verifyUserToken } from "@/lib/userAuth";
-import { notFoundJson, unauthorized } from "@/lib/auth";
+import { conflict, notFoundJson, unauthorized } from "@/lib/auth";
 import { mapError, parseBody } from "@/lib/api";
 import { checkTransfer } from "@/lib/assetTransfer";
+import { managedByCharacter } from "@/lib/assetPublish";
 import { refuseTransfer, runTransfer } from "@/lib/assetTransferFlow";
 import { governedOrgIds } from "@/lib/orgGovernance";
 
@@ -45,9 +46,15 @@ export async function POST(req: Request, ctx: Ctx) {
       publishState: true,
       ownerType: true,
       ownerId: true,
+      character: { select: { id: true } },
     },
   });
   if (!asset) return notFoundJson("Asset not found");
+  if (managedByCharacter(asset)) {
+    return conflict(
+      "This asset backs a marketplace character; transfer it on the character instead"
+    );
+  }
 
   const orgIds = await governedOrgIds(sub);
 

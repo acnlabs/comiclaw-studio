@@ -21,6 +21,7 @@ import { governedOrgIds } from "@/lib/orgGovernance";
 import {
   canPublishAsAuthor,
   checkPublishable,
+  managedByCharacter,
   resolvePublishOwner,
   PUBLISH_DRAFT,
   PUBLISHED,
@@ -63,6 +64,7 @@ async function loadOwnedAsset(assetId: string, sub: string) {
       authorUserId: true,
       authorAgentId: true,
       authorKey: true,
+      character: { select: { id: true } },
       versions: {
         orderBy: { version: "desc" },
         select: { id: true },
@@ -71,6 +73,13 @@ async function loadOwnedAsset(assetId: string, sub: string) {
     },
   });
   if (!asset) return { error: notFoundJson("Asset not found") } as const;
+  if (managedByCharacter(asset)) {
+    return {
+      error: conflict(
+        "This asset backs a marketplace character; manage its listing on the character instead"
+      ),
+    } as const;
+  }
 
   if (asset.project) {
     if (asset.project.ownerUserId !== sub) {
@@ -209,6 +218,11 @@ export async function PATCH(req: Request, ctx: Ctx) {
     select: LISTED_ASSET,
   });
   if (!asset) return notFoundJson("Asset not found");
+  if (managedByCharacter(asset)) {
+    return conflict(
+      "This asset backs a marketplace character; price it on the character instead"
+    );
+  }
   if (asset.publishState !== PUBLISHED) {
     return badRequest("Publish the asset before pricing it");
   }

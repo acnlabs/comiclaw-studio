@@ -185,6 +185,7 @@ model Asset {
   project  Project?       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   versions AssetVersion[] @relation("AssetVersions")
   licenses AssetLicense[]
+  character AgentCharacter? @relation("CharacterAsset")
   publishedVersion AssetVersion? @relation("AssetPublishedVersion", fields: [publishedVersionId], references: [id], onDelete: SetNull)
   shotRefs ShotAsset[]
 
@@ -333,6 +334,10 @@ model AgentCharacter {
 
   ownerUserId     String? // 所属客户(Auth0 sub)
   sourceProjectId String? // 来源项目(从资产发布时填写;直接创建为空)
+  // 可交易主体:角色的产权登记与上架都以这条 Asset 为准。角色表保留人设、
+  // 出镜 Agent、是否公开这些「角色特有」的字段,不再自己充当登记主体
+  // (同一个 comiclaw:character:* 命名空间下曾经并存两套 id)。
+  assetId         String? @unique
   isPublic        Boolean @default(true) // 是否在角色市场公开
   openForCasting  Boolean @default(false) // 是否开放参演他人作品
   licensePoints   Int     @default(0) // 授权费(AgentPlanet Credits/项目);0 = 免费授权
@@ -340,6 +345,7 @@ model AgentCharacter {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  asset    Asset?   @relation("CharacterAsset", fields: [assetId], references: [id], onDelete: SetNull)
   castIn   WorkCast[]
   licenses CastingLicense[]
 

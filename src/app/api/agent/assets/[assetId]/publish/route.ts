@@ -14,6 +14,7 @@ import { controlsAsset } from "@/lib/assetTransfer";
 import {
   agentCanPublish,
   checkPublishable,
+  managedByCharacter,
   resolvePublishOwner,
   PUBLISH_DRAFT,
   PUBLISHED,
@@ -68,6 +69,7 @@ const loadAsset = (assetId: string) =>
       ownerType: true,
       ownerId: true,
       authorAgentId: true,
+      character: { select: { id: true } },
       versions: { orderBy: { version: "desc" }, select: { id: true } },
     },
   });
@@ -84,6 +86,11 @@ export const POST = withProjectWorkerAuth(
     const { assetId } = await ctx.params;
     const asset = await loadAsset(assetId);
     if (!asset) return notFoundJson("Asset not found");
+    if (managedByCharacter(asset)) {
+      return conflict(
+        "This asset backs a marketplace character; manage its listing on the character instead"
+      );
+    }
 
     if (!agentCanPublish({ authorAgentId: asset.authorAgentId, actor: actorOf(auth) })) {
       return forbidden("An agent may only publish assets it authored");
@@ -130,6 +137,11 @@ export const DELETE = withProjectWorkerAuth(
     const { assetId } = await ctx.params;
     const asset = await loadAsset(assetId);
     if (!asset) return notFoundJson("Asset not found");
+    if (managedByCharacter(asset)) {
+      return conflict(
+        "This asset backs a marketplace character; manage its listing on the character instead"
+      );
+    }
 
     if (asset.publishState === PUBLISH_DRAFT) {
       return badRequest("Asset is not published");

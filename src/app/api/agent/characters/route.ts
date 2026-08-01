@@ -4,6 +4,7 @@ import { badRequest } from "@/lib/auth";
 import { createCharacterSchema } from "@/lib/schemas";
 import { syncCharacterListing } from "@/lib/characterListing";
 import { verifyAgentExists } from "@/lib/agentplanet";
+import { trackCharacterAsset } from "@/lib/characterAssetSync";
 
 // 创建智能体角色(数字人):comiclaw 直接创建,或从项目资产发布
 export const POST = withAgentAuth(async (req) => {
@@ -44,6 +45,10 @@ export const POST = withAgentAuth(async (req) => {
       licensePoints: body.licensePoints ?? 0,
     },
   });
+  // 每个角色配一条 Asset 作为可交易主体(草稿,不登记不上架),等切换登记标识
+  // 时它才成为登记对象。现在就建,免得回填脚本刚跑完又落下新角色。
+  await trackCharacterAsset(character.id, "create");
+
   // 付费角色同步上架到 AgentPlanet Store。登记是 fail-closed:登记被拒就没上架,
   // 必须回报,否则调用方以为设了价就在售(enforce 下实际买不了)。
   const { character: synced, registryBlocked } =

@@ -149,6 +149,7 @@ export async function runPublish(args: {
 /** Everything the Store sync needs, plus what clients render. */
 export const LISTED_ASSET = {
   id: true,
+  character: { select: { id: true } },
   name: true,
   description: true,
   type: true,
