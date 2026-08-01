@@ -10,7 +10,7 @@ import {
   acceptCastingOrder,
   checkoutUrl,
 } from "@/lib/agentplanet";
-import { grantLicense, reconcilePendingLicenses } from "@/lib/casting";
+import { castingSubjectId, grantLicense, reconcilePendingLicenses } from "@/lib/casting";
 import { syncCharacterListing } from "@/lib/characterListing";
 import { unauthorized, badRequest, notFoundJson } from "@/lib/auth";
 import type { AgentCharacter } from "@prisma/client";
@@ -46,8 +46,18 @@ export async function POST(req: Request) {
     return Response.json({ error: "Character not open for casting" }, { status: 403 });
   }
 
-  const existing = await prisma.castingLicense.findUnique({
-    where: { characterId_projectId: { characterId, projectId } },
+  // The licence hangs off the character's backing asset — one licence table
+  // for characters, scenes and props alike.
+  const assetId = await castingSubjectId(character);
+  if (!assetId) {
+    return Response.json(
+      { error: "This character has no tradable subject yet", code: "NO_SUBJECT" },
+      { status: 409 }
+    );
+  }
+
+  const existing = await prisma.assetLicense.findUnique({
+    where: { assetId_projectId: { assetId, projectId } },
   });
   if (existing?.status === "GRANTED") {
     return Response.json({ license: existing, alreadyLicensed: true });
@@ -95,6 +105,12 @@ export async function POST(req: Request) {
           points: checkout.amount_credits,
           orderId: existing.storeOrderId,
         });
+        if (!granted) {
+          return Response.json(
+            { error: "Could not grant the licence, try again", code: "GRANT_FAILED" },
+            { status: 409 }
+          );
+        }
         await acceptCastingOrder(existing.storeOrderId, sub);
         return Response.json({ license: granted }, { status: 201 });
       }
@@ -122,10 +138,10 @@ export async function POST(req: Request) {
     }
     // 占位授权记录(PENDING_PAYMENT)。走到这里说明确实没有可复用的旧单
     // (上面已经处理过 pending/已付的情况),新单覆盖的至多是一张已死的旧单。
-    const license = await prisma.castingLicense.upsert({
-      where: { characterId_projectId: { characterId, projectId } },
+    const license = await prisma.assetLicense.upsert({
+      where: { assetId_projectId: { assetId, projectId } },
       create: {
-        characterId,
+        assetId,
         projectId,
         licenseeSub: sub,
         points,
@@ -148,6 +164,12 @@ export async function POST(req: Request) {
 
   // ---- 免费授权:即时授予 + 物化到项目资产库 ----
   const license = await grantLicense({ character, projectId, sub, points: 0, orderId: null });
+  if (!license) {
+    return Response.json(
+      { error: "Could not grant the licence, try again", code: "GRANT_FAILED" },
+      { status: 409 }
+    );
+  }
   return Response.json({ license }, { status: 201 });
 }
 
@@ -159,10 +181,16 @@ export async function GET(req: Request) {
   const characterId = url.searchParams.get("characterId");
   if (!characterId) return badRequest("`characterId` is required");
 
-  const licenses = await prisma.castingLicense.findMany({
-    where: { characterId, licenseeSub: sub, status: "GRANTED" },
-    select: { projectId: true },
+  const character = await prisma.agentCharacter.findUnique({
+    where: { id: characterId },
+    select: { assetId: true },
   });
+  const licenses = character?.assetId
+    ? await prisma.assetLicense.findMany({
+        where: { assetId: character.assetId, licenseeSub: sub, status: "GRANTED" },
+        select: { projectId: true },
+      })
+    : [];
   // 惰性自愈:打开选角弹窗时顺手补一遍这个客户卡住的付费授权
   after(() => reconcilePendingLicenses(sub));
   return Response.json({ projectIds: licenses.map((l) => l.projectId) });

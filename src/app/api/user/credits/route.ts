@@ -25,10 +25,26 @@ export async function GET(req: Request) {
   const sub = await verifyUserToken(req);
   if (!sub) return unauthorized();
 
-  const earnedWhere: Prisma.CastingLicenseWhereInput = {
+  // Earnings are one thing now: characters, scenes and props all sell usage
+  // rights through AssetLicense. Before the merge this only counted casting,
+  // so someone who sold a scene saw nothing here at all.
+  //
+  // Whose earnings these are:
+  //  - the registered owner, when that is a person
+  //  - the character's owner, whoever the payee agent is — a paid character
+  //    settles into its agent's wallet, but the person who owns the character
+  //    is who this page is explaining it to (unchanged from before the merge)
+  //  - the maker, for an asset that is not registered to anyone yet
+  const earnedWhere: Prisma.AssetLicenseWhereInput = {
     status: "GRANTED",
     licenseeSub: { not: sub },
-    character: { ownerUserId: sub },
+    asset: {
+      OR: [
+        { ownerType: "user", ownerId: sub },
+        { character: { ownerUserId: sub } },
+        { ownerType: null, authorUserId: sub },
+      ],
+    },
   };
   const spentWhere: Prisma.GenerationChargeRefWhereInput = { userSub: sub };
 
@@ -39,7 +55,7 @@ export async function GET(req: Request) {
     spentGroups,
     failedCount,
   ] = await Promise.all([
-    prisma.castingLicense.findMany({
+    prisma.assetLicense.findMany({
       where: earnedWhere,
       orderBy: { createdAt: "desc" },
       take: RECENT_LIMIT,
@@ -47,7 +63,7 @@ export async function GET(req: Request) {
         id: true,
         points: true,
         createdAt: true,
-        character: { select: { id: true, name: true } },
+        asset: { select: { id: true, name: true } },
         // A licensee's PRIVATE project name is their business, not the
         // character owner's, so only PUBLIC entries are named below.
         project: { select: { name: true, visibility: true } },
@@ -67,8 +83,8 @@ export async function GET(req: Request) {
         project: { select: { name: true } },
       },
     }),
-    prisma.castingLicense.groupBy({
-      by: ["characterId"],
+    prisma.assetLicense.groupBy({
+      by: ["assetId"],
       where: earnedWhere,
       _sum: { points: true },
       _count: { _all: true },
@@ -84,16 +100,16 @@ export async function GET(req: Request) {
     }),
   ]);
 
-  const characterNames = await prisma.agentCharacter.findMany({
-    where: { id: { in: earnedGroups.map((g) => g.characterId) } },
+  const assetNames = await prisma.asset.findMany({
+    where: { id: { in: earnedGroups.map((g) => g.assetId) } },
     select: { id: true, name: true },
   });
-  const namesById = new Map(characterNames.map((c) => [c.id, c.name]));
+  const namesById = new Map(assetNames.map((a) => [a.id, a.name]));
 
   const earnedRows: EarnedRow[] = licenses.map((l) => ({
     id: l.id,
-    characterId: l.character.id,
-    characterName: l.character.name,
+    characterId: l.asset.id,
+    characterName: l.asset.name,
     projectName:
       l.project?.visibility === "PUBLIC" ? (l.project?.name ?? null) : null,
     points: l.points,
@@ -112,7 +128,7 @@ export async function GET(req: Request) {
 
   const earned = shapeEarnedGroups(
     earnedGroups.map((g) => ({
-      characterId: g.characterId,
+      characterId: g.assetId,
       licenseCount: g._count._all,
       credits: g._sum.points,
     })),

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { verifyUserToken } from "@/lib/userAuth";
 import { getCheckout, acceptCastingOrder } from "@/lib/agentplanet";
-import { grantLicense } from "@/lib/casting";
+import { castingSubjectId, grantLicense } from "@/lib/casting";
 import { unauthorized, badRequest, notFoundJson } from "@/lib/auth";
 
 // 付费授权的支付确认:客户在 AgentPlanet checkout 用 Credits 付款后回来调用。
@@ -15,10 +15,20 @@ export async function POST(req: Request) {
   if (typeof characterId !== "string" || !characterId) return badRequest("`characterId` is required");
   if (typeof projectId !== "string" || !projectId) return badRequest("`projectId` is required");
 
-  const license = await prisma.castingLicense.findUnique({
-    where: { characterId_projectId: { characterId, projectId } },
-    include: { character: true },
+  const character = await prisma.agentCharacter.findUnique({
+    where: { id: characterId },
+    select: { id: true, assetId: true },
   });
+  // Resolve the subject the same way checkout did — minting it if the create
+  // hook never got to it. Looking only at a stored assetId would answer
+  // "License not found" to someone who has already paid.
+  const assetId = character ? await castingSubjectId(character) : null;
+  const license = assetId
+    ? await prisma.assetLicense.findUnique({
+        where: { assetId_projectId: { assetId, projectId } },
+        include: { asset: { include: { character: true } } },
+      })
+    : null;
   if (!license) return notFoundJson("License not found");
   if (license.licenseeSub !== sub) {
     return Response.json({ error: "Not your license" }, { status: 403 });
@@ -58,12 +68,18 @@ export async function POST(req: Request) {
   }
 
   const granted = await grantLicense({
-    character: license.character,
+    character: license.asset.character!,
     projectId,
     sub,
     points: checkout.amount_credits,
     orderId: license.storeOrderId,
   });
+  if (!granted) {
+    return Response.json(
+      { error: "Could not grant the licence, try again", code: "GRANT_FAILED" },
+      { status: 409 }
+    );
+  }
   // 授权已落地 → 确认收货,Store 立即结算(平台抽佣后进卖家智能体钱包)。
   // best effort:失败由验收窗超时 sweep 兜底。
   await acceptCastingOrder(license.storeOrderId, sub);

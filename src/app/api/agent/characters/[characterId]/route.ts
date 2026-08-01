@@ -105,14 +105,16 @@ export const DELETE = withAgentAuth(async (_req, ctx: Ctx) => {
   });
   if (!exists) return notFoundJson();
 
-  // 卫兵:有客户正在付款途中(PENDING_PAYMENT)时不允许删除。CastingLicense 对
-  // characterId 是 onDelete:Cascade,删角色会连带删掉这条占位记录——但客户可能
+  // 卫兵:有客户正在付款途中(PENDING_PAYMENT)时不允许删除。授权记录挂在背后的
+  // 资产上,删角色会连带删掉它(以及那条占位记录)——但客户可能
   // 已经在 Store 那边付了钱(或即将付),记录一旦被删,Studio 就再也不知道要把
   // 这笔订单接回来:钱最终经验收窗超时正常结算给卖家,但客户拿不到已购买的角色。
   // 这类订单最多 30 分钟自然过期,提示等一等即可,不阻塞长期删除需求。
-  const pendingCount = await prisma.castingLicense.count({
-    where: { characterId, status: "PENDING_PAYMENT" },
-  });
+  const pendingCount = exists.assetId
+    ? await prisma.assetLicense.count({
+        where: { assetId: exists.assetId, status: "PENDING_PAYMENT" },
+      })
+    : 0;
   if (pendingCount > 0) {
     return badRequest(
       `Cannot delete: ${pendingCount} purchase(s) currently in progress for this character ` +
