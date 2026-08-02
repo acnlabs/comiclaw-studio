@@ -6,6 +6,8 @@ export const dynamic = "force-dynamic";
 // 推荐:TikTok 式滑动观看的作品流
 export default async function RecommendPage() {
   const works = await prisma.work.findMany({
+    // 专栏系列是各记的聚合视图,各记本身已在流中;放它进来只会重复同一支视频
+    where: { columnId: null },
     orderBy: { publishedAt: "desc" },
     include: {
       episodes: { orderBy: { order: "asc" }, take: 1 },

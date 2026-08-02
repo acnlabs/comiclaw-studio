@@ -14,6 +14,15 @@ const display = Noto_Serif_SC({
   display: "swap",
 });
 
+/** 一记的横向:其他创作者基于这一记开的项目,各归各人 */
+export type ColumnCoCreation = {
+  id: string;
+  name: string;
+  shareToken: string;
+  coverUrl: string | null;
+  by: string | null;
+};
+
 export type ColumnEntry = {
   id: string;
   name: string;
@@ -22,6 +31,7 @@ export type ColumnEntry = {
   shareToken: string;
   entryOrder: number | null;
   createdAt: string;
+  coCreations: ColumnCoCreation[];
 };
 
 export type ColumnViewData = {
@@ -180,31 +190,56 @@ export default async function ColumnPageView({
                         }`}
                       />
                     </div>
-                    <Link
-                      href={`/p/${entry.shareToken}`}
-                      className="group min-w-0 border-b border-zinc-800/90 pb-5 transition-colors hover:border-accent/40"
-                    >
-                      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                        {entry.entryOrder != null ? (
-                          <span className="text-xs tracking-wide text-zinc-500">
-                            {t("column.entryN", { n: entry.entryOrder })}
+                    <div className="min-w-0 border-b border-zinc-800/90 pb-5">
+                      <Link href={`/p/${entry.shareToken}`} className="group block min-w-0">
+                        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                          {entry.entryOrder != null ? (
+                            <span className="text-xs tracking-wide text-zinc-500">
+                              {t("column.entryN", { n: entry.entryOrder })}
+                            </span>
+                          ) : null}
+                          <span className="text-xs text-zinc-600">
+                            {fmtDate(entry.createdAt, locale)}
                           </span>
-                        ) : null}
-                        <span className="text-xs text-zinc-600">
-                          {fmtDate(entry.createdAt, locale)}
-                        </span>
-                      </div>
-                      <p
-                        className={`${display.className} mt-1 text-lg text-zinc-100 transition-colors group-hover:text-accent sm:text-xl`}
-                      >
-                        {entry.name}
-                      </p>
-                      {entry.description ? (
-                        <p className="mt-1.5 line-clamp-2 max-w-2xl text-sm text-zinc-500">
-                          {entry.description}
+                        </div>
+                        <p
+                          className={`${display.className} mt-1 text-lg text-zinc-100 transition-colors group-hover:text-accent sm:text-xl`}
+                        >
+                          {entry.name}
                         </p>
+                        {entry.description ? (
+                          <p className="mt-1.5 line-clamp-2 max-w-2xl text-sm text-zinc-500">
+                            {entry.description}
+                          </p>
+                        ) : null}
+                      </Link>
+
+                      {/* 横向:这一记下面别人各自的共创项目 */}
+                      {entry.coCreations.length > 0 ? (
+                        <div className="mt-3">
+                          <p className="text-[11px] tracking-[0.16em] text-zinc-600 uppercase">
+                            {entry.coCreations.length === 1
+                              ? t("column.coCreationOne")
+                              : t("column.coCreationsN", { n: entry.coCreations.length })}
+                          </p>
+                          <ul className="mt-2 flex flex-wrap gap-2">
+                            {entry.coCreations.map((c) => (
+                              <li key={c.id}>
+                                <Link
+                                  href={`/p/${c.shareToken}`}
+                                  className="flex max-w-[15rem] items-baseline gap-1.5 rounded-full border border-zinc-800 bg-zinc-900/60 px-3 py-1.5 text-xs text-zinc-300 transition-colors hover:border-accent/40 hover:text-accent"
+                                >
+                                  <span className="truncate">{c.name}</span>
+                                  {c.by ? (
+                                    <span className="shrink-0 text-zinc-600">@{c.by}</span>
+                                  ) : null}
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
                       ) : null}
-                    </Link>
+                    </div>
                   </li>
                 );
               })}

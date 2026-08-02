@@ -12,9 +12,12 @@ export default async function ColumnsIndexPage() {
   const t = (key: Parameters<typeof translate>[1], params?: Record<string, string | number>) =>
     translate(locale, key, params);
 
+  // 记数只算纵向的记;一记下面的共创不该把「共 N 记」撑大
+  const publicEntry = { visibility: "PUBLIC", parentProjectId: null } as const;
+
   const columns = await prisma.column.findMany({
     where: {
-      projects: { some: { visibility: "PUBLIC" } },
+      projects: { some: publicEntry },
     },
     orderBy: { updatedAt: "desc" },
     take: 50,
@@ -26,7 +29,7 @@ export default async function ColumnsIndexPage() {
       coverUrl: true,
       updatedAt: true,
       projects: {
-        where: { visibility: "PUBLIC" },
+        where: publicEntry,
         orderBy: [
           { entryOrder: { sort: "desc", nulls: "last" } },
           { createdAt: "desc" },
@@ -35,7 +38,7 @@ export default async function ColumnsIndexPage() {
         select: { name: true },
       },
       _count: {
-        select: { projects: { where: { visibility: "PUBLIC" } } },
+        select: { projects: { where: publicEntry } },
       },
     },
   });

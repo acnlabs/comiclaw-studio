@@ -25,8 +25,9 @@ async function loadColumn(slug: string) {
       coverUrl: true,
       acnOrgId: true,
       contributePolicy: true,
+      // 纵向:时间线上的每一记(官方项目)。横向的二创各自挂在这一记下面
       projects: {
-        where: { visibility: "PUBLIC" },
+        where: { visibility: "PUBLIC", parentProjectId: null },
         orderBy: entryOrderNewestFirst,
         select: {
           id: true,
@@ -36,6 +37,18 @@ async function loadColumn(slug: string) {
           shareToken: true,
           entryOrder: true,
           createdAt: true,
+          derivedProjects: {
+            where: { visibility: "PUBLIC" },
+            orderBy: { createdAt: "asc" },
+            select: {
+              id: true,
+              name: true,
+              shareToken: true,
+              agentName: true,
+              clientName: true,
+              coverUrl: true,
+            },
+          },
         },
       },
     },
@@ -71,6 +84,13 @@ export default async function ColumnPage(props: Ctx) {
       shareToken: p.shareToken,
       entryOrder: p.entryOrder,
       createdAt: p.createdAt.toISOString(),
+      coCreations: p.derivedProjects.map((d) => ({
+        id: d.id,
+        name: d.name,
+        shareToken: d.shareToken,
+        coverUrl: d.coverUrl,
+        by: d.agentName ?? d.clientName,
+      })),
     }))
     .sort(compareEntriesNewestFirst);
 

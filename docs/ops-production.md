@@ -135,6 +135,16 @@ acn listen --forward http://127.0.0.1:<local-a2a-port>
 
 建单默认 `includeDefaultWorker=true`（邀请主 comiclaw）；可额外传 `workerAgentIds`；`includeDefaultWorker=false` 时主 comiclaw 即使 accept 也不能写该项目（白名单以 metadata `worker_agent_ids` 为准）。
 
+## 数据库迁移只在生产部署时跑
+
+Preview 与生产**共用同一个数据库**。构建命令又是同一条，所以在加保护之前，任何分支只要一推上去，preview 构建里的 `prisma migrate deploy` 就会立刻改动生产库——在 PR 被审、被合之前。加可空字段无所谓，但一个删列、改名或加 `NOT NULL` 的迁移会在 PR 还开着的时候把生产打挂。
+
+现在 `vercel-build` 走 [`scripts/migrate-on-production.mjs`](../scripts/migrate-on-production.mjs)：`VERCEL_ENV=production` 才执行迁移，preview 与 development 跳过并打印原因。迁移失败会返回非零、中断构建，不会静默放行。
+
+代价要知道：**带新迁移的分支，它自己的 preview 会因为库还没迁而报错**，直到合并。这是有意的取舍——preview 挂是这个分支自己的事，生产挂是所有人的事。
+
+要让 preview 也能验迁移，得给 Vercel 的 Preview 环境单独配一个 `DATABASE_URL`（指向一份影子库）。那一步在 Vercel 控制台，不在代码里。
+
 ## 验收清单（smoke）
 
 在**不烧真实上游**的前提下，按序勾选。

@@ -1,12 +1,14 @@
+import Link from "next/link";
 import { prisma } from "@/lib/db";
 import WorkCard from "@/components/WorkCard";
 import { getLocale } from "@/lib/locale";
 import { translate, translateCategory } from "@/lib/i18n";
+import { COLUMN_SERIES_CATEGORY } from "@/lib/publish";
 
 export const dynamic = "force-dynamic";
 
-// 短剧库:子类目前仅「漫剧」(分类值以中文存储,展示时按语言映射)
-const CATEGORIES = ["漫剧"];
+// 短剧库子类(分类值以中文存储,展示时按语言映射)。「漫记」为专栏日更聚成的系列
+const CATEGORIES = ["漫剧", COLUMN_SERIES_CATEGORY];
 
 export default async function SeriesPage(props: {
   searchParams: Promise<{ cat?: string }>;
@@ -28,16 +30,18 @@ export default async function SeriesPage(props: {
 
       <div className="mt-4 flex gap-2">
         {CATEGORIES.map((c) => (
-          <span
+          <Link
             key={c}
-            className={`rounded-full px-3.5 py-1.5 text-sm ${
+            href={`/series?cat=${encodeURIComponent(c)}`}
+            aria-current={c === active ? "page" : undefined}
+            className={`rounded-full px-3.5 py-1.5 text-sm transition ${
               c === active
                 ? "bg-accent font-medium text-zinc-950"
-                : "bg-zinc-800 text-zinc-400"
+                : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"
             }`}
           >
             {translateCategory(locale, c)}
-          </span>
+          </Link>
         ))}
       </div>
 

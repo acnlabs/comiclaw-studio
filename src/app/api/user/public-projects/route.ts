@@ -32,6 +32,8 @@ export async function GET(req: Request) {
       agentName: true,
       columnId: true,
       entryOrder: true,
+      // 空 = 这是一记本身;有值 = 挂在那一记下的共创项目
+      parentProjectId: true,
       updatedAt: true,
       createdAt: true,
     },

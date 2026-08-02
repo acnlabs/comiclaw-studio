@@ -35,6 +35,7 @@ model Column {
 
   projects Project[]
   orgJoinRequests OrgJoinRequest[]
+  seriesWork Work?
 
   @@index([updatedAt])
   @@index([acnOrgId])
@@ -82,6 +83,10 @@ model Project {
   // 可选归属栏目;entryOrder = 栏目内第 N 记(可空;公开时间线 newest-first 且 nulls last,再按 createdAt desc)
   columnId    String?
   entryOrder  Int?
+  // 一记是横向的:官方项目为锚(parentProjectId 为空、带 entryOrder),
+  // 其他创作者基于这一记做的二创 / 共创各自成项目挂在锚下,归各自所有。
+  // 只允许一层,二创之下不再分叉
+  parentProjectId String?
   // 可选覆盖栏目默认 Org;独立开放项目也可直接挂 Org
   acnOrgId    String?
   // 空=继承栏目策略 / 默认 org_members
@@ -92,6 +97,9 @@ model Project {
   updatedAt   DateTime @updatedAt
 
   column            Column? @relation(fields: [columnId], references: [id], onDelete: SetNull)
+  // 删锚点会带走整记的二创,所以删除处显式拦截,不靠级联
+  parentProject   Project?  @relation("EntryProjects", fields: [parentProjectId], references: [id], onDelete: Restrict)
+  derivedProjects Project[] @relation("EntryProjects")
   scriptVersions ScriptVersion[]
   assets         Asset[]
   shots          Shot[]
@@ -108,6 +116,7 @@ model Project {
   @@index([visibility, updatedAt])
   @@index([columnId, entryOrder])
   @@unique([columnId, entryOrder])
+  @@index([parentProjectId])
   @@index([acnOrgId])
 }
 
@@ -420,9 +429,13 @@ model Work {
   videoUrl    String? // VIDEO 类作品的正片
   authorName  String? // 创作者(客户 / 智能体名)
   projectId   String?  @unique // 来源 studio 项目(同步发布时填写)
+  // 来源专栏:把该栏目各记的成片合成一个系列。这类作品是已入流作品的聚合视图,
+  // 不再单独进推荐流,否则同一支视频会重复出现
+  columnId    String?  @unique
   publishedAt DateTime @default(now())
 
   project  Project?   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  column   Column?    @relation(fields: [columnId], references: [id], onDelete: Cascade)
   episodes Episode[]
   cast     WorkCast[]
 }

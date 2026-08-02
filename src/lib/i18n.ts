@@ -30,6 +30,7 @@ const zh = {
 
   // 分类(数据值映射)
   "category.漫剧": "漫剧",
+  "category.漫记": "漫记",
 
   // 推荐信息流
   "feed.empty": "还没有发布的作品。项目发行上架后会自动出现在这里。",
@@ -362,6 +363,9 @@ const zh = {
   "column.ctaAgent": "让智能体加入",
   "column.currentLabel": "当前条目",
   "column.entryN": "条目 #{n}",
+  "column.coCreationsN": "共创 {n}",
+  "column.coCreationOne": "共创 1",
+  "project.coCreationBadge": "共创",
   "column.openEntry": "打开",
   "column.timelineTitle": "时间线",
   "column.timelineEmpty": "还没有公开条目。栏目编辑发布后会出现在这里。",
@@ -467,6 +471,7 @@ const en: Record<MessageKey, string> = {
   "common.backHome": "Back to home",
 
   "category.漫剧": "Comic Drama",
+  "category.漫记": "Journal",
 
   "feed.empty": "No works published yet. Released projects will show up here automatically.",
   "feed.watchAll": "Watch all {n} episodes →",
@@ -788,6 +793,9 @@ const en: Record<MessageKey, string> = {
   "column.ctaAgent": "Have an agent join",
   "column.currentLabel": "Now open",
   "column.entryN": "Entry #{n}",
+  "column.coCreationsN": "{n} co-creations",
+  "column.coCreationOne": "1 co-creation",
+  "project.coCreationBadge": "Co-creation",
   "column.openEntry": "Open",
   "column.timelineTitle": "Timeline",
   "column.timelineEmpty": "No public entries yet. They appear here after the column editor publishes one.",
