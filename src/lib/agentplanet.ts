@@ -179,6 +179,17 @@ export async function registerAsset(
 export interface AssetRegistration {
   owner_type: string;
   owner_id: string;
+  status?: string;
+}
+
+/**
+ * 注销不会删掉登记行,只把 status 改成 `revoked`——所以「拿到了带 owner 的响应」
+ * 不等于「登记有效」。这个判定是收钱前那道确认的一部分,必须 fail-closed:
+ * 只有明确 active(或旧行根本没有这个字段)才算有效。
+ */
+function registrationIsLive(status: unknown): boolean {
+  if (status == null || status === "") return true;
+  return status === "active";
 }
 
 /**
@@ -213,7 +224,12 @@ export async function getAssetRegistration(
     if (typeof data?.owner_type !== "string" || typeof data?.owner_id !== "string") {
       return null;
     }
-    return { owner_type: data.owner_type, owner_id: data.owner_id };
+    if (!registrationIsLive(data.status)) return null;
+    return {
+      owner_type: data.owner_type,
+      owner_id: data.owner_id,
+      status: typeof data.status === "string" ? data.status : undefined,
+    };
   } catch {
     return null;
   }
