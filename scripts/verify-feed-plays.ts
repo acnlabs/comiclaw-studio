@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 import dotenv from "dotenv";
 import { prisma } from "../src/lib/db";
 import { rankForYou, HEAT_WINDOW_HOURS } from "../src/lib/feedRanking";
+import { PLAYS_PER_NETWORK_PER_HOUR } from "../src/lib/viewerSession";
 
 dotenv.config({ override: true });
 
@@ -83,6 +84,30 @@ async function main() {
   assert.equal(missing.status, 404);
   ok("a play for an unknown work is refused");
 
+  // The hole the cookie alone leaves: a caller that never sends one looks like
+  // an endless stream of first-time viewers, so heat has to cap per network.
+  const spam = await prisma.work.create({
+    data: { kind: "VIDEO", title: "热度测试 · 刷量", videoUrl: "https://example.com/c.mp4" },
+  });
+  const results: boolean[] = [];
+  for (let i = 0; i < PLAYS_PER_NETWORK_PER_HOUR + 4; i += 1) {
+    const anon = await play(spam.id); // no cookie, fresh viewer key each time
+    results.push(anon.counted === true);
+  }
+  assert.equal(
+    results.filter(Boolean).length,
+    PLAYS_PER_NETWORK_PER_HOUR,
+    `cookieless plays should stop at the cap, got ${JSON.stringify(results)}`
+  );
+  assert.equal(await heat(spam.id), PLAYS_PER_NETWORK_PER_HOUR);
+  ok("dropping the cookie cannot inflate heat past the per-network cap");
+
+  // The cap also has to hold when the caller invents a new key every time.
+  const forged = await play(spam.id, "cl_viewer=forgedkeyaaaaaaaaaaaaaaaaaaaa");
+  assert.equal(forged.counted, false, "a fresh forged key must not get past the cap");
+  assert.equal(await heat(spam.id), PLAYS_PER_NETWORK_PER_HOUR);
+  ok("inventing new viewer keys does not get past the cap either");
+
   // Heat decides the order once neither work is fresh any more.
   const aged = new Date(Date.now() - 72 * 3600_000);
   await prisma.work.updateMany({
@@ -139,8 +164,9 @@ async function main() {
   assert.equal(unauth.status, 401, "featuring must need the ops key");
   ok("featuring without the ops key is refused");
 
-  await prisma.workPlay.deleteMany({ where: { workId: { in: [hot.id, quiet.id] } } });
-  await prisma.work.deleteMany({ where: { id: { in: [hot.id, quiet.id] } } });
+  const ids = [hot.id, quiet.id, spam.id];
+  await prisma.workPlay.deleteMany({ where: { workId: { in: ids } } });
+  await prisma.work.deleteMany({ where: { id: { in: ids } } });
   console.log("\nall feed-play checks passed");
 }
 

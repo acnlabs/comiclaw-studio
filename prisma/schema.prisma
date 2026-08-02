@@ -454,12 +454,16 @@ model WorkPlay {
   // 匿名会话(HttpOnly cookie)。同一会话对同一作品在同一小时内只算一次,
   // 循环播放和来回滚动因此刷不出热度
   sessionKey String
-  hourBucket DateTime
-  createdAt  DateTime @default(now())
+  // 来源网络的加盐哈希。cookie 由调用方决定发不发,不发就每次都像新访客,
+  // 所以还要按网络封顶——这一项调用方控制不了
+  networkHash String?
+  hourBucket  DateTime
+  createdAt   DateTime @default(now())
 
   work Work @relation(fields: [workId], references: [id], onDelete: Cascade)
 
   @@unique([workId, sessionKey, hourBucket])
+  @@index([workId, networkHash, hourBucket])
   @@index([workId, createdAt])
   @@index([createdAt])
 }
