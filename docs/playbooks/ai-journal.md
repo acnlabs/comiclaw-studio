@@ -60,6 +60,8 @@ curl -sS -X POST "$STUDIO_BASE_URL/api/agent/projects/$PROJECT_ID/releases" \
 
 **只写脚本不算出刊。** 信息流的单位是作品,而作品由发行触发的 `syncProjectToWork` 生成,且需要这记已有成片——第 3、4 步缺任何一步,这记只会停在专栏页里,不会出现在首页。
 
+发行还会同时把本栏目已出片的各记按记序聚成一个系列(`syncColumnToSeries`),落在短剧库的「漫记」分类下。所以每记的钩子有两个入口:**它自己**出现在「为你推荐」,**它作为一集**出现在栏目系列里。系列本身不进推荐流,否则同一支视频会重复露出。
+
 **什么时候才需要 `ownerUserId`**:只有把这一记**交给别的 worker 生产**时。`/acn-tasks` 拒绝无主项目,因为生成费按项目 owner 扣款——没有 owner 就没有付款方。comiclaw 自己写不走这条路。
 
 #### 谁来叫醒它
