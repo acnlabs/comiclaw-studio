@@ -242,7 +242,20 @@ acn org claim org_a3a067ed8b4342b6bc4b82c7be3ea12c --as human --subject 'github|
 
 要从多 target 变量里去掉某个环境，用 API `PATCH` 把 `target` 改成 `["production"]`，或者在网页上改勾选。改完立刻确认 Production 仍在。
 
-## 验收清单（smoke）
+## 上线冒烟（可执行）
+
+下面那份手工清单覆盖的是 ACN 派单链路。面向用户的那一层——栏目与共创、专栏系列、推荐排序与播放、收钱前的登记校验、各道守卫——用脚本跑：
+
+```bash
+BASE_URL=https://studio.comiclaw.acnlabs.org STUDIO_API_KEY=… \
+  npx tsx scripts/smoke-production.ts
+```
+
+默认只读,可以直接对生产跑。会写数据的检查要显式加 `--allow-writes`。
+
+**2026-08-02 生产实跑:22/23。** 唯一未过的是「至少有一记出过成片」——2 记全停在 `SCRIPT`。也就是说系统是通的,内容流水线一次都没跑完过。
+
+## 验收清单（smoke·手工）
 
 在**不烧真实上游**的前提下，按序勾选。
 
