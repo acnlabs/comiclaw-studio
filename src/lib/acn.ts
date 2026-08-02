@@ -5,6 +5,7 @@
 // ACN 已废止 system:task-invite;不要用人类 ID 建单。
 // 任务挂 private subnet,建单后 invite 生产 Agent(可多候选 + 主 comiclaw fallback)。
 // 客户 cell 不持有 ACN key。
+import { refuseExternalWrite } from "@/lib/externalWrites";
 
 const ACN_API_URL = () => (process.env.ACN_API_URL ?? "https://api.acnlabs.dev").trim().replace(/\/+$/, "");
 /** comiclaw-studio 建单 agent 的 API key(历史名 CHAT;身份必须是 studio agent) */
@@ -95,6 +96,8 @@ export interface AcnTask {
 }
 
 async function acnFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const refused = refuseExternalWrite("acn", init.method, path);
+  if (refused) return refused;
   const key = ACN_CHAT_API_KEY();
   if (!key) throw new Error("ACN_CHAT_API_KEY is not configured");
   const headers = new Headers(init.headers);

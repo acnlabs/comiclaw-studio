@@ -13,6 +13,7 @@ import {
   type RegisterAssetArgs,
   type RegisterResult,
 } from "@/lib/assetRegistry";
+import { refuseExternalWrite } from "@/lib/externalWrites";
 
 // AgentPlanet Store 对接层(product_type=agent_asset)。
 //
@@ -53,6 +54,8 @@ export async function getWalletBalance(userBearerToken: string): Promise<number 
 }
 
 async function storeFetch(path: string, init?: RequestInit): Promise<Response> {
+  const refused = refuseExternalWrite("agentplanet", init?.method, path);
+  if (refused) return refused;
   return fetch(`${BASE()}${path}`, {
     ...init,
     headers: {
