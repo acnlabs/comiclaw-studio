@@ -136,6 +136,14 @@ export interface ProjectData {
   ownerUserId?: string | null;
   columnId?: string | null;
   entryOrder?: number | null;
+  /** 归属栏目;共创项目与其所答的一记同栏目 */
+  column?: { name: string; slug: string } | null;
+  /** 有值 = 这是那一记下的共创项目 */
+  parentProject?: {
+    name: string;
+    shareToken: string;
+    entryOrder: number | null;
+  } | null;
   currentStage: string;
   statusNote: string | null;
   updatedAt: string;

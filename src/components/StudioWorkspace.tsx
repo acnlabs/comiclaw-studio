@@ -50,6 +50,37 @@ export default function StudioWorkspace({ project }: { project: ProjectData }) {
           COMICLAW STUDIO
           <span className="text-zinc-600">{t("studio.brandSub")}</span>
         </Link>
+        {project.column ? (
+          <p className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-zinc-500">
+            <Link
+              href={`/columns/${project.column.slug}`}
+              className="transition-colors hover:text-accent"
+            >
+              {project.column.name}
+            </Link>
+            {project.parentProject ? (
+              <>
+                <span aria-hidden>·</span>
+                <Link
+                  href={`/p/${project.parentProject.shareToken}`}
+                  className="transition-colors hover:text-accent"
+                >
+                  {project.parentProject.entryOrder != null
+                    ? t("column.entryN", { n: project.parentProject.entryOrder })
+                    : project.parentProject.name}
+                </Link>
+                <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[11px] text-zinc-400">
+                  {t("project.coCreationBadge")}
+                </span>
+              </>
+            ) : project.entryOrder != null ? (
+              <>
+                <span aria-hidden>·</span>
+                <span>{t("column.entryN", { n: project.entryOrder })}</span>
+              </>
+            ) : null}
+          </p>
+        ) : null}
         <h1 className="mt-2 text-2xl font-bold text-zinc-50 sm:text-3xl">{project.name}</h1>
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-zinc-500">
           {project.clientName && (

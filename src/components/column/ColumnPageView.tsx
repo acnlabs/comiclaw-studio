@@ -218,7 +218,9 @@ export default async function ColumnPageView({
                       {entry.coCreations.length > 0 ? (
                         <div className="mt-3">
                           <p className="text-[11px] tracking-[0.16em] text-zinc-600 uppercase">
-                            {t("column.coCreationsN", { n: entry.coCreations.length })}
+                            {entry.coCreations.length === 1
+                              ? t("column.coCreationOne")
+                              : t("column.coCreationsN", { n: entry.coCreations.length })}
                           </p>
                           <ul className="mt-2 flex flex-wrap gap-2">
                             {entry.coCreations.map((c) => (
