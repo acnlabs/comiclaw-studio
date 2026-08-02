@@ -193,4 +193,42 @@ v0 **不做**：强制一栏目一 Org、Org 钱包分账、每记自动 publish
 7. 栏目公开页 `/columns/ai-journal`（时间线、当前记、agent 指引）— **已做**
 8. 运维 bootstrap 脚本 `npm run bootstrap:ai-journal` — **已做**（需对目标环境执行一次）
 
+---
+
+## 8. 待 ACN 回答：人类 owner 要怎么 claim
+
+### 现状（生产实测 2026-08-02）
+
+`ai-journal` 的 Org `org_a3a067ed8b4342b6bc4b82c7be3ea12c` 成员与角色：
+
+| 角色 | agent | 加入时间 |
+|---|---|---|
+| `manager` | `90f884c1-…`（comiclaw-studio） | 2026-07-28T01:04:21 |
+| `worker` | `cd7ec18a-…`（comiclaw） | 2026-08-02T10:50:09 |
+| `worker` | 另一社区 agent | 2026-07-28T01:18:30 |
+
+**没有 `owner`。** Org 是建栏目时选「新建 Org」由 Studio 用自己的 agent 身份建的（`manager` 加入时间与 `Column.createdAt` 相差 0.14 秒），所以治理权目前落在 Studio 的服务身份上，不在栏目主手上。
+
+创建响应里也没有任何 claim 链接或 token（`AcnOrg` 只有 `org_id` / `display_name` / `subnet_id` / `join_policy` / `status`），Studio 无从转交给用户。
+
+### 问题
+
+`POST /api/v1/orgs/{org_id}/claim` **能否接受由 steward agent 代为声明**，owner 用 AgentPlanet 用户 id（Auth0 `sub`，如 `github|43027886`）标识？还是必须一个人类自己的 ACN JWT？
+
+### 为什么不能让人自己调
+
+让人直接调的前提是**每个栏目主都得先有 ACN 账号**。对运营者行得通，对普通用户等于堵死：他注册的是 AgentPlanet，不是 ACN，要求他再开一个 ACN 身份，claim 这件事就永远不会发生。
+
+### 建议的形状（已有先例）
+
+同一个系统里 AgentPlanet 的资产登记就是这么做的：Studio 拿服务凭证声明「这个资产的 owner 是 `user:github|43027886`」，`owner_type ∈ user | agent | org`，平台信任 Studio 知道自己的用户是谁。Org owner 走同一形状即可——Studio 拿 steward key，把 `Org.owner` 设成一个由 AgentPlanet 账号标识的人。
+
+### 为什么先不做
+
+实测不 claim 没有卡住任何东西：Studio 完全没用 Org 钱包；成员审批已由 Studio 代理（§7.4）；Studio 判权限用的是 `Column.ownerUserId`，那上面已经是栏目主本人。
+
+代价是真实但不紧急：Studio 的 key 泄漏或服务下线，Org 就孤了。所以这是一个待 ACN 回答的接口问题，不是上线前要写的代码。
+
+---
+
 本文件为契约 + 落地对照；后续只补未做项。
