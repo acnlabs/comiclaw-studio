@@ -98,6 +98,26 @@ async function main() {
   assert.deepEqual(await planRetirement(), [], "nothing left to retire");
   ok("running it again is a no-op");
 
+  // A revoke that answers success but leaves the entry in place must be
+  // reported as a failure — the point of the whole exercise is the end state,
+  // not what the other side said about it.
+  const lying = await seedCharacter("注销假成功(测试)", null);
+  created.push(lying.id);
+  await post("/_test/register", {
+    ref: `comiclaw:character:${lying.id}`,
+    owner_type: "agent",
+    owner_id: "agent-x",
+  });
+  await post("/_test/revoke-noop", { noop: true });
+  const lied = await runRetirement();
+  assert.equal(lied[0].revoked, false, "a revoke that changes nothing is not a success");
+  assert.ok(
+    (await storeState()).registry.includes(`comiclaw:character:${lying.id}`),
+    "and the entry is indeed still there"
+  );
+  ok("a revoke that reports success but changes nothing is reported as failed");
+  await post("/_test/revoke-noop", { noop: false });
+
   await prisma.agentCharacter.deleteMany({ where: { id: { in: created } } });
   console.log("\nall character-ref retire checks passed");
 }

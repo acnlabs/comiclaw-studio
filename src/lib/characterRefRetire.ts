@@ -70,8 +70,13 @@ export async function runRetirement(): Promise<RetireOutcome[]> {
         continue;
       }
     }
-    const revoked = await revokeAsset("character", ref.characterId);
-    results.push({ ...ref, unlisted, revoked });
+    const accepted = await revokeAsset("character", ref.characterId);
+    // 不信返回码,自己复读一遍。revokeAsset 把 404 当「已注销」,所以路径不对
+    // 或对方不支持时,失败和成功长得一模一样——这类操作只能以事后状态为准。
+    const stillThere = accepted
+      ? Boolean(await getAssetRegistration("character", ref.characterId))
+      : true;
+    results.push({ ...ref, unlisted, revoked: accepted && !stillThere });
   }
 
   return results;
