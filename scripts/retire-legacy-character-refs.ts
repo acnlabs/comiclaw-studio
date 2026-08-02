@@ -3,69 +3,53 @@
  *
  * The registry subject is now the character's backing asset
  * (`comiclaw:character:{Asset.id}`), so the old entries
- * (`comiclaw:character:{AgentCharacter.id}`) are leftovers. Nothing is being
- * preserved here: none of them are on sale, and a character that is still
- * priced re-registers under the new subject the next time its listing syncs
- * (any price edit does it).
+ * (`comiclaw:character:{AgentCharacter.id}`) are leftovers.
  *
- * That is why this is a dozen lines and not a migration: the data is test data.
- * If it were real inventory with live orders, retiring a registration before
- * the replacement existed would be the wrong order of operations — see the
- * repo history for the version that worried about that.
+ * Same logic as `GET/POST /api/admin/character-refs`; use that against
+ * production so the credentials stay on the server. This script is for running
+ * it against a database you already have in hand.
  *
  * Dry run:  npx tsx scripts/retire-legacy-character-refs.ts
  * Apply:    npx tsx scripts/retire-legacy-character-refs.ts --apply
  */
 import { prisma } from "../src/lib/db";
 import {
-  getAssetRegistration,
-  revokeAsset,
-  storeConfigured,
-  unlistAssetListing,
-} from "../src/lib/agentplanet";
+  planRetirement,
+  retireConfigured,
+  runRetirement,
+} from "../src/lib/characterRefRetire";
 
 const APPLY = process.argv.includes("--apply");
 
 async function main() {
-  if (!storeConfigured()) {
+  if (!retireConfigured()) {
     console.error("AGENTPLANET_API_URL / AGENTPLANET_INTERNAL_TOKEN are not set");
     process.exit(1);
   }
 
-  const characters = await prisma.agentCharacter.findMany({
-    select: { id: true, name: true, storeProductId: true, licensePoints: true },
-  });
-
-  let found = 0;
-  for (const c of characters) {
-    const stale = await getAssetRegistration("character", c.id);
-    if (!stale) continue;
-    found++;
-
-    const owner = `${stale.owner_type}:${stale.owner_id}`;
-    if (!APPLY) {
+  if (!APPLY) {
+    const stale = await planRetirement();
+    for (const s of stale) {
       console.log(
-        `· ${c.name} (${c.id}) — 旧 ref 仍在登记，产权 ${owner}` +
-          (c.storeProductId ? `，旧商品 ${c.storeProductId}` : "") +
-          (c.licensePoints > 0 ? `，价 ${c.licensePoints}（改价即会按新 ref 重新登记上架）` : "")
+        `· ${s.name} (${s.characterId}) — 旧 ref 仍在登记，产权 ${s.owner}` +
+          (s.storeProductId ? `，旧商品 ${s.storeProductId}` : "") +
+          (s.licensePoints > 0 ? `，价 ${s.licensePoints}` : "")
       );
-      continue;
     }
-
-    // Take the old product down with it, otherwise it advertises a subject
-    // that no longer exists.
-    if (c.storeProductId) {
-      await unlistAssetListing(c.storeProductId, stale.owner_id);
-    }
-    const ok = await revokeAsset("character", c.id);
-    console.log(`${ok ? "✓" : "✗"} ${c.name} (${c.id}) — 旧 ref ${ok ? "已注销" : "注销失败"}`);
+    console.log(
+      stale.length === 0
+        ? "没有指向角色 id 的旧登记。"
+        : `\n${stale.length} 条旧登记。加 --apply 注销。`
+    );
+    return;
   }
 
-  if (found === 0) {
-    console.log("没有指向角色 id 的旧登记。");
-  } else if (!APPLY) {
-    console.log(`\n${found} 条旧登记。加 --apply 注销。`);
+  const results = await runRetirement();
+  for (const r of results) {
+    const note = r.unlisted === false ? "（下架失败，未注销）" : "";
+    console.log(`${r.revoked ? "✓" : "✗"} ${r.name} (${r.characterId})${note}`);
   }
+  if (results.length === 0) console.log("没有指向角色 id 的旧登记。");
 }
 
 main().finally(() => prisma.$disconnect());

@@ -298,17 +298,28 @@ export async function getCharacterListing(
 // 下架商品(关闭付费/删除时)。best effort。
 // 端点只读 seller_id —— 是「只读这一个字段」,不是「不需要它」:它用来匹配卖家,
 // 不发会有下架失败、商品继续在售的风险,而失败在这里是被吞掉的。
+/**
+ * 下架商品。返回是否成功而不是抛错:多数调用方把下架当收尾,失败只留一个
+ * 目录残留。但要在下架之后注销登记的调用方必须能看到失败——那种组合会留下
+ * 「能付款、拿不到货」的状态,是唯一真会伤到人的一种。
+ */
 export async function unlistAssetListing(
   storeProductId: string,
   sellerId: string
-): Promise<void> {
+): Promise<boolean> {
   try {
-    await storeFetch(storeProductPath(storeProductId, "unlist"), {
+    const res = await storeFetch(storeProductPath(storeProductId, "unlist"), {
       method: "POST",
       body: JSON.stringify({ seller_id: sellerId }),
     });
-  } catch {
-    // 忽略:下架失败不阻塞主流程,商品残留只影响目录展示
+    // storeFetch 不对非 2xx 抛错,所以这里必须自己看状态:
+    // 404 视为已经不在架上,与注销的幂等口径一致
+    if (res.ok || res.status === 404) return true;
+    console.error("[agentplanet] unlist rejected", storeProductId, res.status);
+    return false;
+  } catch (err) {
+    console.error("[agentplanet] unlist unreachable", storeProductId, err);
+    return false;
   }
 }
 
