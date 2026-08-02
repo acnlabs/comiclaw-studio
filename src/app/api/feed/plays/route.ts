@@ -4,7 +4,9 @@ import { mapError, parseBody } from "@/lib/api";
 import { notFoundJson } from "@/lib/auth";
 import {
   hourBucket,
+  networkHash,
   newViewerKey,
+  PLAYS_PER_NETWORK_PER_HOUR,
   readViewerKey,
   viewerCookie,
 } from "@/lib/viewerSession";
@@ -33,13 +35,25 @@ export async function POST(req: Request) {
 
   const existing = readViewerKey(req);
   const sessionKey = existing ?? newViewerKey();
+  const hour = hourBucket();
+  const network = networkHash(req);
 
-  // skipDuplicates makes the repeat case a no-op rather than an error, so the
-  // client never has to care whether this play already counted.
-  const { count } = await prisma.workPlay.createMany({
-    data: [{ workId: work.id, sessionKey, hourBucket: hourBucket() }],
-    skipDuplicates: true,
+  // The cap is the defence against a caller that simply never sends a cookie:
+  // without it every such request looks like a brand new viewer. Counting
+  // first and capping second would still let the table grow, so check first.
+  const fromNetwork = await prisma.workPlay.count({
+    where: { workId: work.id, networkHash: network, hourBucket: hour },
   });
+
+  let count = 0;
+  if (fromNetwork < PLAYS_PER_NETWORK_PER_HOUR) {
+    // skipDuplicates makes the repeat case a no-op rather than an error, so the
+    // client never has to care whether this play already counted.
+    ({ count } = await prisma.workPlay.createMany({
+      data: [{ workId: work.id, sessionKey, hourBucket: hour, networkHash: network }],
+      skipDuplicates: true,
+    }));
+  }
 
   const headers = new Headers({ "content-type": "application/json" });
   if (!existing) headers.append("set-cookie", viewerCookie(sessionKey));

@@ -1,6 +1,7 @@
 import { uploadFile } from "@/lib/storage";
-import { badRequest, serverError } from "@/lib/auth";
+import { badRequest, serverError, unauthorized } from "@/lib/auth";
 import { requireUserContributor } from "@/lib/userContribute";
+import { verifyUserToken } from "@/lib/userAuth";
 
 export const runtime = "nodejs";
 
@@ -20,6 +21,10 @@ export async function POST(req: Request) {
   if (!contentType.includes("multipart/form-data")) {
     return badRequest("multipart/form-data required");
   }
+
+  // 先认人再读体:shareToken 在表单里,所以项目级门禁只能在后面,
+  // 但身份在 header 上——不先认就等于让匿名请求把文件缓冲进内存
+  if (!(await verifyUserToken(req))) return unauthorized();
 
   const form = await req.formData().catch(() => null);
   if (!form) return badRequest("Invalid multipart form data");
