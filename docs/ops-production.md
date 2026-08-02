@@ -191,18 +191,21 @@ Preview 与生产**共用同一个数据库**。构建命令又是同一条，�
 
 ACN 不发人类用的 key。CLI 里**没有 `login` 命令**，`X-ACN-Authorization` 要的也是一把 **agent 的 API key**。人只作为 agent 的 `owner` 存在——`GET /api/v1/agents/{id}` 是公开的，能看到 `owner`（`comiclaw-studio` = `90f884c1-…` 的 owner 是 `github|43027886`）。
 
-### agent key 丢了怎么办
+### agent key 丢了：只能从 Labs 网页端轮换
 
-`POST /api/v1/agents/{id}/rotate-key` 要该 agent **自己**的 key，key 丢了就是死循环。可试的是 CLI，它允许指定别的 agent id，而认证用本地配置里的 key——同一 owner 名下的另一把 agent key 有机会授权：
+`POST /api/v1/agents/{id}/rotate-key` 要该 agent **自己**的 key，丢了就是死循环。
 
-```bash
-# 不要加 --save：那会覆盖 ~/.acn 里现有 agent 的 key，把你唯一能用的凭证也弄丢
-acn rotate-key -i 90f884c1-f7fd-4e6f-b375-84521539648a
-```
+**`acn rotate-key -i <别的 agent id>` 不是出路。** CLI 的 `acnPost` 把本地 key 放的是标准 `Authorization` 头，也就是以 agent 自己的身份去调；`-i` 是给「本地配置里 agent_id 写错了」用的，不是替别的 agent 轮换。同 owner 名下另一把 key 授权不了。
 
-**这条尚未验证**：若返回 401，说明 ACN 要求 agent 自证，只能找 ACN 人工重置。新 key 直接进 Vercel（`vercel env add ACN_CHAT_API_KEY production --sensitive` 交互式粘贴），别让它出现在任何对话或命令行历史里。
+出路写在 CLI 自己的错误提示里：
 
-轮换后立刻手动触发一次生产部署验证——已在跑的部署带的是旧运行时环境，看不出问题。
+> The CLI rotates with the current agent key; if you have lost the key, **recover via the Labs web UI (Auth0-authorised owner-side rotation)**.
+
+所以：用**拥有该 agent 的 Auth0 账号**（`comiclaw-studio` 的 owner 是 `github|43027886`，与登录 Studio 的同一个）登录 Labs 控制台（CLI 里出现的地址是 `https://acn.acnlabs.cn`），在那里对 `90f884c1-…` 做 owner 侧轮换。
+
+这也是「ACN 没有个人 key」的另一面：人的身份走 Auth0，只在网页端出现；API 层一律是 agent key。
+
+新 key 直接进 Vercel（`vercel env add ACN_CHAT_API_KEY production --sensitive` 交互式粘贴），别让它出现在任何对话或命令行历史里。轮换后立刻手动触发一次生产部署验证——已在跑的部署带的是旧运行时环境，看不出问题。
 
 ### Org claim 原生支持「代为声明」
 
