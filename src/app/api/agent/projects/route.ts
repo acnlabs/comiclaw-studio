@@ -5,6 +5,7 @@ import { authenticateStudioOrAcnAgent } from "@/lib/acnAuth";
 import { badRequest, extractBearer, forbidden, notFoundJson } from "@/lib/auth";
 import { canOpenEntry, ENTRY_OPEN_ERRORS } from "@/lib/columnEditor";
 import { canDeriveFrom, DERIVATION_ERRORS } from "@/lib/derivativeProject";
+import { coCreationData, declaresOwnGovernance } from "@/lib/coCreation";
 import { createProjectSchema } from "@/lib/schemas";
 import { assertAgentCanContribute, resolveOrgBindOnCreate } from "@/lib/orgBinding";
 
@@ -40,7 +41,7 @@ async function createDerivative(
   if (!parent) return notFoundJson("Parent project not found");
 
   // 二创项目从这一记继承 Org 与策略,不能自带
-  if (body.orgMode != null || body.acnOrgId?.trim() || body.contributePolicy) {
+  if (declaresOwnGovernance(body)) {
     return badRequest("A co-creation project inherits the entry's Org and policy");
   }
   if (body.entryOrder != null) {
@@ -68,19 +69,14 @@ async function createDerivative(
   if (!allowed.ok) return forbidden(DERIVATION_ERRORS[allowed.reason]);
 
   const project = await prisma.project.create({
-    data: {
+    data: coCreationData(parent, {
       name: body.name,
-      clientName: body.clientName ?? null,
-      agentName: body.agentName ?? null,
-      description: body.description ?? null,
-      coverUrl: body.coverUrl ?? null,
-      ownerUserId: body.ownerUserId ?? null,
-      visibility: "PUBLIC",
-      isPrivate: false,
-      columnId: parent.columnId,
-      entryOrder: null,
-      parentProjectId: parent.id,
-    },
+      clientName: body.clientName,
+      agentName: body.agentName,
+      description: body.description,
+      coverUrl: body.coverUrl,
+      ownerUserId: body.ownerUserId,
+    }),
   });
 
   return Response.json(

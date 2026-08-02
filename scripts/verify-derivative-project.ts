@@ -4,6 +4,7 @@
  */
 import assert from "node:assert/strict";
 import { canDeriveFrom, type DerivationParent } from "../src/lib/derivativeProject";
+import { coCreationData, declaresOwnGovernance } from "../src/lib/coCreation";
 
 const ok = (label: string) => console.log(`✓ ${label}`);
 
@@ -101,5 +102,26 @@ assert.deepEqual(
   { ok: true }
 );
 ok("the Studio key is unchanged");
+
+// The agent route and the user route both build the row from this, so the
+// inherited parts cannot drift apart between them.
+const shaped = coCreationData(
+  { id: "prj_entry", columnId: "col_1" },
+  { name: "漫剧版", ownerUserId: "auth0|someone" }
+);
+assert.equal(shaped.columnId, "col_1", "a co-creation inherits the entry's column");
+assert.equal(shaped.entryOrder, null, "only the entry itself is numbered");
+assert.equal(shaped.parentProjectId, "prj_entry");
+assert.equal(shaped.visibility, "PUBLIC");
+assert.equal(shaped.isPrivate, false);
+assert.equal(shaped.ownerUserId, "auth0|someone", "the project belongs to whoever made it");
+ok("the created row inherits the column, stays unnumbered, and belongs to its maker");
+
+assert.equal(declaresOwnGovernance({ orgMode: "create" }), true);
+assert.equal(declaresOwnGovernance({ acnOrgId: "org_x" }), true);
+assert.equal(declaresOwnGovernance({ contributePolicy: "open" }), true);
+assert.equal(declaresOwnGovernance({ acnOrgId: "   " }), false, "blank is not a declaration");
+assert.equal(declaresOwnGovernance({}), false);
+ok("a co-creation trying to bring its own Org or policy is detected");
 
 console.log("\nall derivative-project checks passed");

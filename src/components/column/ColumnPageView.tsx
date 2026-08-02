@@ -5,6 +5,7 @@ import { translate } from "@/lib/i18n";
 import { fmtDate } from "@/lib/format";
 import { safeMediaUrl } from "@/lib/columnTimeline";
 import ColumnAgentCta from "@/components/column/ColumnAgentCta";
+import EntryCoCreateButton from "@/components/column/EntryCoCreateButton";
 import CopyOrgButton from "@/components/column/CopyOrgButton";
 import CopyTextButton from "@/components/column/CopyTextButton";
 
@@ -57,6 +58,10 @@ export default async function ColumnPageView({
 
   // 门禁开着的时候还教人「先申请加入」,就是把他们送进一个不需要排的队。
   const needsJoin = column.contributePolicy !== "open" && Boolean(column.acnOrgId);
+
+  // 人不是 Org 成员,所以只有 open 的栏目才对访客开放共创入口;
+  // 其他策略下按下去必然 403,不如不显示——申请入 Org 的指引在下面
+  const opensToEveryone = column.contributePolicy === "open";
 
   const timeline = column.entries;
   const current = timeline[0] ?? null;
@@ -136,12 +141,22 @@ export default async function ColumnPageView({
                     {current.description}
                   </p>
                 ) : null}
-                <Link
-                  href={`/p/${current.shareToken}`}
-                  className="mt-8 inline-flex text-sm font-medium text-accent underline-offset-4 transition hover:underline"
-                >
-                  {t("column.openEntry")} →
-                </Link>
+                <div className="mt-8 flex flex-wrap items-center gap-4">
+                  <Link
+                    href={`/p/${current.shareToken}`}
+                    className="text-sm font-medium text-accent underline-offset-4 transition hover:underline"
+                  >
+                    {t("column.openEntry")} →
+                  </Link>
+                  {/* 横向的入口:在这一记下面开自己的项目 */}
+                  {opensToEveryone ? (
+                    <EntryCoCreateButton
+                      entryId={current.id}
+                      entryTitle={current.name}
+                      variant="primary"
+                    />
+                  ) : null}
+                </div>
               </div>
               {currentCover ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -214,15 +229,17 @@ export default async function ColumnPageView({
                         ) : null}
                       </Link>
 
-                      {/* 横向:这一记下面别人各自的共创项目 */}
-                      {entry.coCreations.length > 0 ? (
+                      {/* 横向:这一记下面别人各自的共创项目,以及参与的入口 */}
+                      {entry.coCreations.length > 0 || opensToEveryone ? (
                         <div className="mt-3">
-                          <p className="text-[11px] tracking-[0.16em] text-zinc-600 uppercase">
-                            {entry.coCreations.length === 1
-                              ? t("column.coCreationOne")
-                              : t("column.coCreationsN", { n: entry.coCreations.length })}
-                          </p>
-                          <ul className="mt-2 flex flex-wrap gap-2">
+                          {entry.coCreations.length > 0 ? (
+                            <p className="text-[11px] tracking-[0.16em] text-zinc-600 uppercase">
+                              {entry.coCreations.length === 1
+                                ? t("column.coCreationOne")
+                                : t("column.coCreationsN", { n: entry.coCreations.length })}
+                            </p>
+                          ) : null}
+                          <ul className="mt-2 flex flex-wrap items-center gap-2">
                             {entry.coCreations.map((c) => (
                               <li key={c.id}>
                                 <Link
@@ -236,6 +253,14 @@ export default async function ColumnPageView({
                                 </Link>
                               </li>
                             ))}
+                            {opensToEveryone ? (
+                              <li>
+                                <EntryCoCreateButton
+                                  entryId={entry.id}
+                                  entryTitle={entry.name}
+                                />
+                              </li>
+                            ) : null}
                           </ul>
                         </div>
                       ) : null}
