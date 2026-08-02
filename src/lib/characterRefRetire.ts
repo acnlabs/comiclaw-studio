@@ -14,7 +14,7 @@
 import { prisma } from "@/lib/db";
 import {
   getAssetRegistration,
-  revokeAsset,
+  revokeAssetDetailed,
   storeConfigured,
   unlistAssetListing,
 } from "@/lib/agentplanet";
@@ -27,7 +27,13 @@ export type StaleRef = {
   licensePoints: number;
 };
 
-export type RetireOutcome = StaleRef & { revoked: boolean; unlisted: boolean | null };
+export type RetireOutcome = StaleRef & {
+  revoked: boolean;
+  unlisted: boolean | null;
+  /** 远端对注销的回应,失败时用来定位原因 */
+  revokeStatus: number | null;
+  revokeDetail: string | null;
+};
 
 export function retireConfigured(): boolean {
   return storeConfigured();
@@ -66,17 +72,32 @@ export async function runRetirement(): Promise<RetireOutcome[]> {
       const sellerId = ref.owner.split(":").slice(1).join(":");
       unlisted = await unlistAssetListing(ref.storeProductId, sellerId);
       if (!unlisted) {
-        results.push({ ...ref, unlisted, revoked: false });
+        results.push({
+          ...ref,
+          unlisted,
+          revoked: false,
+          revokeStatus: null,
+          revokeDetail: "skipped: unlist failed",
+        });
         continue;
       }
     }
-    const accepted = await revokeAsset("character", ref.characterId);
+
+    const attempt = await revokeAssetDetailed("character", ref.characterId);
     // 不信返回码,自己复读一遍。revokeAsset 把 404 当「已注销」,所以路径不对
     // 或对方不支持时,失败和成功长得一模一样——这类操作只能以事后状态为准。
-    const stillThere = accepted
+    const stillThere = attempt.ok
       ? Boolean(await getAssetRegistration("character", ref.characterId))
       : true;
-    results.push({ ...ref, unlisted, revoked: accepted && !stillThere });
+    results.push({
+      ...ref,
+      unlisted,
+      revoked: attempt.ok && !stillThere,
+      revokeStatus: attempt.status,
+      revokeDetail:
+        attempt.detail ??
+        (stillThere && attempt.ok ? "remote answered ok but entry remains" : null),
+    });
   }
 
   return results;
