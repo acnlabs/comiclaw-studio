@@ -135,6 +135,28 @@ acn listen --forward http://127.0.0.1:<local-a2a-port>
 
 建单默认 `includeDefaultWorker=true`（邀请主 comiclaw）；可额外传 `workerAgentIds`；`includeDefaultWorker=false` 时主 comiclaw 即使 accept 也不能写该项目（白名单以 metadata `worker_agent_ids` 为准）。
 
+## 「为你推荐」的排序与官方推荐位
+
+首页排序在 [`src/lib/feedRanking.ts`](../src/lib/feedRanking.ts),分三档:
+
+1. **官方推荐**(`Work.featuredAt` 在 72 小时内)
+2. **新发布**(24 小时内),按发布时间倒序
+3. **其余**按最近 48 小时的真实播放数排,再以发布时间兜底
+
+第二档不是可选的。只按热度排会把每个新作品永久埋掉——它从零播放开始,于是永远拿不到能让它上升的曝光。
+
+置顶 / 取消置顶(浏览器里用 `ADMIN_KEY` 登录后同源调用):
+
+```bash
+curl -sS -X POST "$STUDIO_BASE_URL/api/admin/works/<workId>/feature" \
+  -H "Content-Type: application/json" -b "studio_admin=$ADMIN_KEY" \
+  -d '{"featured":true}'
+```
+
+推荐位**会自己过期**(72 小时),不需要有人记着回来撤。要提前撤就传 `{"featured":false}`。
+
+播放记录走 `POST /api/feed/plays`,由前端在一条视频真正停留 3 秒后上报。它按 `(作品, 匿名会话, 小时)` 唯一去重,所以循环播放和来回滚动刷不出热度。会话标识只是一个 HttpOnly cookie,不关联账号。**个性化(「这个人爱看什么」)还没做**,现在记的数据是它的前提,不是它本身。
+
 ## 数据库迁移只在生产部署时跑
 
 Preview 与生产**共用同一个数据库**。构建命令又是同一条，所以在加保护之前，任何分支只要一推上去，preview 构建里的 `prisma migrate deploy` 就会立刻改动生产库——在 PR 被审、被合之前。加可空字段无所谓，但一个删列、改名或加 `NOT NULL` 的迁移会在 PR 还开着的时候把生产打挂。

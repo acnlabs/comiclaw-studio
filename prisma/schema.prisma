@@ -432,12 +432,36 @@ model Work {
   // 来源专栏:把该栏目各记的成片合成一个系列。这类作品是已入流作品的聚合视图,
   // 不再单独进推荐流,否则同一支视频会重复出现
   columnId    String?  @unique
+  // 官方推荐:运维置顶的时刻。空 = 未推荐
+  featuredAt  DateTime?
   publishedAt DateTime @default(now())
 
   project  Project?   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   column   Column?    @relation(fields: [columnId], references: [id], onDelete: Cascade)
   episodes Episode[]
   cast     WorkCast[]
+  plays    WorkPlay[]
+
+  @@index([featuredAt])
+}
+
+// 观看事件。「实时有热度」只能从真实观看里算,而这类数据不记就补不回来,
+// 所以先开始记,排序规则可以以后再调。
+model WorkPlay {
+  id String @id @default(cuid())
+
+  workId String
+  // 匿名会话(HttpOnly cookie)。同一会话对同一作品在同一小时内只算一次,
+  // 循环播放和来回滚动因此刷不出热度
+  sessionKey String
+  hourBucket DateTime
+  createdAt  DateTime @default(now())
+
+  work Work @relation(fields: [workId], references: [id], onDelete: Cascade)
+
+  @@unique([workId, sessionKey, hourBucket])
+  @@index([workId, createdAt])
+  @@index([createdAt])
 }
 
 model Episode {

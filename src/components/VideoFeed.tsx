@@ -14,7 +14,12 @@ export interface FeedItem {
   playUrl: string;
   coverUrl: string | null;
   episodeCount: number;
+  /** 官方推荐位 */
+  featured?: boolean;
 }
+
+/** 停留这么久才算看过一次;划过去不算 */
+const PLAY_COUNTS_AFTER_MS = 3000;
 
 // TikTok 式竖版信息流:滚动吸附逐条观看,进入视口自动播放
 export default function VideoFeed({ items }: { items: FeedItem[] }) {
@@ -27,14 +32,42 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
     const container = containerRef.current;
     if (!container) return;
 
+    // 只有真的停下来看了才算一次播放,划过去不算——热度要经得起看
+    const pending = new Map<Element, ReturnType<typeof setTimeout>>();
+    const counted = new Set<string>();
+
+    const stopTimer = (target: Element) => {
+      const timer = pending.get(target);
+      if (timer) clearTimeout(timer);
+      pending.delete(target);
+    };
+
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           const video = entry.target as HTMLVideoElement;
+          const workId = video.dataset.workId;
           if (entry.intersectionRatio >= 0.6) {
             video.play().catch(() => {});
+            if (workId && !counted.has(workId) && !pending.has(video)) {
+              pending.set(
+                video,
+                setTimeout(() => {
+                  pending.delete(video);
+                  counted.add(workId);
+                  // 记不上不影响观看,服务端还会按会话+小时去重
+                  void fetch("/api/feed/plays", {
+                    method: "POST",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({ workId }),
+                    keepalive: true,
+                  }).catch(() => {});
+                }, PLAY_COUNTS_AFTER_MS)
+              );
+            }
           } else {
             video.pause();
+            stopTimer(video);
           }
         }
       },
@@ -44,7 +77,11 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
     for (const v of videoRefs.current) {
       if (v) observer.observe(v);
     }
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      for (const timer of pending.values()) clearTimeout(timer);
+      pending.clear();
+    };
   }, [items.length]);
 
   const scrollByPage = (dir: 1 | -1) => {
@@ -84,6 +121,7 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
                 ref={(el) => {
                   videoRefs.current[i] = el;
                 }}
+                data-work-id={item.id}
                 src={item.playUrl}
                 poster={item.coverUrl ?? undefined}
                 loop
@@ -95,13 +133,20 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
               />
 
               {/* 类型角标 */}
-              <span className="absolute left-3 top-3 rounded-md bg-zinc-950/70 px-2 py-0.5 text-xs font-medium text-accent">
-                {item.kind === "SERIES"
-                  ? item.category
-                    ? tCategory(item.category)
-                    : t("common.series")
-                  : t("common.video")}
-              </span>
+              <div className="absolute left-3 top-3 flex items-center gap-2">
+                <span className="rounded-md bg-zinc-950/70 px-2 py-0.5 text-xs font-medium text-accent">
+                  {item.kind === "SERIES"
+                    ? item.category
+                      ? tCategory(item.category)
+                      : t("common.series")
+                    : t("common.video")}
+                </span>
+                {item.featured && (
+                  <span className="rounded-md bg-accent px-2 py-0.5 text-xs font-medium text-zinc-950">
+                    {t("feed.featured")}
+                  </span>
+                )}
+              </div>
 
               {/* 底部信息 */}
               <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-4 pb-4 pt-16">
