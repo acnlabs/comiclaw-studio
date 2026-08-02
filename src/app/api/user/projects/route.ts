@@ -11,6 +11,7 @@ import {
   ProjectVisibilityEnum,
 } from "@/lib/schemas";
 import { canDeriveFrom, DERIVATION_ERRORS } from "@/lib/derivativeProject";
+import { coCreationData, declaresOwnGovernance } from "@/lib/coCreation";
 import { resolveOrgBindOnCreate } from "@/lib/orgBinding";
 import { reconcilePendingLicenses } from "@/lib/casting";
 
@@ -84,7 +85,7 @@ async function createDerivative(
   });
   if (!parent) return notFoundJson("Parent project not found");
 
-  if (body.orgMode != null || body.acnOrgId?.trim() || body.contributePolicy) {
+  if (declaresOwnGovernance(body)) {
     return badRequest("A co-creation project inherits the entry's Org and policy");
   }
 
@@ -96,16 +97,11 @@ async function createDerivative(
   if (!allowed.ok) return forbidden(DERIVATION_ERRORS[allowed.reason]);
 
   const project = await prisma.project.create({
-    data: {
+    data: coCreationData(parent, {
       name: body.name,
-      description: body.description ?? null,
+      description: body.description,
       ownerUserId: sub,
-      visibility: "PUBLIC",
-      isPrivate: false,
-      columnId: parent.columnId,
-      entryOrder: null,
-      parentProjectId: parent.id,
-    },
+    }),
   });
 
   return Response.json(
