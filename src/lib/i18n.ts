@@ -12,6 +12,9 @@ const zh = {
   "nav.chatWithComiclaw": "找 comiclaw 聊聊",
   "nav.login": "登录",
   "nav.logout": "退出",
+  "nav.accountId": "账号 ID",
+  "nav.copyAccountId": "复制账号 ID",
+  "nav.accountIdCopied": "账号 ID 已复制",
   "nav.credits": "Credits",
   "nav.creditsTitle": "Credits 收支明细",
 
@@ -448,6 +451,9 @@ const en: Record<MessageKey, string> = {
   "nav.chatWithComiclaw": "Chat with comiclaw",
   "nav.login": "Sign in",
   "nav.logout": "Sign out",
+  "nav.accountId": "Account ID",
+  "nav.copyAccountId": "Copy account ID",
+  "nav.accountIdCopied": "Account ID copied",
   "nav.credits": "Credits",
   "nav.creditsTitle": "Credits activity",
 
