@@ -175,6 +175,8 @@ Vercel 默认把环境变量发给所有部署,所以**任何分支的 preview �
 | `AGENTPLANET_INTERNAL_TOKEN` | 留空,或测试令牌 |
 | `DATABASE_URL` | **不能留空**——preview 需要库。要给一份影子库,见下一节 |
 
+数据库这半也在代码里兜住了:非生产部署若没有声明自己有影子库,Prisma 的写操作一律抛错(读放行)。给 Preview 接上独立的 `DATABASE_URL` 之后,在 Preview 环境加一个 `PREVIEW_DATABASE_IS_SHADOW=1`,写就恢复——写进它自己那份拷贝。
+
 ## 数据库迁移只在生产部署时跑
 
 Preview 与生产**共用同一个数据库**。构建命令又是同一条，所以在加保护之前，任何分支只要一推上去，preview 构建里的 `prisma migrate deploy` 就会立刻改动生产库——在 PR 被审、被合之前。加可空字段无所谓，但一个删列、改名或加 `NOT NULL` 的迁移会在 PR 还开着的时候把生产打挂。

@@ -22,6 +22,22 @@ export function isProductionRuntime(): boolean {
 }
 
 /**
+ * True when this deployment is reading the production database without having
+ * been given one of its own. Same trap as the credentials: `DATABASE_URL` is
+ * handed to every deployment unless someone scopes it, so a preview of any
+ * branch can write live rows.
+ *
+ * Unlike the API keys, a preview cannot simply be denied a database — it would
+ * not run at all. So the switch is explicit: once Preview points at a shadow
+ * database, set `PREVIEW_DATABASE_IS_SHADOW=1` there and writes resume.
+ */
+export function previewDatabaseIsShared(): boolean {
+  if (isProductionRuntime()) return false;
+  const flag = (process.env.PREVIEW_DATABASE_IS_SHADOW ?? "").trim();
+  return flag !== "1" && flag.toLowerCase() !== "true";
+}
+
+/**
  * A refusal Response when this deployment must not perform the write, else
  * null. Returning a Response rather than throwing keeps callers on their
  * existing "remote said no" path instead of inventing a new failure mode.
