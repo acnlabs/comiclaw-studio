@@ -34,6 +34,7 @@ const zh = {
 
   // 推荐信息流
   "feed.empty": "还没有发布的作品。项目发行上架后会自动出现在这里。",
+  "feed.featured": "官方推荐",
   "feed.watchAll": "观看全集(全 {n} 集)→",
   "feed.unmute": "开启声音",
   "feed.mute": "静音",
@@ -474,6 +475,7 @@ const en: Record<MessageKey, string> = {
   "category.漫记": "Journal",
 
   "feed.empty": "No works published yet. Released projects will show up here automatically.",
+  "feed.featured": "Editor's pick",
   "feed.watchAll": "Watch all {n} episodes →",
   "feed.unmute": "Unmute",
   "feed.mute": "Mute",
