@@ -12,6 +12,7 @@
 import assert from "node:assert/strict";
 import { prisma } from "../src/lib/db";
 import { planRetirement, runRetirement } from "../src/lib/characterRefRetire";
+import { getAssetRegistration } from "../src/lib/agentplanet";
 
 const STORE = process.env.AGENTPLANET_API_URL ?? "http://localhost:4700";
 const ok = (label: string) => console.log(`✓ ${label}`);
@@ -26,6 +27,7 @@ const post = (path: string, body?: unknown) =>
 const storeState = async () =>
   (await (await fetch(`${STORE}/_test/state`)).json()) as {
     registry: string[];
+    allEntries: { ref: string; status: string }[];
     products: { id: string; listed: boolean }[];
   };
 
@@ -87,7 +89,19 @@ async function main() {
   assert.equal(done[0].unlisted, true);
   assert.equal(done[0].revoked, true);
   state = await storeState();
-  assert.equal(state.registry.length, 0, "the stale registration is gone");
+  assert.equal(state.registry.length, 0, "no live registration remains");
+  // Revoking leaves the row behind with a changed status. Reading that row as
+  // "registered" is what let a revoked asset pass the pre-payment check.
+  assert.deepEqual(
+    state.allEntries,
+    [{ ref: `comiclaw:character:${paid.id}`, status: "revoked" }],
+    "the row is still there, marked revoked"
+  );
+  assert.equal(
+    await getAssetRegistration("character", paid.id),
+    null,
+    "a revoked registration must not read as registered"
+  );
   assert.deepEqual(
     state.products,
     [{ id: "prod_legacy_1", listed: false }],

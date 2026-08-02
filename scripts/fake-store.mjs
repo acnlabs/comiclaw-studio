@@ -45,7 +45,12 @@ createServer(async (req, res) => {
   }
   if (p === "/_test/register" && req.method === "POST") {
     const b = (await readJson(req)) ?? {};
-    registry.set(b.ref, { owner_type: b.owner_type, owner_id: b.owner_id });
+    registry.set(b.ref, {
+      asset_ref: b.ref,
+      owner_type: b.owner_type,
+      owner_id: b.owner_id,
+      status: b.status ?? "active",
+    });
     if (b.storeProductId) products.set(b.storeProductId, { listed: true });
     return json(res, 200, { ok: true });
   }
@@ -61,7 +66,10 @@ createServer(async (req, res) => {
   }
   if (p === "/_test/state" && req.method === "GET") {
     return json(res, 200, {
-      registry: [...registry.keys()],
+      registry: [...registry.entries()]
+        .filter(([, v]) => v.status !== "revoked")
+        .map(([ref]) => ref),
+      allEntries: [...registry.entries()].map(([ref, v]) => ({ ref, status: v.status })),
       products: [...products.entries()].map(([id, v]) => ({ id, ...v })),
     });
   }
@@ -69,8 +77,11 @@ createServer(async (req, res) => {
   const revoke = p.match(/^\/api\/assets\/registry\/([^/]+)\/revoke$/);
   if (revoke && req.method === "POST") {
     const ref = decodeURIComponent(revoke[1]);
-    if (!registry.has(ref)) return json(res, 404, { error: "not registered" });
-    if (!revokeNoop) registry.delete(ref);
+    const found = registry.get(ref);
+    if (!found) return json(res, 404, { error: "not registered" });
+    // 与真实行为一致:注销不删行,只把 status 改成 revoked。之前这里直接删,
+    // 于是测试永远看不到「行还在但已注销」这种真实状态。
+    if (!revokeNoop) registry.set(ref, { ...found, status: "revoked" });
     return json(res, 200, { revoked: true });
   }
 
