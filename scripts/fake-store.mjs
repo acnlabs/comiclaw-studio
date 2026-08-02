@@ -12,6 +12,8 @@ const port = Number(process.argv[2] ?? 4700);
 const registry = new Map(); // ref -> { owner_type, owner_id }
 const products = new Map(); // productId -> { listed }
 let unlistFails = false;
+/** Answer 200 to revoke but keep the entry — the failure mode that hides */
+let revokeNoop = false;
 
 const json = (res, status, body) => {
   res.writeHead(status, { "content-type": "application/json" });
@@ -52,6 +54,11 @@ createServer(async (req, res) => {
     unlistFails = Boolean(b.fails);
     return json(res, 200, { unlistFails });
   }
+  if (p === "/_test/revoke-noop" && req.method === "POST") {
+    const b = (await readJson(req)) ?? {};
+    revokeNoop = Boolean(b.noop);
+    return json(res, 200, { revokeNoop });
+  }
   if (p === "/_test/state" && req.method === "GET") {
     return json(res, 200, {
       registry: [...registry.keys()],
@@ -63,7 +70,7 @@ createServer(async (req, res) => {
   if (revoke && req.method === "POST") {
     const ref = decodeURIComponent(revoke[1]);
     if (!registry.has(ref)) return json(res, 404, { error: "not registered" });
-    registry.delete(ref);
+    if (!revokeNoop) registry.delete(ref);
     return json(res, 200, { revoked: true });
   }
 
