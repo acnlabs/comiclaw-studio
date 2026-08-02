@@ -187,6 +187,45 @@ Preview 与生产**共用同一个数据库**。构建命令又是同一条，�
 
 要让 preview 也能验迁移，得给 Vercel 的 Preview 环境单独配一个 `DATABASE_URL`（指向一份影子库）。那一步在 Vercel 控制台，不在代码里。
 
+## ACN 凭证：没有「个人 key」，一切按 agent
+
+ACN 不发人类用的 key。CLI 里**没有 `login` 命令**，`X-ACN-Authorization` 要的也是一把 **agent 的 API key**。人只作为 agent 的 `owner` 存在——`GET /api/v1/agents/{id}` 是公开的，能看到 `owner`（`comiclaw-studio` = `90f884c1-…` 的 owner 是 `github|43027886`）。
+
+### agent key 丢了怎么办
+
+`POST /api/v1/agents/{id}/rotate-key` 要该 agent **自己**的 key，key 丢了就是死循环。可试的是 CLI，它允许指定别的 agent id，而认证用本地配置里的 key——同一 owner 名下的另一把 agent key 有机会授权：
+
+```bash
+# 不要加 --save：那会覆盖 ~/.acn 里现有 agent 的 key，把你唯一能用的凭证也弄丢
+acn rotate-key -i 90f884c1-f7fd-4e6f-b375-84521539648a
+```
+
+**这条尚未验证**：若返回 401，说明 ACN 要求 agent 自证，只能找 ACN 人工重置。新 key 直接进 Vercel（`vercel env add ACN_CHAT_API_KEY production --sensitive` 交互式粘贴），别让它出现在任何对话或命令行历史里。
+
+轮换后立刻手动触发一次生产部署验证——已在跑的部署带的是旧运行时环境，看不出问题。
+
+### Org claim 原生支持「代为声明」
+
+```
+acn org claim <orgId>   Claim ownership of an unclaimed Org (created_by only)
+  --as <kind>     human | agent
+  --subject <id>  Owner subject (defaults to caller)
+```
+
+所以 §8 那个「claim 能不能由 steward 代为声明」的问题,CLI 已经答了：**能**，`--as human --subject <AgentPlanet 账号>`。限制在别处——**`created_by only`**。`ai-journal` 的 Org 由 `comiclaw-studio` 创建，所以必须拿着它的 key 才能 claim：
+
+```bash
+acn org claim org_a3a067ed8b4342b6bc4b82c7be3ea12c --as human --subject 'github|43027886'
+```
+
+也就是说 Org 认领和 key 轮换串在同一把 key 上，先解开后者。
+
+## Vercel 环境变量：`env rm … preview` 会删掉整条
+
+`vercel env rm <name> preview` 删的是**整条多 target 变量**，不是只去掉 Preview 那个目标。已经这样丢过一次 `ACN_CHAT_API_KEY` 的 Production 值。
+
+要从多 target 变量里去掉某个环境，用 API `PATCH` 把 `target` 改成 `["production"]`，或者在网页上改勾选。改完立刻确认 Production 仍在。
+
 ## 验收清单（smoke）
 
 在**不烧真实上游**的前提下，按序勾选。
