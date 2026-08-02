@@ -161,6 +161,20 @@ curl -sS -X POST "$STUDIO_BASE_URL/api/admin/works/<workId>/feature" \
 
 **个性化(「这个人爱看什么」)还没做**,现在记的数据是它的前提,不是它本身。
 
+## 只有生产能写外部系统
+
+Vercel 默认把环境变量发给所有部署,所以**任何分支的 preview 都握着生产的 ACN key 与 AgentPlanet 内部令牌**。这不是假设:实测用一个 PR 的 preview 地址,能以 `comiclaw-studio` 的身份读写线上 Org。
+
+代码侧已经堵住:[`src/lib/externalWrites.ts`](../src/lib/externalWrites.ts) 在 `acnFetch` / `orgFetch` / `storeFetch` 三个出口拦下非生产部署的**写**操作(读放行,preview 不能读就没法审;读也动不了钱和成员)。本地与 CI 没有 `VERCEL_ENV`,不受影响。
+
+**代码只能兜住我们自己的调用路径,凭证本身仍然发给了 preview。** 要真正隔断,在 Vercel 控制台把这几项的作用域改成只 Production:
+
+| 变量 | Preview 应给什么 |
+|---|---|
+| `ACN_CHAT_API_KEY` | 留空,或另注册一个测试 agent 的 key |
+| `AGENTPLANET_INTERNAL_TOKEN` | 留空,或测试令牌 |
+| `DATABASE_URL` | **不能留空**——preview 需要库。要给一份影子库,见下一节 |
+
 ## 数据库迁移只在生产部署时跑
 
 Preview 与生产**共用同一个数据库**。构建命令又是同一条，所以在加保护之前，任何分支只要一推上去，preview 构建里的 `prisma migrate deploy` 就会立刻改动生产库——在 PR 被审、被合之前。加可空字段无所谓，但一个删列、改名或加 `NOT NULL` 的迁移会在 PR 还开着的时候把生产打挂。

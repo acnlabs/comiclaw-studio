@@ -2,6 +2,7 @@
  * ACN Org Harness client (external co-creation orgs).
  * Separate from internal Task Pool production (acn.ts / comiclaw-internal).
  */
+import { refuseExternalWrite } from "@/lib/externalWrites";
 
 const ACN_API_URL = () =>
   (process.env.ACN_API_URL ?? "https://api.acnlabs.dev").trim().replace(/\/+$/, "");
@@ -43,6 +44,8 @@ async function orgFetch(
   init: RequestInit = {},
   bearer?: string
 ): Promise<Response> {
+  const refused = refuseExternalWrite("acn", init.method, path);
+  if (refused) return refused;
   const key = (bearer ?? ACN_CHAT_API_KEY()).trim();
   if (!key) throw new Error("ACN API key is not configured for Org calls");
   const headers = new Headers(init.headers);
