@@ -263,14 +263,28 @@ export async function revokeAsset(
   kind: AssetKind,
   localId: string
 ): Promise<boolean> {
+  return (await revokeAssetDetailed(kind, localId)).ok;
+}
+
+/**
+ * 同上,但把远端的状态带回来。注销失败时「对方说了什么」是唯一能定位原因的
+ * 线索——只回一个 false 的话,路径不对、方法不对、鉴权不对全都长一样。
+ */
+export async function revokeAssetDetailed(
+  kind: AssetKind,
+  localId: string
+): Promise<{ ok: boolean; status: number | null; detail: string | null }> {
+  const path = registryActionPath(assetRef(kind, localId), "revoke");
   try {
-    const res = await storeFetch(
-      registryActionPath(assetRef(kind, localId), "revoke"),
-      { method: "POST", body: JSON.stringify({}) }
-    );
-    return res.ok || res.status === 404;
-  } catch {
-    return false;
+    const res = await storeFetch(path, { method: "POST", body: JSON.stringify({}) });
+    const detail = res.ok ? null : (await res.text().catch(() => "")).slice(0, 300);
+    return { ok: res.ok || res.status === 404, status: res.status, detail };
+  } catch (err) {
+    return {
+      ok: false,
+      status: null,
+      detail: err instanceof Error ? err.message : String(err),
+    };
   }
 }
 
