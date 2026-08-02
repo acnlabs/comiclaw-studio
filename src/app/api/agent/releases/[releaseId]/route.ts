@@ -4,6 +4,8 @@ import { syncProjectToWork } from "@/lib/publish";
 import { withAgentAuth, withProjectWorkerAuth, parseBody } from "@/lib/api";
 import { notFoundJson } from "@/lib/auth";
 import { updateReleaseSchema } from "@/lib/schemas";
+import { gateAgentProjectAction } from "@/lib/contributeGate";
+import type { ProductionAuth } from "@/lib/acnAuth";
 
 type Ctx = { params: Promise<{ releaseId: string }> };
 
@@ -18,15 +20,23 @@ const releaseProjectId = async (_req: Request, ctx: Ctx) => {
 
 // 更新发行状态
 export const PATCH = withProjectWorkerAuth(
-  async (req, ctx: Ctx) => {
+  async (req, ctx: Ctx, auth: ProductionAuth) => {
     const { releaseId } = await ctx.params;
     const body = await parseBody(req, updateReleaseSchema);
 
     const release = await prisma.release.findUnique({
       where: { id: releaseId },
-      select: { id: true, projectId: true },
+      select: { id: true, projectId: true, project: { select: { visibility: true } } },
     });
     if (!release) return notFoundJson();
+
+    const gated = await gateAgentProjectAction({
+      req,
+      auth,
+      projectId: release.projectId,
+      projectVisibility: release.project.visibility,
+    });
+    if (gated) return gated;
 
     const updated = await prisma.release.update({
       where: { id: releaseId },
@@ -48,7 +58,7 @@ export const PATCH = withProjectWorkerAuth(
     emitProjectUpdate(release.projectId, "release.updated");
     return Response.json({ release: updated });
   },
-  { getProjectId: releaseProjectId }
+  { getProjectId: releaseProjectId, allowPublicContribute: true }
 );
 
 export const DELETE = withAgentAuth(async (_req, ctx: Ctx) => {

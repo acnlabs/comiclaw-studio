@@ -14,16 +14,30 @@ export async function gateAgentContentCreate(args: {
   projectVisibility: string;
   author: ContentAuthor;
 }): Promise<Response | null> {
-  const agentId =
-    args.author.authorAgentId ?? productionAgentId(args.auth);
+  return gateAgentProjectAction({
+    ...args,
+    agentId: args.author.authorAgentId ?? undefined,
+  });
+}
 
+/**
+ * Same gate for project-level actions that carry no author of their own
+ * (releases), where the acting agent is the only identity available.
+ */
+export async function gateAgentProjectAction(args: {
+  req: Request;
+  auth: ProductionAuth;
+  projectId: string;
+  projectVisibility: string;
+  agentId?: string;
+}): Promise<Response | null> {
   const isAcn =
     args.auth.kind === "acn_worker" || args.auth.kind === "acn_contributor";
 
   return assertAgentCanContribute({
     projectId: args.projectId,
     projectVisibility: args.projectVisibility,
-    agentId,
+    agentId: args.agentId ?? productionAgentId(args.auth),
     isStudioKey: args.auth.kind === "studio_key",
     bearer: isAcn ? extractBearer(args.req) ?? undefined : undefined,
   });
