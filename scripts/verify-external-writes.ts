@@ -3,7 +3,11 @@
  * Run: npx tsx scripts/verify-external-writes.ts
  */
 import assert from "node:assert/strict";
-import { refuseExternalWrite, isProductionRuntime } from "../src/lib/externalWrites";
+import {
+  refuseExternalWrite,
+  isProductionRuntime,
+  previewDatabaseIsShared,
+} from "../src/lib/externalWrites";
 
 const ok = (label: string) => console.log(`✓ ${label}`);
 
@@ -60,5 +64,30 @@ withEnv("development", () => {
   assert.ok(refuseExternalWrite("acn", "POST", "/x"), "Vercel dev deployments are not production");
 });
 ok("a Vercel development deployment is treated like preview");
+
+// The database is the other half: a preview gets production's DATABASE_URL too,
+// so any branch could write live rows just by being deployed.
+const withFlag = <T>(env: string | undefined, flag: string | undefined, fn: () => T): T => {
+  const beforeFlag = process.env.PREVIEW_DATABASE_IS_SHADOW;
+  if (flag === undefined) delete process.env.PREVIEW_DATABASE_IS_SHADOW;
+  else process.env.PREVIEW_DATABASE_IS_SHADOW = flag;
+  try {
+    return withEnv(env, fn);
+  } finally {
+    if (beforeFlag === undefined) delete process.env.PREVIEW_DATABASE_IS_SHADOW;
+    else process.env.PREVIEW_DATABASE_IS_SHADOW = beforeFlag;
+  }
+};
+
+assert.equal(withFlag("preview", undefined, previewDatabaseIsShared), true);
+ok("a preview with no shadow database is treated as sharing production's");
+
+assert.equal(withFlag("preview", "1", previewDatabaseIsShared), false);
+assert.equal(withFlag("preview", "true", previewDatabaseIsShared), false);
+ok("declaring a shadow database lets the preview write again");
+
+assert.equal(withFlag("production", undefined, previewDatabaseIsShared), false);
+assert.equal(withFlag(undefined, undefined, previewDatabaseIsShared), false);
+ok("production and local are never treated as sharing");
 
 console.log("\nall external-write checks passed");
