@@ -35,6 +35,7 @@ model Column {
 
   projects Project[]
   orgJoinRequests OrgJoinRequest[]
+  seriesWork Work?
 
   @@index([updatedAt])
   @@index([acnOrgId])
@@ -420,9 +421,13 @@ model Work {
   videoUrl    String? // VIDEO 类作品的正片
   authorName  String? // 创作者(客户 / 智能体名)
   projectId   String?  @unique // 来源 studio 项目(同步发布时填写)
+  // 来源专栏:把该栏目各记的成片合成一个系列。这类作品是已入流作品的聚合视图,
+  // 不再单独进推荐流,否则同一支视频会重复出现
+  columnId    String?  @unique
   publishedAt DateTime @default(now())
 
   project  Project?   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  column   Column?    @relation(fields: [columnId], references: [id], onDelete: Cascade)
   episodes Episode[]
   cast     WorkCast[]
 }

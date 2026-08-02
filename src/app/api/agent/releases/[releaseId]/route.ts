@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { emitProjectUpdate } from "@/lib/events";
-import { syncProjectToWork } from "@/lib/publish";
+import { syncProjectToWork, syncColumnToSeries } from "@/lib/publish";
 import { withAgentAuth, withProjectWorkerAuth, parseBody } from "@/lib/api";
 import { notFoundJson } from "@/lib/auth";
 import { updateReleaseSchema } from "@/lib/schemas";
@@ -26,7 +26,11 @@ export const PATCH = withProjectWorkerAuth(
 
     const release = await prisma.release.findUnique({
       where: { id: releaseId },
-      select: { id: true, projectId: true, project: { select: { visibility: true } } },
+      select: {
+        id: true,
+        projectId: true,
+        project: { select: { visibility: true, columnId: true } },
+      },
     });
     if (!release) return notFoundJson();
 
@@ -51,8 +55,10 @@ export const PATCH = withProjectWorkerAuth(
     if (updated.status === "PUBLISHED") {
       try {
         await syncProjectToWork(release.projectId);
+        const columnId = release.project.columnId;
+        if (columnId) await syncColumnToSeries(columnId);
       } catch (err) {
-        console.error("[releases] syncProjectToWork failed:", err);
+        console.error("[releases] work sync failed:", err);
       }
     }
     emitProjectUpdate(release.projectId, "release.updated");

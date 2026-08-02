@@ -30,6 +30,7 @@ const zh = {
 
   // 分类(数据值映射)
   "category.漫剧": "漫剧",
+  "category.漫记": "漫记",
 
   // 推荐信息流
   "feed.empty": "还没有发布的作品。项目发行上架后会自动出现在这里。",
@@ -467,6 +468,7 @@ const en: Record<MessageKey, string> = {
   "common.backHome": "Back to home",
 
   "category.漫剧": "Comic Drama",
+  "category.漫记": "Journal",
 
   "feed.empty": "No works published yet. Released projects will show up here automatically.",
   "feed.watchAll": "Watch all {n} episodes →",

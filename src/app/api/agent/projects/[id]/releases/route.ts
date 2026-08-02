@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { emitProjectUpdate } from "@/lib/events";
-import { syncProjectToWork } from "@/lib/publish";
+import { syncProjectToWork, syncColumnToSeries } from "@/lib/publish";
 import { withProjectWorkerAuth, parseBody } from "@/lib/api";
 import { notFoundJson } from "@/lib/auth";
 import { createReleaseSchema } from "@/lib/schemas";
@@ -16,7 +16,7 @@ export const POST = withProjectWorkerAuth(async (req, ctx: Ctx, auth: Production
 
   const project = await prisma.project.findUnique({
     where: { id },
-    select: { id: true, visibility: true },
+    select: { id: true, visibility: true, columnId: true },
   });
   if (!project) return notFoundJson();
 
@@ -43,8 +43,9 @@ export const POST = withProjectWorkerAuth(async (req, ctx: Ctx, auth: Production
     // 同步失败不影响发行记录创建
     try {
       await syncProjectToWork(id);
+      if (project.columnId) await syncColumnToSeries(project.columnId);
     } catch (err) {
-      console.error("[releases] syncProjectToWork failed:", err);
+      console.error("[releases] work sync failed:", err);
     }
   }
   emitProjectUpdate(id, "release.created");
