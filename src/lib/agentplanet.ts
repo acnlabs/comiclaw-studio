@@ -186,6 +186,22 @@ export interface AssetRegistration {
  * 过(enforce 下未登记不可下单),但绝不该顺手改卖家的商品。
  * 查不到或不可达返回 null,调用方按「没登记」处理。
  */
+/**
+ * 登记条目的原始响应。只给排障用:判断「是否有效登记」必须走
+ * getAssetRegistration,别在业务里读这个。
+ */
+export async function getAssetRegistrationRaw(
+  kind: AssetKind,
+  localId: string
+): Promise<{ status: number | null; body: unknown }> {
+  try {
+    const res = await storeFetch(registryEntryPath(assetRef(kind, localId)));
+    return { status: res.status, body: await res.json().catch(() => null) };
+  } catch (err) {
+    return { status: null, body: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 export async function getAssetRegistration(
   kind: AssetKind,
   localId: string
