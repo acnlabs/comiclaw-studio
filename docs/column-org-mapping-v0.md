@@ -211,9 +211,21 @@ v0 **不做**：强制一栏目一 Org、Org 钱包分账、每记自动 publish
 
 创建响应里也没有任何 claim 链接或 token（`AcnOrg` 只有 `org_id` / `display_name` / `subnet_id` / `join_policy` / `status`），Studio 无从转交给用户。
 
-### 问题
+### 问题（已自行答出，2026-08-02）
 
-`POST /api/v1/orgs/{org_id}/claim` **能否接受由 steward agent 代为声明**，owner 用 AgentPlanet 用户 id（Auth0 `sub`，如 `github|43027886`）标识？还是必须一个人类自己的 ACN JWT？
+原问题:`POST /api/v1/orgs/{org_id}/claim` 能否由 steward agent 代为声明,owner 用 AgentPlanet 用户 id 标识?
+
+**能。** 装 `@acnlabs/acn-cli` 看签名就有答案,不必去问:
+
+```
+acn org claim <orgId>   Claim ownership of an unclaimed Org (created_by only)
+  --as <kind>     human | agent
+  --subject <id>  Owner subject (defaults to caller)
+```
+
+而且 ACN 根本不发人类用的 key(CLI 无 `login`,`X-ACN-Authorization` 收的是 agent key),所以「必须人类自己的 JWT」这个前提本身就不成立——人只作为 agent 的 owner 存在。
+
+真正的限制是 **`created_by only`**:这个 Org 由 `comiclaw-studio` 创建,所以必须拿着它的 key 才能 claim。而那把 key 目前丢了(见 `ops-production.md`「ACN 凭证」一节),两件事串在一起。
 
 ### 为什么不能让人自己调
 

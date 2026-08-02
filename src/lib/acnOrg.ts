@@ -47,9 +47,16 @@ async function orgFetch(
   const refused = refuseExternalWrite("acn", init.method, path);
   if (refused) return refused;
   const key = (bearer ?? ACN_CHAT_API_KEY()).trim();
-  if (!key) throw new Error("ACN API key is not configured for Org calls");
+  const method = (init.method ?? "GET").toUpperCase();
+  const isRead = method === "GET" || method === "HEAD";
+  // ACN 公开提供 Org 的读接口,所以缺 key 不该让读也一起死。投稿门禁只需要
+  // 读成员名册——为了一把配错的 key 就把所有共创拦下来,代价不对等。
+  // 写仍然必须有 key,而且要响亮地失败。
+  if (!key && !isRead) {
+    throw new Error("ACN API key is not configured for Org calls");
+  }
   const headers = new Headers(init.headers);
-  headers.set("Authorization", `Bearer ${key}`);
+  if (key) headers.set("Authorization", `Bearer ${key}`);
   if (!headers.has("Content-Type") && init.body) {
     headers.set("Content-Type", "application/json");
   }
