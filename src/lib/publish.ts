@@ -40,7 +40,9 @@ export async function syncColumnToSeries(columnId: string) {
     where: { id: columnId },
     include: {
       projects: {
-        where: { visibility: "PUBLIC" },
+        // 只有一记的官方项目进选集;同一记下的二创各自是独立作品,
+        // 否则一记会在系列里占好几集
+        where: { visibility: "PUBLIC", parentProjectId: null },
         orderBy: [{ entryOrder: "asc" }, { createdAt: "asc" }],
         include: { filmVersions: { orderBy: { createdAt: "desc" }, take: 1 } },
       },

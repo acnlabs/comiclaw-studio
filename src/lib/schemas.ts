@@ -102,6 +102,8 @@ export const createProjectSchema = z.object({
   visibility: ProjectVisibilityEnum.optional(),
   columnId: optionalStr,
   entryOrder: z.number().int().positive().optional().nullable(),
+  // 传入即表示这是某一记下的二创 / 共创项目,栏目与策略从那一记继承
+  parentProjectId: optionalStr,
   ...orgBindFields,
 });
 

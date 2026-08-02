@@ -46,6 +46,14 @@ export const DELETE = withAgentAuth(async (_req, ctx: Ctx) => {
   // withdrawn deliberately rather than vanish with its origin. Count and
   // delete share one serializable transaction: a publish landing between the
   // two would otherwise cascade a live registration away.
+  // 这一记的二创归别人所有,删掉锚点就把整记连人家的项目一起带走了
+  const coCreations = await prisma.project.count({ where: { parentProjectId: id } });
+  if (coCreations > 0) {
+    return conflict(
+      `This entry anchors ${coCreations} co-creation projects owned by others; it cannot be deleted`
+    );
+  }
+
   const publishedAssets = await prisma.$transaction(
     async (tx) => {
       const count = await tx.asset.count({

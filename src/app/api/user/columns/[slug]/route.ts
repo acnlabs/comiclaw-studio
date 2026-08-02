@@ -20,7 +20,8 @@ export async function GET(_req: Request, ctx: Ctx) {
       createdAt: true,
       updatedAt: true,
       projects: {
-        where: { visibility: "PUBLIC" },
+        // 纵向的记;一记下的共创不进时间线
+        where: { visibility: "PUBLIC", parentProjectId: null },
         // 时间线最新在上; entryOrder 空值沉底,与栏目页一致
         orderBy: [
           { entryOrder: { sort: "desc", nulls: "last" } },

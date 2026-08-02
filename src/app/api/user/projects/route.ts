@@ -10,6 +10,7 @@ import {
   OrgJoinPolicyEnum,
   ProjectVisibilityEnum,
 } from "@/lib/schemas";
+import { canDeriveFrom, DERIVATION_ERRORS } from "@/lib/derivativeProject";
 import { resolveOrgBindOnCreate } from "@/lib/orgBinding";
 import { reconcilePendingLicenses } from "@/lib/casting";
 
@@ -21,6 +22,8 @@ const userCreateProjectSchema = z.object({
   /** PRIVATE delivery (default) or PUBLIC co-creation entry under a column */
   visibility: ProjectVisibilityEnum.optional(),
   columnId: optionalStr,
+  /** Set to build your own co-creation project under someone else's entry */
+  parentProjectId: optionalStr,
   /** When creating a PUBLIC entry under a new column in one step — use /api/user/columns first */
   orgMode: OrgBindModeEnum.optional(),
   acnOrgId: optionalStr,
@@ -62,10 +65,67 @@ export async function GET(req: Request) {
   return Response.json({ projects });
 }
 
+// 在别人开的一记下面开自己的共创项目。项目归本人所有,栏目与策略从那一记继承。
+async function createDerivative(
+  sub: string,
+  body: z.infer<typeof userCreateProjectSchema>,
+  parentProjectId: string
+) {
+  const parent = await prisma.project.findUnique({
+    where: { id: parentProjectId },
+    select: {
+      id: true,
+      visibility: true,
+      columnId: true,
+      parentProjectId: true,
+      contributePolicy: true,
+      column: { select: { contributePolicy: true, ownerUserId: true } },
+    },
+  });
+  if (!parent) return notFoundJson("Parent project not found");
+
+  if (body.orgMode != null || body.acnOrgId?.trim() || body.contributePolicy) {
+    return badRequest("A co-creation project inherits the entry's Org and policy");
+  }
+
+  const allowed = canDeriveFrom({
+    parent,
+    contributePolicy: parent.contributePolicy ?? parent.column?.contributePolicy ?? null,
+    deriver: { kind: "user", sub, ownsColumn: parent.column?.ownerUserId === sub },
+  });
+  if (!allowed.ok) return forbidden(DERIVATION_ERRORS[allowed.reason]);
+
+  const project = await prisma.project.create({
+    data: {
+      name: body.name,
+      description: body.description ?? null,
+      ownerUserId: sub,
+      visibility: "PUBLIC",
+      isPrivate: false,
+      columnId: parent.columnId,
+      entryOrder: null,
+      parentProjectId: parent.id,
+    },
+  });
+
+  return Response.json(
+    {
+      id: project.id,
+      shareToken: project.shareToken,
+      sharePath: `/p/${project.shareToken}`,
+      visibility: project.visibility,
+      columnId: project.columnId,
+      parentProjectId: project.parentProjectId,
+    },
+    { status: 201 }
+  );
+}
+
 /**
  * Create a project owned by the signed-in user.
  * - PRIVATE: classic delivery cell
  * - PUBLIC: co-creation entry; must attach a column the user owns
+ * - parentProjectId: a co-creation project under someone else's entry
  */
 export async function POST(req: Request) {
   const sub = await verifyUserToken(req);
@@ -77,6 +137,9 @@ export async function POST(req: Request) {
   } catch (err) {
     return mapError(err);
   }
+
+  const parentProjectId = body.parentProjectId?.trim() || null;
+  if (parentProjectId) return createDerivative(sub, body, parentProjectId);
 
   const visibility = body.visibility ?? "PRIVATE";
   const columnId = body.columnId?.trim() || null;

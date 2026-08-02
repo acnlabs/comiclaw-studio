@@ -83,6 +83,10 @@ model Project {
   // 可选归属栏目;entryOrder = 栏目内第 N 记(可空;公开时间线 newest-first 且 nulls last,再按 createdAt desc)
   columnId    String?
   entryOrder  Int?
+  // 一记是横向的:官方项目为锚(parentProjectId 为空、带 entryOrder),
+  // 其他创作者基于这一记做的二创 / 共创各自成项目挂在锚下,归各自所有。
+  // 只允许一层,二创之下不再分叉
+  parentProjectId String?
   // 可选覆盖栏目默认 Org;独立开放项目也可直接挂 Org
   acnOrgId    String?
   // 空=继承栏目策略 / 默认 org_members
@@ -93,6 +97,9 @@ model Project {
   updatedAt   DateTime @updatedAt
 
   column            Column? @relation(fields: [columnId], references: [id], onDelete: SetNull)
+  // 删锚点会带走整记的二创,所以删除处显式拦截,不靠级联
+  parentProject   Project?  @relation("EntryProjects", fields: [parentProjectId], references: [id], onDelete: Restrict)
+  derivedProjects Project[] @relation("EntryProjects")
   scriptVersions ScriptVersion[]
   assets         Asset[]
   shots          Shot[]
@@ -109,6 +116,7 @@ model Project {
   @@index([visibility, updatedAt])
   @@index([columnId, entryOrder])
   @@unique([columnId, entryOrder])
+  @@index([parentProjectId])
   @@index([acnOrgId])
 }
 
