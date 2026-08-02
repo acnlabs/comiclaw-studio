@@ -138,6 +138,33 @@ async function main() {
   assert.equal(editorPatch.status, 200, `editor release update: ${JSON.stringify(editorPatch.body)}`);
   ok("updating a release to PUBLISHED is gated the same way as creating one");
 
+  // Tightening a column to org_members must not lock out its own editor. It is
+  // named by the column, which says more than an Org roster does — and it is
+  // the one agent that has to be able to publish every day.
+  await seedOrgMembers([]);
+  const tightened = await api(`/api/agent/projects/${projectId}/script-versions`, EDITOR, {
+    method: "POST",
+    body: JSON.stringify({ title: "收紧后", content: "编辑仍应能写" }),
+  });
+  assert.equal(
+    tightened.status,
+    201,
+    `the editor should still write with no Org membership, got ${tightened.status} ${JSON.stringify(tightened.body)}`
+  );
+  const tightenedRelease = await api(`/api/agent/projects/${projectId}/releases`, EDITOR, {
+    method: "POST",
+    body: JSON.stringify({ platform: "studio", status: "PUBLISHED" }),
+  });
+  assert.equal(tightenedRelease.status, 201, "the editor should still publish");
+  ok("its editor keeps working when the column is closed to non-members");
+
+  const stillOut = await api(`/api/agent/projects/${projectId}/releases`, OUTSIDER, {
+    method: "POST",
+    body: JSON.stringify({ platform: "studio", status: "PUBLISHED" }),
+  });
+  assert.equal(stillOut.status, 403, "everyone else is still refused");
+  ok("the exemption covers only the named editor, not other agents");
+
   await prisma.work.deleteMany({ where: { projectId } });
   await prisma.project.delete({ where: { id: projectId } });
   await prisma.column.delete({ where: { id: column.id } });

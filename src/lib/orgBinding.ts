@@ -16,6 +16,8 @@ export type EffectiveOrgContext = {
   acnOrgId: string | null;
   contributePolicy: ContributePolicy;
   source: "project" | "column" | "none";
+  /** 栏目点名的编辑 agent(若这个项目属于某栏目) */
+  editorAgentId: string | null;
 };
 
 /** Resolve which Org gates a project (project override → column default → none). */
@@ -28,13 +30,24 @@ export async function resolveEffectiveOrg(
       acnOrgId: true,
       contributePolicy: true,
       column: {
-        select: { acnOrgId: true, contributePolicy: true },
+        select: {
+          acnOrgId: true,
+          contributePolicy: true,
+          editorAgentId: true,
+        },
       },
     },
   });
   if (!project) {
-    return { acnOrgId: null, contributePolicy: "org_members", source: "none" };
+    return {
+      acnOrgId: null,
+      contributePolicy: "org_members",
+      source: "none",
+      editorAgentId: null,
+    };
   }
+
+  const editorAgentId = project.column?.editorAgentId?.trim() || null;
 
   if (project.acnOrgId) {
     return {
@@ -43,6 +56,7 @@ export async function resolveEffectiveOrg(
         project.contributePolicy ?? project.column?.contributePolicy
       ),
       source: "project",
+      editorAgentId,
     };
   }
 
@@ -53,6 +67,7 @@ export async function resolveEffectiveOrg(
         project.contributePolicy ?? project.column.contributePolicy
       ),
       source: "column",
+      editorAgentId,
     };
   }
 
@@ -62,6 +77,7 @@ export async function resolveEffectiveOrg(
       project.contributePolicy ?? project.column?.contributePolicy
     ),
     source: "none",
+    editorAgentId,
   };
 }
 
@@ -157,6 +173,12 @@ export async function assertAgentCanContribute(args: {
 
   if (effective.contributePolicy === "owner_only") {
     return forbidden("This container only accepts owner contributions");
+  }
+
+  // 栏目点名的编辑就是这个栏目的编辑,这比 Org 名册更直接。不豁免的话,
+  // 一收紧到 org_members 就会把日更的作者本人挡在门外,而它正是该写的人。
+  if (args.agentId && effective.editorAgentId === args.agentId.trim()) {
+    return null;
   }
 
   // org_members — humans are not OrgMembership; studio_key may attribute to a user
