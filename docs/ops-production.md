@@ -191,6 +191,19 @@ Preview 与生产**共用同一个数据库**。构建命令又是同一条，�
 
 ACN 不发人类用的 key。CLI 里**没有 `login` 命令**，`X-ACN-Authorization` 要的也是一把 **agent 的 API key**。人只作为 agent 的 `owner` 存在——`GET /api/v1/agents/{id}` 是公开的，能看到 `owner`（`comiclaw-studio` = `90f884c1-…` 的 owner 是 `github|43027886`）。
 
+### 没有 `ACN_CHAT_API_KEY` 时，实际坏的是什么
+
+比想象的小。ACN 的 Org **读**接口是公开的（无凭证 `GET …/orgs/{id}`、`…/members` 都返回 200），所以：
+
+| 功能 | 没有 key 时 |
+|---|---|
+| 《AI 漫记》日更（comiclaw 写脚本 / 成片 / 发行） | **不受影响**。栏目编辑豁免在成员校验之前就返回了，根本不碰这把 key；agent 自己的投稿用的是它自己的 bearer |
+| 投稿门禁读 Org 名册 | 正常。`orgFetch` 缺 key 时对读不再抛错，直接匿名读公开接口 |
+| Org 写（加/删成员、建 Org） | **坏**，且会响亮地抛错——这类操作必须有凭证 |
+| 建生产任务 / 邀请工人（`acnFetch`） | **坏**。这才是「建单相关 API 会挂」的真实范围 |
+
+所以丢 key 不是必须立刻停机的事故，但派单会停。
+
 ### agent key 丢了：只能从 Labs 网页端轮换
 
 `POST /api/v1/agents/{id}/rotate-key` 要该 agent **自己**的 key，丢了就是死循环。
