@@ -400,17 +400,51 @@ You never need `ADMIN_KEY` or admin UI — human ops only.
 - HTTP: 400 validation (field hints in body); 401 auth; 404 missing; 409 conflict
 - On 401, remind ops to check skill config `STUDIO_API_KEY` / ACN key
 
-## Wake bridge (production Mode B)
+## Wake bridge (production Mode B + Interfaze chat)
+
+**Preferred (ACN CLI owns writeback):** host only returns `{"content":"..."}`; CLI POSTs Gateway.
 
 ```bash
-# Install script + OpenClaw hooks bearer (ops once)
+# Requires @acnlabs/acn-cli ≥ 0.14.1 with --chat-writeback
+install -m 755 scripts/chat-complete.sh ~/.config/comiclaw/chat-complete.sh
 install -m 755 scripts/acn-to-openclaw-wake.sh ~/.config/comiclaw/acn-to-openclaw-wake.sh
-# Token file required (or set COMICLAW_HOOKS_TOKEN_FILE):
-#   ~/.config/comiclaw/hooks.token   # contents = Bearer token for /hooks/agent
-# Optional: OPENCLAW_WAKE_URL (default http://127.0.0.1:10122/hooks/agent)
+# ~/.config/comiclaw/hooks.token — OpenClaw hooks bearer
+export AGENTPLANET_API_BASE=https://api.example.com   # or http://127.0.0.1:8000
+export AGENTPLANET_INTERNAL_TOKEN=<AgentPlanet INTERNAL_API_TOKEN>
+# (alias: AGENTPLANET_INTERNAL_API_TOKEN)
+# OpenClaw MUST support waitForResult on POST /hooks/agent (else chat-complete exits 3)
+# Smoke without OpenClaw: COMICLAW_CHAT_COMPLETE_STUB=1
+
+acn listen --runtime command \
+  --wake-exec ~/.config/comiclaw/acn-to-openclaw-wake.sh \
+  --chat-writeback \
+  --chat-complete-exec ~/.config/comiclaw/chat-complete.sh
+```
+
+`scripts/chat-complete.sh`: stdin=NormalizedEvent → OpenClaw `/hooks/agent` (`waitForResult`) → stdout `{"content":"..."}`.
+
+**Legacy (fragile):** wake script asks the LLM to run `chat-writeback.sh` after replying — prefer CLI flags above.
+
+```bash
+install -m 755 scripts/acn-to-openclaw-wake.sh ~/.config/comiclaw/acn-to-openclaw-wake.sh
+install -m 755 scripts/chat-writeback.sh ~/.config/comiclaw/chat-writeback.sh
+# Token file: ~/.config/comiclaw/hooks.token
+# COMICLAW_ACN_AGENT_ID=<this host's ACN agent_id>
 
 acn listen --runtime command --wake-exec ~/.config/comiclaw/acn-to-openclaw-wake.sh
 ```
 
-See `scripts/acn-to-openclaw-wake.sh`. It must read the ACN event from stdin via env/file — **not** `python3 <<'PY'` (heredoc steals stdin → `task_id=unknown`). Only UUID `task_id` is accepted; OpenClaw Job ID is not an ACN task id. Wake logs keep structured fields only (no task brief).
+See `scripts/acn-to-openclaw-wake.sh`. It must read the ACN event from stdin via env/file — **not** `python3 <<'PY'` (heredoc steals stdin → `task_id=unknown`).
+
+**Branching (legacy wake-exec without --chat-writeback):**
+
+| Envelope | Action |
+|---|---|
+| `metadata.agentplanet.chat_id` | Interfaze chat → reply, then `scripts/chat-writeback.sh <chat_id>` |
+| UUID `task_id` | Production → `production-worker.sh handle` (unchanged) |
+| neither | `reconcile` hint |
+
+With `--chat-writeback`, chat envelopes skip wake-exec and use complete → Gateway.  
+OpenClaw Job ID is not an ACN task id.  
+Contract: AgentPlanet `docs/architecture/chat-agent-writeback-v0.md`.
 

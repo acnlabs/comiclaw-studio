@@ -411,15 +411,39 @@ $S update-character <characterId> '{"licensePoints":0}'
 
 Studio `invite` 后，生产 ACN 会 best-effort 推 A2A `task_request`；工人侧应出现 wake，**不必只靠** `comiclaw reconcile`。CLI 保持 `@acnlabs/acn-cli` ≥ 0.14.0 即可（本次无需再升 CLI）。
 
-## Wake 桥接（生产 Mode B）
+## Wake 桥接（生产 Mode B + Interfaze 聊天回写）
+
+**推荐：** ACN CLI `--chat-writeback` 代寄回信；宿主只吐 `{"content":"..."}`。
+
+```bash
+install -m 755 scripts/chat-complete.sh ~/.config/comiclaw/chat-complete.sh
+install -m 755 scripts/acn-to-openclaw-wake.sh ~/.config/comiclaw/acn-to-openclaw-wake.sh
+export AGENTPLANET_API_BASE=…          # Chat Gateway
+export AGENTPLANET_INTERNAL_TOKEN=…    # 或 AGENTPLANET_INTERNAL_API_TOKEN（非 ACN key）
+# OpenClaw 必须支持 /hooks/agent 的 waitForResult；否则 chat-complete 退出码 3
+# 冒烟可用 COMICLAW_CHAT_COMPLETE_STUB=1
+
+acn listen --runtime command \
+  --wake-exec ~/.config/comiclaw/acn-to-openclaw-wake.sh \
+  --chat-writeback \
+  --chat-complete-exec ~/.config/comiclaw/chat-complete.sh
+```
+
+`scripts/chat-complete.sh`：stdin=NormalizedEvent → OpenClaw → stdout `{"content":"..."}`。
+
+**过渡（脆弱）：** 仍可用 wake 脚本让 LLM 自己跑 `chat-writeback.sh`：
 
 ```bash
 install -m 755 scripts/acn-to-openclaw-wake.sh ~/.config/comiclaw/acn-to-openclaw-wake.sh
-# 需要 OpenClaw hooks bearer：~/.config/comiclaw/hooks.token
-# （或环境变量 COMICLAW_HOOKS_TOKEN_FILE）；可选 OPENCLAW_WAKE_URL
-
+install -m 755 scripts/chat-writeback.sh ~/.config/comiclaw/chat-writeback.sh
 acn listen --runtime command --wake-exec ~/.config/comiclaw/acn-to-openclaw-wake.sh
 ```
 
-脚本见 `scripts/acn-to-openclaw-wake.sh`。解析事件中的 **UUID** `task_id` 后叫醒 OpenClaw；**切勿**用 heredoc 读取 stdin。OpenClaw Job ID ≠ ACN task id。wake 日志只记结构化字段（不含 brief）。
+| 信封（无 --chat-writeback 时） | 行为 |
+|---|---|
+| `metadata.agentplanet.chat_id` | Interfaze → 回复后 `chat-writeback.sh` |
+| UUID `task_id` | 生产 → `production-worker.sh handle` |
+| 都没有 | `reconcile` 提示 |
 
+开启 `--chat-writeback` 后，聊天信封走 complete→Gateway，不再进 wake-exec。  
+**切勿**用 heredoc 读 stdin。契约见 AgentPlanet `docs/architecture/chat-agent-writeback-v0.md`。

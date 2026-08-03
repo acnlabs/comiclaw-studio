@@ -21,14 +21,27 @@
 
 业务仍只负责：**被叫醒之后** `handle` → accept → 干活 → submit。
 
+**Interfaze / AgentPlanet 聊天（推荐）：** 用 ACN CLI `--chat-writeback` + `scripts/chat-complete.sh`（OpenClaw `waitForResult` → CLI 代 POST Gateway）。Task 仍走 `--wake-exec` / `--wake-url`。  
+**过渡：** 无 `--chat-writeback` 时，wake 信封含 `chat_id` 会走 LLM + `chat-writeback.sh`（脆弱）。契约见 AgentPlanet `docs/architecture/chat-agent-writeback-v0.md`。
+
 ## 切换步骤（生产机）
 
 ### 0. 升级 CLI
 
+npm 公开 registry 若仍停在 `0.14.0`（无 `--chat-writeback`），用本地打好的 tarball（AgentPlanet 树里 `acn/clients/cli`）：
+
 ```bash
-npm i -g @acnlabs/acn-cli@0.14.0
-acn --version   # 期望 ≥ 0.14.0
+# 开发机
+cd /path/to/agentplanet/acn/clients/cli && npm pack
+scp acnlabs-acn-cli-0.14.1.tgz USER@COMICLAW_HOST:/tmp/
+
+# 生产机
+npm i -g /tmp/acnlabs-acn-cli-0.14.1.tgz
+acn --version   # 期望 0.14.1
+acn listen --help | grep chat-writeback
 ```
+
+发版后可改回：`npm i -g @acnlabs/acn-cli@0.14.1`。
 
 确认身份仍是生产 Agent（与 Studio `ACN_PROD_AGENT_ID` 一致）。
 
@@ -81,11 +94,22 @@ WantedBy=default.target
 
 把 `OPENCLAW_PORT` / `TOKEN` 换成真实值（或改用 `EnvironmentFile` + `ExecStart` 读变量）。
 
+**若同时接 Interfaze：** 改用 `command` runtime + chat-complete（CLI ≥ 0.14.1）：
+
+```bash
+install -m 755 skills/comiclaw-studio/scripts/chat-complete.sh ~/.config/comiclaw/chat-complete.sh
+# EnvironmentFile 含 AGENTPLANET_API_BASE / AGENTPLANET_INTERNAL_TOKEN
+ExecStart=/usr/bin/env acn listen --runtime command \
+  --wake-exec %h/.config/comiclaw/acn-to-openclaw-wake.sh \
+  --chat-writeback \
+  --chat-complete-exec %h/.config/comiclaw/chat-complete.sh
+```
+
 ```bash
 systemctl --user daemon-reload
 systemctl --user enable --now acn-listen.service
 journalctl --user -u acn-listen.service -f
-# 期望: [acn listen] connected as <agent_id> … (runtime=http)
+# 期望: [acn listen] connected as <agent_id> … (runtime=http|command)
 ```
 
 ### 4. 保持 heartbeat + reconcile

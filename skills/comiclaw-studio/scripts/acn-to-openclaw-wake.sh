@@ -4,9 +4,19 @@
 # IMPORTANT: do NOT pipe stdin into `python3 <<'PY'` — the heredoc steals stdin
 # and the ACN event body is lost (task_id becomes unknown). Read BODY via env.
 #
+# Branches:
+#   - metadata.agentplanet.chat_id → Interfaze chat (LEGACY: LLM + chat-writeback.sh)
+#   - task_id → Studio production worker (existing path)
+#   - else → reconcile hint
+#
+# Prefer (ACN CLI ≥ 0.14.1): --chat-writeback --chat-complete-exec chat-complete.sh
+# so chat envelopes never enter this wake-exec; this script stays for Task / legacy.
+#
 # Prerequisites (ops):
 #   ~/.config/comiclaw/hooks.token  — OpenClaw hooks bearer (or COMICLAW_HOOKS_TOKEN_FILE)
 #   OPENCLAW_WAKE_URL               — default http://127.0.0.1:10122/hooks/agent
+# Legacy chat writeback also needs:
+#   AGENTPLANET_API_BASE, AGENTPLANET_INTERNAL_TOKEN, COMICLAW_ACN_AGENT_ID
 set -euo pipefail
 
 TOKEN_FILE="${COMICLAW_HOOKS_TOKEN_FILE:-$HOME/.config/comiclaw/hooks.token}"
@@ -36,7 +46,6 @@ UUID_RE = re.compile(
     r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
     re.I,
 )
-# Strip control chars / newlines from fields interpolated into OpenClaw message
 CTRL_RE = re.compile(r"[\x00-\x1f\x7f]+")
 
 
@@ -57,7 +66,6 @@ def as_uuid(s):
 
 
 def dig(obj, *paths):
-    """Try dotted paths; return first non-empty string (unchecked)."""
     for path in paths:
         cur = obj
         ok = True
@@ -95,12 +103,103 @@ def find_task_id(obj, depth=0):
     return None
 
 
+def find_chat_id(obj, depth=0):
+    """Prefer AgentPlanet chat writeback metadata; never invent ids."""
+    if depth > 8 or obj is None:
+        return None
+    if isinstance(obj, dict):
+        ap = obj.get("agentplanet")
+        if isinstance(ap, dict):
+            cid = ap.get("chat_id") or ap.get("chatId")
+            if isinstance(cid, str) and cid.strip():
+                return cid.strip()
+        meta = obj.get("metadata")
+        if isinstance(meta, dict):
+            found = find_chat_id(meta, depth + 1)
+            if found:
+                return found
+        # Nested raw / message / params (A2A relay / normalized wake shapes)
+        for k in ("raw", "message", "params", "result", "body", "data"):
+            if k in obj:
+                found = find_chat_id(obj[k], depth + 1)
+                if found:
+                    return found
+        for v in obj.values():
+            found = find_chat_id(v, depth + 1)
+            if found:
+                return found
+    elif isinstance(obj, list):
+        for v in obj:
+            found = find_chat_id(v, depth + 1)
+            if found:
+                return found
+    return None
+
+
+def extract_user_text(obj, depth=0, limit=2000):
+    if depth > 8 or obj is None:
+        return ""
+    if isinstance(obj, dict):
+        parts = obj.get("parts")
+        if isinstance(parts, list):
+            chunks = []
+            for p in parts:
+                if isinstance(p, dict) and isinstance(p.get("text"), str):
+                    t = p["text"].strip()
+                    if t:
+                        chunks.append(t)
+            if chunks:
+                return CTRL_RE.sub(" ", "\n".join(chunks)).strip()[:limit]
+        for k in ("text", "prompt", "content"):
+            v = obj.get(k)
+            if isinstance(v, str) and v.strip():
+                return CTRL_RE.sub(" ", v).strip()[:limit]
+        for k in ("raw", "message", "params", "body", "data"):
+            if k in obj:
+                t = extract_user_text(obj[k], depth + 1, limit)
+                if t:
+                    return t
+        for v in obj.values():
+            t = extract_user_text(v, depth + 1, limit)
+            if t:
+                return t
+    elif isinstance(obj, list):
+        for v in obj:
+            t = extract_user_text(v, depth + 1, limit)
+            if t:
+                return t
+    return ""
+
+
 tid = as_uuid(dig(ev, "task_id", "taskId", "acn_task_id")) or find_task_id(ev)
+chat_id = dig(
+    ev,
+    "metadata.agentplanet.chat_id",
+    "agentplanet.chat_id",
+    "message.metadata.agentplanet.chat_id",
+    "raw.metadata.agentplanet.chat_id",
+    "params.message.metadata.agentplanet.chat_id",
+) or find_chat_id(ev)
 etype = clean_field(dig(ev, "event_type", "type") or "acn_event", 64) or "acn_event"
 subnet = clean_field(dig(ev, "subnet_slug", "subnet") or "", 80)
 msg_id = clean_field(dig(ev, "message_id", "messageId") or "", 80)
+user_text = extract_user_text(ev)
+user_preview = clean_field(user_text, 500) or "(no text extracted)"
 
-if tid:
+# Chat writeback takes priority when AgentPlanet tagged the envelope.
+# Production task_id path unchanged otherwise.
+if chat_id:
+    text = (
+        f"Interfaze/AgentPlanet chat ({etype}): chat_id={chat_id}; message_id={msg_id}. "
+        f"User said: {user_preview} "
+        f"Compose a concise helpful reply as comiclaw, then IMMEDIATELY run "
+        f"`skills/comiclaw-studio/scripts/chat-writeback.sh {chat_id}` with the reply on stdin "
+        f"(or as the second CLI argument). "
+        f"Requires env AGENTPLANET_API_BASE, AGENTPLANET_INTERNAL_TOKEN, COMICLAW_ACN_AGENT_ID. "
+        f"Do NOT run production-worker. Do NOT treat this as WRITE_SCRIPT/GENERATE_IMAGE. "
+        f"Do NOT edit openclaw.json or systemd."
+    )
+elif tid:
     text = (
         f"ACN {etype}: task_id={tid}; subnet={subnet}; message_id={msg_id}. "
         f"You are the production comiclaw worker. Immediately run "
@@ -126,20 +225,23 @@ out = {
     "meta": {
         "acn": {
             "task_id": tid,
+            "chat_id": chat_id,
             "event_type": etype,
             "message_id": msg_id,
             "subnet_slug": subnet,
+            "kind": "chat" if chat_id else ("task" if tid else "unknown"),
         }
     },
 }
 print(json.dumps(out, ensure_ascii=False))
 
-# Ops log: structured fields only (no task brief / raw body / HTTP response body)
 dbg = {
     "parsed_task_id": tid,
+    "parsed_chat_id": chat_id,
     "event_type": etype,
     "message_id": msg_id,
     "subnet_slug": subnet,
+    "kind": "chat" if chat_id else ("task" if tid else "unknown"),
     "body_len": len(raw),
     "json_ok": isinstance(ev, dict) and not (set(ev.keys()) <= {"raw"}),
 }
@@ -156,7 +258,6 @@ code=$(curl -sS -m 8 -o /tmp/acn-wake-resp.json -w '%{http_code}' -X POST "$WAKE
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
   -d "$PAYLOAD" || echo 000)
-# Status only — parsed_task_id already in wake_parse line above; no response body
 echo "$ts wake_http=$code url=$WAKE_URL" >> "$LOG"
 
 case "$code" in
