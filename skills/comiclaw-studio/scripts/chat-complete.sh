@@ -282,23 +282,50 @@ print(content)
 PY
 }
 
+# openclaw gateway call --timeout is milliseconds (error: "timeout after 110ms").
+# openclaw agent --timeout is seconds (docs + pong-cli proof).
+rpc_timeout_ms() {
+  echo $((TIMEOUT_SEC * 1000))
+}
+
 complete_via_cli() {
+  local oc_bin
+  oc_bin=$(command -v openclaw || true)
+  if [[ -z "$oc_bin" ]]; then
+    echo "chat-complete: openclaw not on PATH" >&2
+    echo "$ts chat_complete_cli_fail reason=no_openclaw" >> "$LOG"
+    return 1
+  fi
   local args=(agent --agent "$AGENT_ID" --message-file "$WORKDIR/prompt.txt" --timeout "$TIMEOUT_SEC" --json)
   if [[ -n "$SESSION_KEY" ]]; then
     args+=(--session-key "$SESSION_KEY")
   fi
   # No --deliver: Interfaze writeback is handled by ACN CLI, not OpenClaw channels.
+  local t0 t1
+  t0=$(date +%s)
   set +e
-  openclaw "${args[@]}" >"$RESP_FILE" 2>"$WORKDIR/cli.err"
+  "$oc_bin" "${args[@]}" >"$RESP_FILE" 2>"$WORKDIR/cli.err"
   local rc=$?
   set -e
+  t1=$(date +%s)
+  echo "$ts chat_complete_cli rc=$rc dur_s=$((t1 - t0)) bin=$oc_bin bytes=$(wc -c <"$RESP_FILE" 2>/dev/null || echo 0)" >> "$LOG"
   if [[ $rc -ne 0 ]]; then
     echo "chat-complete: openclaw agent failed rc=$rc" >&2
     head -c 600 "$WORKDIR/cli.err" >&2 || true
     echo >&2
+    # Persist stderr for ops (wake log).
+    head -c 600 "$WORKDIR/cli.err" >>"$LOG" || true
+    echo >>"$LOG"
     return 1
   fi
-  CONTENT=$(extract_content <"$RESP_FILE") || return 1
+  if ! CONTENT=$(extract_content <"$RESP_FILE" 2>"$WORKDIR/extract.err"); then
+    echo "$ts chat_complete_cli_extract_fail" >> "$LOG"
+    head -c 400 "$WORKDIR/extract.err" >>"$LOG" || true
+    echo >>"$LOG"
+    head -c 400 "$RESP_FILE" >>"$LOG" || true
+    echo >>"$LOG"
+    return 1
+  fi
   return 0
 }
 
@@ -307,16 +334,19 @@ wait_run_then_history() {
   [[ -n "$run_id" ]] || return 1
   command -v openclaw >/dev/null 2>&1 || return 1
 
-  local wait_ms=$((TIMEOUT_SEC * 1000))
+  local wait_ms rpc_ms
+  wait_ms=$((TIMEOUT_SEC * 1000))
+  rpc_ms=$(rpc_timeout_ms)
   set +e
   openclaw gateway call agent.wait \
     --params "{\"runId\":\"$run_id\",\"timeoutMs\":$wait_ms}" \
-    --timeout "$TIMEOUT_SEC" >"$WORKDIR/wait.json" 2>"$WORKDIR/wait.err"
+    --timeout "$rpc_ms" >"$WORKDIR/wait.json" 2>"$WORKDIR/wait.err"
   local wrc=$?
   set -e
-  echo "$ts chat_complete_agent_wait rc=$wrc runId=$run_id" >> "$LOG"
+  echo "$ts chat_complete_agent_wait rc=$wrc runId=$run_id rpc_ms=$rpc_ms" >> "$LOG"
   if [[ $wrc -ne 0 ]]; then
     head -c 400 "$WORKDIR/wait.err" >>"$LOG" || true
+    echo >>"$LOG"
     return 1
   fi
 
@@ -330,12 +360,12 @@ wait_run_then_history() {
   set +e
   openclaw gateway call sessions.history \
     --params "{\"sessionKey\":\"$hist_key\",\"limit\":8}" \
-    --timeout 30 >"$WORKDIR/hist.json" 2>"$WORKDIR/hist.err"
+    --timeout 30000 >"$WORKDIR/hist.json" 2>"$WORKDIR/hist.err"
   local hrc=$?
   if [[ $hrc -ne 0 ]]; then
     openclaw gateway call chat.history \
       --params "{\"sessionKey\":\"$hist_key\",\"limit\":8}" \
-      --timeout 30 >"$WORKDIR/hist.json" 2>"$WORKDIR/hist.err"
+      --timeout 30000 >"$WORKDIR/hist.json" 2>"$WORKDIR/hist.err"
     hrc=$?
   fi
   set -e
@@ -463,11 +493,20 @@ complete_via_hooks() {
 }
 
 CONTENT=""
+USED_VIA="$RESOLVED_VIA"
 case "$RESOLVED_VIA" in
   cli)
     if ! complete_via_cli; then
-      echo "chat-complete: CLI path failed; trying hooks+poll" >&2
-      complete_via_hooks || exit 3
+      if [[ "$VIA" == "auto" ]]; then
+        echo "chat-complete: CLI path failed; trying hooks+poll" >&2
+        echo "$ts chat_complete_fallback=hooks" >> "$LOG"
+        complete_via_hooks || exit 3
+        USED_VIA=hooks
+      else
+        # Explicit cli: do not fall back (hooks async ack is flaky without waitForResult).
+        echo "chat-complete: CLI path failed (COMICLAW_CHAT_COMPLETE_VIA=cli)" >&2
+        exit 3
+      fi
     fi
     ;;
   hooks)
@@ -476,5 +515,5 @@ case "$RESOLVED_VIA" in
 esac
 
 CONTENT="$CONTENT" python3 -c 'import json,os; print(json.dumps({"content": os.environ["CONTENT"]}, ensure_ascii=False))'
-echo "$ts chat_complete_ok chat_id=$CHAT_ID via=$RESOLVED_VIA bytes=${#CONTENT}" >> "$LOG"
+echo "$ts chat_complete_ok chat_id=$CHAT_ID via=$USED_VIA bytes=${#CONTENT}" >> "$LOG"
 exit 0
