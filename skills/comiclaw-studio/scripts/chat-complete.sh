@@ -209,9 +209,31 @@ extract_content() {
 import json, os, sys
 
 path = os.environ.get("OC_RESP_FILE") or ""
+
+
+def load_json_object(raw: str):
+    """Parse one JSON object; tolerate leading/trailing CLI noise around it."""
+    raw = raw.lstrip("\ufeff")
+    try:
+        data = json.loads(raw)
+        if isinstance(data, dict):
+            return data
+    except Exception:
+        pass
+    start = raw.find("{")
+    end = raw.rfind("}")
+    if start < 0 or end <= start:
+        raise ValueError("no JSON object found in OpenClaw output")
+    data = json.loads(raw[start : end + 1])
+    if not isinstance(data, dict):
+        raise ValueError("OpenClaw JSON root is not an object")
+    return data
+
+
 try:
     with open(path, encoding="utf-8") as f:
-        data = json.load(f)
+        raw = f.read()
+    data = load_json_object(raw)
 except Exception as e:
     print(f"chat-complete: invalid OpenClaw JSON: {e}", file=sys.stderr)
     sys.exit(3)
@@ -327,9 +349,30 @@ complete_via_cli() {
     return 1
   fi
   if ! CONTENT=$(extract_content "$RESP_FILE" 2>"$WORKDIR/extract.err"); then
+    echo "chat-complete: extract failed after openclaw rc=0" >&2
+    cat "$WORKDIR/extract.err" >&2 || true
     echo "$ts chat_complete_cli_extract_fail" >> "$LOG"
     head -c 400 "$WORKDIR/extract.err" >>"$LOG" || true
     echo >>"$LOG"
+    # Show structure hint (keys / payloads text presence), not only raw head.
+    RESP_FILE="$RESP_FILE" python3 -c '
+import json,os,re
+p=os.environ["RESP_FILE"]
+raw=open(p,encoding="utf-8",errors="replace").read()
+print("resp_bytes",len(raw), file=__import__("sys").stderr)
+m=re.search(r"\{.*\}", raw, re.S)
+if not m:
+  print("resp_head", raw[:300], file=__import__("sys").stderr); raise SystemExit
+try:
+  d=json.loads(m.group(0))
+except Exception as e:
+  print("resp_slice_parse_fail", e, file=__import__("sys").stderr)
+  print("resp_head", raw[:300], file=__import__("sys").stderr); raise SystemExit
+print("resp_keys", sorted(d)[:20], file=__import__("sys").stderr)
+r=d.get("result") if isinstance(d.get("result"), dict) else {}
+ps=r.get("payloads") if isinstance(r.get("payloads"), list) else d.get("payloads")
+print("payloads_type", type(ps).__name__, "n", len(ps) if isinstance(ps, list) else None, file=__import__("sys").stderr)
+' 2>>"$LOG" || true
     head -c 400 "$RESP_FILE" >>"$LOG" || true
     echo >>"$LOG"
     return 1
