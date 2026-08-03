@@ -197,13 +197,21 @@ RESOLVED_VIA=$(pick_via)
 echo "$ts chat_complete_via=$RESOLVED_VIA chat_id=$CHAT_ID" >> "$LOG"
 
 extract_content() {
-  # stdin: OpenClaw JSON → stdout: reply text; exit 3 if missing
-  python3 <<'PY'
-import json, sys
+  # $1 = path to OpenClaw JSON → stdout: reply text; exit 3 if missing
+  # IMPORTANT: do not read JSON from stdin — python3 <<'PY' heredoc steals stdin
+  # (same class of bug as wake scripts; yields empty {} / keys=[]).
+  local path="${1:-}"
+  if [[ -z "$path" || ! -r "$path" ]]; then
+    echo "chat-complete: extract_content missing readable file: ${path:-<empty>}" >&2
+    return 3
+  fi
+  OC_RESP_FILE="$path" python3 <<'PY'
+import json, os, sys
 
-raw = sys.stdin.read()
+path = os.environ.get("OC_RESP_FILE") or ""
 try:
-    data = json.loads(raw) if raw.strip() else {}
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
 except Exception as e:
     print(f"chat-complete: invalid OpenClaw JSON: {e}", file=sys.stderr)
     sys.exit(3)
@@ -318,7 +326,7 @@ complete_via_cli() {
     echo >>"$LOG"
     return 1
   fi
-  if ! CONTENT=$(extract_content <"$RESP_FILE" 2>"$WORKDIR/extract.err"); then
+  if ! CONTENT=$(extract_content "$RESP_FILE" 2>"$WORKDIR/extract.err"); then
     echo "$ts chat_complete_cli_extract_fail" >> "$LOG"
     head -c 400 "$WORKDIR/extract.err" >>"$LOG" || true
     echo >>"$LOG"
@@ -351,7 +359,7 @@ wait_run_then_history() {
   fi
 
   # Prefer text embedded in wait payload if present.
-  if CONTENT=$(extract_content <"$WORKDIR/wait.json" 2>/dev/null); then
+  if CONTENT=$(extract_content "$WORKDIR/wait.json" 2>/dev/null); then
     return 0
   fi
 
@@ -474,7 +482,7 @@ complete_via_hooks() {
       ;;
   esac
 
-  if CONTENT=$(extract_content <"$RESP_FILE" 2>/dev/null); then
+  if CONTENT=$(extract_content "$RESP_FILE" 2>/dev/null); then
     return 0
   fi
 
