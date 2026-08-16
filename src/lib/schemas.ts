@@ -197,6 +197,27 @@ export const updateReleaseSchema = z.object({
   notes: optionalStr,
 });
 
+export const ComiclawPublishModeEnum = z.enum(["video", "episode"]);
+
+export const comiclawListingSchema = z.object({
+  title: nonEmpty.max(200),
+  description: optionalStr,
+  coverUrl: optionalStr,
+  authorName: optionalStr,
+  mode: ComiclawPublishModeEnum,
+  episodeOrder: z.number().int().positive().max(999).optional(),
+  episodeTitle: optionalStr,
+  seriesWorkId: optionalStr,
+  seriesTitle: optionalStr,
+  seriesDescription: optionalStr,
+  seriesCoverUrl: optionalStr,
+});
+
+export const agentComiclawListingSchema = comiclawListingSchema.extend({
+  title: nonEmpty.max(200).optional(),
+  mode: ComiclawPublishModeEnum.optional(),
+});
+
 export const createCharacterSchema = z.object({
   name: nonEmpty.max(200),
   tagline: optionalStr,

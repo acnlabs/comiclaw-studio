@@ -39,6 +39,8 @@ export function findFullProjectByToken(shareToken: string) {
         },
       },
       releases: { orderBy: { createdAt: "asc" } },
+      work: { select: { id: true, title: true } },
+      seriesWork: { select: { id: true, title: true } },
       // 归属:哪个栏目、答的是哪一记。共创项目否则是一座孤岛,回不去
       column: { select: { name: true, slug: true } },
       parentProject: {

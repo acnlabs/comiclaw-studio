@@ -50,6 +50,8 @@ async function loadFeedItems(): Promise<FeedItem[]> {
       playUrl: w.videoUrl ?? w.episodes[0]?.videoUrl ?? "",
       coverUrl: w.coverUrl,
       episodeCount: w._count.episodes,
+      videoId: w.episodes[0]?.sourceWorkId ?? w.episodes[0]?.id ?? w.id,
+      episodeId: w.episodes[0]?.id ?? null,
       // 与排序同一个窗口判断,过期的推荐不再挂标
       featured: feedTier(rankable, now) === 0,
     }))

@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { ZodError, type ZodType } from "zod";
 import { checkApiKey, unauthorized, badRequest, notFoundJson, conflict, serverError } from "@/lib/auth";
+import { PublishError } from "@/lib/publish";
 import {
   authorizeAcnForProject,
   authenticateStudioOrAcnAgent,
@@ -112,6 +113,9 @@ async function defaultProjectIdFromParams(ctx: unknown): Promise<string | null> 
 }
 
 export function mapError(err: unknown): Response {
+  if (err instanceof PublishError) {
+    return Response.json({ error: err.message }, { status: err.status });
+  }
   if (err instanceof ZodError) {
     const msg = err.issues
       .map((i) => `${i.path.join(".") || "body"}: ${i.message}`)

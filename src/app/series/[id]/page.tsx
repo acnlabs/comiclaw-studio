@@ -3,13 +3,17 @@ import { prisma } from "@/lib/db";
 import { fmtDate } from "@/lib/format";
 import { getLocale } from "@/lib/locale";
 import { translate, translateCategory } from "@/lib/i18n";
-import WorkPlayer from "@/components/WorkPlayer";
+import WorkWatch from "@/components/WorkWatch";
 
 export const dynamic = "force-dynamic";
 
-export default async function WorkPage(props: { params: Promise<{ id: string }> }) {
+export default async function WorkPage(props: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ ep?: string }>;
+}) {
   const locale = await getLocale();
   const { id } = await props.params;
+  const { ep } = await props.searchParams;
 
   const work = await prisma.work.findUnique({
     where: { id },
@@ -46,10 +50,13 @@ export default async function WorkPage(props: { params: Promise<{ id: string }> 
       )}
 
       <div className="mt-6">
-        <WorkPlayer
+        <WorkWatch
+          workId={work.id}
+          title={work.title}
           videoUrl={work.videoUrl}
           coverUrl={work.coverUrl}
           episodes={work.episodes}
+          initialEpisodeId={ep}
         />
       </div>
     </div>

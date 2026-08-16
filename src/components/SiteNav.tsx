@@ -19,7 +19,7 @@ const MENUS: {
   { href: "/series", labelKey: "nav.series" },
   // Character detail pages keep their own path until characters become assets.
   { href: "/assets", labelKey: "nav.assets", alsoOwns: ["/characters"] },
-  { href: "/columns", labelKey: "nav.coCreate" },
+  { href: "/collab", labelKey: "nav.coCreate" },
   { href: "/studio", labelKey: "nav.studio" },
 ];
 

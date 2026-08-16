@@ -31,7 +31,7 @@ Tasks are created in private subnet **`comiclaw-internal`** by the registered **
 
 ACN provides realtime delivery. Production host **should run `acn listen` permanently**; on invite / `task_request`, accept and execute immediately — do not rely on manual polling as the primary path.
 
-Ops runbook / cutover (`--runtime`, systemd, smoke): [`docs/ops-production.md`](../../docs/ops-production.md), [`docs/acn-listen-runtime-cutover.md`](../../docs/acn-listen-runtime-cutover.md). Requires `@acnlabs/acn-cli` ≥ **0.14.0**.
+Ops runbook / cutover (`--runtime`, systemd, smoke): [`docs/ops-production.md`](../../docs/ops-production.md), [`docs/acn-listen-runtime-cutover.md`](../../docs/acn-listen-runtime-cutover.md). Requires `@acnlabs/acn-cli` ≥ **0.14.0** (Interfaze hop / composer: ≥ **1.0.2**).
 
 ```bash
 W=skills/comiclaw-studio/scripts/production-worker.sh
@@ -246,7 +246,7 @@ Prefer teaching agents via skill + playbook; keep UI copy brief.
 3.6. **Multiple video candidates** — push all with `shot-version` (mediaType=VIDEO); client picks on site. Before final film, `get-project` and honor `selectedVersion` per shot.
 3.7. **Character voice samples** — upload audio via `upload-file`, set `audioUrl` on `add-asset` / `asset-version`.
 4. **Advance pipeline** — `set-stage`: SCRIPT → ASSETS → STORYBOARD → FILM → RELEASE → DONE.
-5. **Release registry** — `add-release` when platform chosen; `update-release` to PUBLISHED with URL → latest film auto-publishes to platform feed.
+5. **Release registry** — `add-release` when an off-site platform is chosen; `update-release` to PUBLISHED with URL. To list on ComicLaw itself (title / cover / synopsis, optionally as an episode), use `publish-comiclaw` — do not rely on the off-site record to copy the working project name.
 5.5. **Read comments before rework** — `list-comments <projectId>` for timecoded notes; fix; `resolve-comment <commentId>` when done.
 6. **Media upload first** — Jimeng/Seedance outputs → `upload-file` → fill `imageUrl` / `mediaUrl` / `videoUrl`.
 7. **Charge before real upstream cost** — `charge` with `action`+`units` (+ `provider` / `idempotencyKey`); **do not send `amount`**. Put `submitHint` / `consumption` in ACN submit. **402 = stop upstream**; retry same `idempotencyKey`. Free actions (e.g. script draft) may skip or get `charged=0`.
@@ -378,6 +378,7 @@ $S update-character <characterId> '{"licensePoints":0}'
 - `get-project <projectId>` — full project snapshot (all stages/versions); resume context or verify progress
 - `list-projects` — all projects
 - `publish-work '<json>'` — publish to platform feed without full project flow; `kind=SERIES` requires `episodes`; default `category` is drama-style series
+- `publish-comiclaw <projectId> '<json>'` — list the project's latest film on ComicLaw with audience-facing title / cover / synopsis (`mode=video|episode`)
 
 ## Troubleshooting
 
@@ -405,23 +406,28 @@ You never need `ADMIN_KEY` or admin UI — human ops only.
 **Preferred (ACN CLI owns writeback):** host only returns `{"content":"..."}`; CLI POSTs Gateway.
 
 ```bash
-# Requires @acnlabs/acn-cli ≥ 0.14.1 with --chat-writeback
-install -m 755 scripts/chat-complete.sh ~/.config/comiclaw/chat-complete.sh
+# Requires @acnlabs/acn-cli ≥ 1.0.2 (wake envelope includes chat.requested_model)
+scripts/install-chat-complete.sh --with-supported-models
 install -m 755 scripts/acn-to-openclaw-wake.sh ~/.config/comiclaw/acn-to-openclaw-wake.sh
 # ~/.config/comiclaw/hooks.token — OpenClaw hooks bearer
 export AGENTPLANET_API_BASE=https://api.example.com   # or http://127.0.0.1:8000
-export AGENTPLANET_INTERNAL_TOKEN=<AgentPlanet INTERNAL_API_TOKEN>
-# (alias: AGENTPLANET_INTERNAL_API_TOKEN)
+# Writeback authenticates with ACN agent JWT (CLI --chat-writeback). INTERNAL token is unused.
 # OpenClaw MUST support waitForResult on POST /hooks/agent (else chat-complete exits 3)
 # Smoke without OpenClaw: COMICLAW_CHAT_COMPLETE_STUB=1
+
+export ACN_PREFERRED_MODEL=tencenttokenplan/kimi-k2.5
+# Composer dropdown: ACN_SUPPORTED_MODELS or listen --supported-models (drop-in from installer)
 
 acn listen --runtime command \
   --wake-exec ~/.config/comiclaw/acn-to-openclaw-wake.sh \
   --chat-writeback \
-  --chat-complete-exec ~/.config/comiclaw/chat-complete.sh
+  --chat-complete-exec ~/.config/comiclaw/chat-complete.sh \
+  --model "$ACN_PREFERRED_MODEL"
 ```
 
-`scripts/chat-complete.sh`: stdin=NormalizedEvent → OpenClaw `/hooks/agent` (`waitForResult`) → stdout `{"content":"..."}`.
+`--chat-complete-exec` must be the **wrapper** (`chat-complete.sh`). Inner lives at `chat-complete.inner.sh`. Flattening them loses fail-closed + empty-content recovery.
+
+**Per-hop model (Interfaze M2):** CLI 1.0.2 puts Host `metadata.agentplanet.requested_model` on `chat.requested_model`. Inner passes `openclaw agent --model`. Writeback `model_id` is **OpenClaw `agentMeta` only**. If requested is set and observed is missing or different (provider/id vs bare id still counts as match), complete **exits 3** — no agent bubble. Do not treat bubble tone or `MODEL_HOP=` text as proof.
 
 **Legacy (fragile):** wake script asks the LLM to run `chat-writeback.sh` after replying — prefer CLI flags above.
 

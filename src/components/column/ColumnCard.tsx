@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { safeMediaUrl } from "@/lib/columnTimeline";
+import { mastheadTint } from "@/lib/mastheadTint";
 
 export type ColumnCardData = {
   slug: string;
@@ -11,23 +12,6 @@ export type ColumnCardData = {
   latestEntry: string | null;
 };
 
-/**
- * Columns rarely have artwork early on, so the fallback cover sets the name as
- * a masthead over a deterministic tint instead of leaving a dark empty box.
- */
-const TINTS = [
-  "from-amber-500/40 via-amber-900/20 to-zinc-950",
-  "from-sky-500/40 via-sky-900/20 to-zinc-950",
-  "from-violet-500/40 via-violet-900/20 to-zinc-950",
-  "from-emerald-500/40 via-emerald-900/20 to-zinc-950",
-  "from-rose-500/40 via-rose-900/20 to-zinc-950",
-];
-
-function tintFor(slug: string): string {
-  let sum = 0;
-  for (let i = 0; i < slug.length; i++) sum = (sum + slug.charCodeAt(i)) % 997;
-  return TINTS[sum % TINTS.length];
-}
 
 export default function ColumnCard({
   column,
@@ -55,7 +39,7 @@ export default function ColumnCard({
           />
         ) : (
           <div
-            className={`flex h-full w-full items-center justify-center bg-gradient-to-br px-6 ${tintFor(column.slug)}`}
+            className={`flex h-full w-full items-center justify-center bg-gradient-to-br px-6 ${mastheadTint(column.slug)}`}
           >
             <span className="line-clamp-2 text-center text-2xl font-bold tracking-tight text-zinc-100/90">
               {column.name}

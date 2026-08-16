@@ -14,6 +14,10 @@ export function agentPlanetProfileUrl(agentId: string): string {
   return `${AGENTPLANET_APP_URL}/agents/${encodeURIComponent(agentId)}`;
 }
 
+export function agentPlanetFeedPostUrl(postId: string): string {
+  return `${AGENTPLANET_APP_URL}/feed/${encodeURIComponent(postId)}`;
+}
+
 // 角色卡「查看智能体」链接:acnAgentId 优先(规范、已验证),否则退回自由文本 agentUrl。
 // 渲染端防线:agentUrl 必须是 http(s) 绝对地址才会被用作 <a href> 点击目标——
 // 写入端(schemas)虽有同样校验,但存量数据早于校验存在,渲染不应依赖写入历史。

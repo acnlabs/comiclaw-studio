@@ -49,12 +49,19 @@ async function post(path: string, body: unknown, headers?: Record<string, string
 const auth = { authorization: `Bearer ${KEY}` };
 
 async function pagesRender() {
-  for (const p of ["/", "/columns", "/series", "/assets", "/credits", "/studio"]) {
+  for (const p of ["/", "/collab", "/series", "/assets", "/credits", "/studio"]) {
     const { status } = await get(p);
     record("页面", `${p} 可访问`, status === 200, `HTTP ${status}`);
   }
-  const journal = await get("/series?cat=" + encodeURIComponent("漫记"));
-  record("页面", "短剧库有「漫记」分类", journal.status === 200, `HTTP ${journal.status}`);
+  const columns = await get("/columns");
+  record(
+    "页面",
+    "/columns 转到发现·专栏",
+    columns.status >= 300 && columns.status < 400,
+    `HTTP ${columns.status}`
+  );
+  const journal = await get("/series?cat=" + encodeURIComponent("专栏"));
+  record("页面", "发现库有「专栏」分类", journal.status === 200, `HTTP ${journal.status}`);
 }
 
 async function authClosed() {

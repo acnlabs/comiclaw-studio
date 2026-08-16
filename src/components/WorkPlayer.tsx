@@ -17,14 +17,24 @@ export default function WorkPlayer({
   videoUrl,
   coverUrl,
   episodes,
+  current,
+  onCurrentChange,
 }: {
   videoUrl: string | null;
   coverUrl: string | null;
   episodes: EpisodeData[];
+  current?: EpisodeData | null;
+  onCurrentChange?: (episode: EpisodeData) => void;
 }) {
   const { t } = useT();
-  const [current, setCurrent] = useState<EpisodeData | null>(episodes[0] ?? null);
-  const src = current?.videoUrl ?? videoUrl;
+  const [internal, setInternal] = useState<EpisodeData | null>(episodes[0] ?? null);
+  const playing = current !== undefined ? current : internal;
+  const src = playing?.videoUrl ?? videoUrl;
+
+  function select(episode: EpisodeData) {
+    onCurrentChange?.(episode);
+    if (current === undefined) setInternal(episode);
+  }
 
   return (
     <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
@@ -54,9 +64,9 @@ export default function WorkPlayer({
             {episodes.map((e) => (
               <button
                 key={e.id}
-                onClick={() => setCurrent(e)}
+                onClick={() => select(e)}
                 className={`rounded-xl px-2 py-2.5 text-center text-sm transition-colors ${
-                  current?.id === e.id
+                  playing?.id === e.id
                     ? "bg-accent font-medium text-zinc-950"
                     : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
                 }`}
@@ -66,7 +76,7 @@ export default function WorkPlayer({
                 {e.duration != null && (
                   <div
                     className={`mt-0.5 text-[10px] ${
-                      current?.id === e.id ? "text-zinc-800" : "text-zinc-500"
+                      playing?.id === e.id ? "text-zinc-800" : "text-zinc-500"
                     }`}
                   >
                     {fmtDuration(e.duration)}
@@ -75,9 +85,12 @@ export default function WorkPlayer({
               </button>
             ))}
           </div>
-          {current?.title && (
+          {playing?.title && (
             <p className="px-2 pt-2 text-xs text-zinc-500">
-              {t("series.episodeItem", { n: current.order, title: current.title })}
+              {t("series.episodeItem", {
+                n: playing.order,
+                title: playing.title,
+              })}
             </p>
           )}
         </div>

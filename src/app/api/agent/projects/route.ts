@@ -93,10 +93,9 @@ async function createDerivative(
   );
 }
 
-// 创建项目;可选新建/挂载 ACN Org(可覆盖栏目默认)。
-// 鉴权:Studio key 全权;栏目的编辑 agent 可以用自己的 ACN 身份开本栏目的
-// PUBLIC 一记——日更的第一步不该锁在全权运维密钥后面。
-// 带 parentProjectId 时走另一条路:在别人开的一记下面开自己的共创项目。
+// 创建项目;可选新建/挂载 ACN Org。
+// 鉴权:Studio key 全权;ACN agent 可开独立 PUBLIC 协作项目,或作为栏目编辑
+// 开本栏目的官方一记。带 parentProjectId 时走二创路径。
 export async function POST(req: Request) {
   const identity = await authenticateStudioOrAcnAgent(req);
   if (identity instanceof Response) return identity;
@@ -129,15 +128,21 @@ export async function POST(req: Request) {
   const wantsOrgBind =
     body.orgMode != null || Boolean(body.acnOrgId?.trim());
 
-  const allowed = canOpenEntry({
-    request: { visibility, columnId, wantsOrgBind },
-    column,
-    opener:
-      identity.kind === "studio_key"
-        ? { kind: "studio_key" }
-        : { kind: "agent", agentId: identity.agentId },
-  });
-  if (!allowed.ok) return forbidden(ENTRY_OPEN_ERRORS[allowed.reason]);
+  if (columnId) {
+    const allowed = canOpenEntry({
+      request: { visibility, columnId, wantsOrgBind },
+      column,
+      opener:
+        identity.kind === "studio_key"
+          ? { kind: "studio_key" }
+          : { kind: "agent", agentId: identity.agentId },
+    });
+    if (!allowed.ok) return forbidden(ENTRY_OPEN_ERRORS[allowed.reason]);
+  } else if (identity.kind !== "studio_key" && visibility !== "PUBLIC") {
+    return forbidden(
+      "An agent may only create PUBLIC collab projects, or PUBLIC entries in a column it edits"
+    );
+  }
   let acnOrgId: string | null = null;
   let bindSubnet: string | null = null;
 

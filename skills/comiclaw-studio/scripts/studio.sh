@@ -115,6 +115,11 @@ usage() {
                                         置为 PUBLISHED 时自动把最新成片发布为平台作品
   publish-work '<json>'                 直接发布作品 {kind*: VIDEO|SERIES, title*, category, videoUrl,
                                         coverUrl, description, authorName, episodes: [{order, title, videoUrl, duration}]}
+  publish-comiclaw <projectId> '<json>' 发布到 ComicLaw（观众看到的标题/封面/简介，可与项目工作名不同）
+                                        {title, description, coverUrl, authorName, mode: video|episode,
+                                        episodeOrder, episodeTitle, seriesWorkId, seriesTitle,
+                                        seriesDescription, seriesCoverUrl}
+  get-comiclaw-listing <projectId>      读取当前上架快照（默认值 + 已上架作品）
 
 按用量扣款(生产成本;Studio 按价目表定价,工人只报 units)
   pricing                               查看价目表(每单位 Credits)
@@ -178,6 +183,8 @@ case "$cmd" in
   add-release)     require_worker_task; call POST "/api/agent/projects/$2/releases" "$3" ;;
   update-release)  require_worker_task; call PATCH "/api/agent/releases/$2" "$3" ;;
   publish-work)    call POST "/api/agent/works" "$2" ;;
+  publish-comiclaw) require_worker_task; call POST "/api/agent/projects/$2/publish" "$3" ;;
+  get-comiclaw-listing) require_worker_task; call GET "/api/agent/projects/$2/publish" ;;
   create-character) call POST "/api/agent/characters" "$2" ;;
   set-work-cast)    call POST "/api/agent/works/$2/cast" "$3" ;;
   list-characters)  call GET "/api/agent/characters" ;;
