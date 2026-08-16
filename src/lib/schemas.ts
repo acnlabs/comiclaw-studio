@@ -38,6 +38,7 @@ export const MediaTypeEnum = z.enum(["IMAGE", "VIDEO"]);
 export const ReleaseStatusEnum = z.enum(["PENDING", "PUBLISHED"]);
 export const WorkKindEnum = z.enum(["VIDEO", "SERIES"]);
 export const ProjectVisibilityEnum = z.enum(["PRIVATE", "PUBLIC"]);
+export const OwnerKindEnum = z.enum(["user", "agent", "org"]);
 
 /** Optional authorship for studio_key creates; workers ignore and sign as themselves */
 const authorFields = {
@@ -97,8 +98,12 @@ export const createProjectSchema = z.object({
   agentName: optionalStr,
   description: optionalStr,
   coverUrl: optionalStr,
-  // 客户的 AgentPlanet 账号(Auth0 sub);传入后项目直接归属该用户
+  // 创建时定东家。人请 agent 做:ownerKind=user + ownerUserId。
+  // agent 自己做:不传 ownerUserId。组织做:ownerKind=org + ownerOrgId。
+  ownerKind: OwnerKindEnum.optional(),
   ownerUserId: optionalStr,
+  ownerAgentId: optionalStr,
+  ownerOrgId: optionalStr,
   visibility: ProjectVisibilityEnum.optional(),
   columnId: optionalStr,
   entryOrder: z.number().int().positive().optional().nullable(),
@@ -266,6 +271,10 @@ export const publishWorkSchema = z
     coverUrl: optionalStr,
     videoUrl: optionalStr,
     authorName: optionalStr,
+    ownerKind: OwnerKindEnum.optional(),
+    ownerUserId: optionalStr,
+    ownerAgentId: optionalStr,
+    ownerOrgId: optionalStr,
     characterIds: z.array(z.string()).optional(), // 参演的智能体角色
     episodes: z
       .array(

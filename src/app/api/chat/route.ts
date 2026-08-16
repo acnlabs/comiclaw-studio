@@ -8,6 +8,8 @@ import { getWalletBalance } from "@/lib/agentplanet";
 import { badRequest } from "@/lib/auth";
 import { acnProductionConfigured, getAcnTask } from "@/lib/acn";
 import { enqueueAcnProductionTask } from "@/lib/productionTasks";
+import { ownerFields, resolveCreateOwner } from "@/lib/owner";
+import { ensureUserProfile } from "@/lib/userHandle";
 
 // 站内对话代理:浏览器不直连 OpenClaw Gateway,身份/限流/会话隔离都在这一层完成。
 //   1. 用 Studio 自己的 Auth0 账号验证身份(不是 Gateway 的共享密钥)
@@ -160,11 +162,13 @@ function buildTools(sub: string, origin: string, balance: number) {
             error: `今日创建项目数已达上限(${DAILY_PROJECT_LIMIT} 个),请明天再来。`,
           };
         }
+        const owner = resolveCreateOwner({ actor: { kind: "user", userId: sub } });
+        await ensureUserProfile(sub);
         const project = await prisma.project.create({
           data: {
             name: name.trim(),
             description: description?.trim() || null,
-            ownerUserId: sub,
+            ...ownerFields(owner),
           },
         });
         return {

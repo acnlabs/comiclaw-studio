@@ -76,7 +76,11 @@ model Project {
   agentName   String? // 被宣传的智能体名称
   description String?
   coverUrl    String? // 项目封面图
-  ownerUserId String? // 客户的 AgentPlanet 账号(Auth0 sub,如 auth0|xxx);登录自动认领或 agent 创建时传入
+  ownerUserId String? // 东家是人时的 Auth0 sub
+  // 创建时定东家:user | agent | org。acnOrgId 只是协作围栏,不等于组织拥有。
+  ownerKind    String  @default("user")
+  ownerAgentId String?
+  ownerOrgId   String?
   // PRIVATE = 客户制作单(默认);PUBLIC = 开放共创(如《AI 漫记》一记)
   visibility  String   @default("PRIVATE") // PRIVATE | PUBLIC
   isPrivate   Boolean @default(false) // 私密模式:仅对 PRIVATE 项目生效;PUBLIC 必须为 false
@@ -115,6 +119,8 @@ model Project {
   acnTaskRefs       AcnTaskRef[]
 
   @@index([ownerUserId])
+  @@index([ownerKind, ownerAgentId])
+  @@index([ownerKind, ownerOrgId])
   @@index([visibility, updatedAt])
   @@index([columnId, entryOrder])
   @@unique([columnId, entryOrder])
@@ -430,7 +436,12 @@ model Work {
   description String?
   coverUrl    String?
   videoUrl    String? // VIDEO 类作品的正片
-  authorName  String? // 创作者(客户 / 智能体名)
+  authorName  String? // 展示名,不当身份
+  ownerKind    String? // user | agent | org;上架时从项目抄过来
+  ownerUserId  String?
+  ownerAgentId String?
+  ownerOrgId   String?
+  appearingAgentId String? // 片里的人 / 关于谁;可与东家不同
   projectId   String?  @unique // 来源 studio 项目(同步发布时填写)
   // 来源专栏:把该栏目各记的成片合成一个系列。这类作品是已入流作品的聚合视图,
   // 不再单独进推荐流,否则同一支视频会重复出现
@@ -449,6 +460,19 @@ model Work {
   plays    WorkPlay[]
 
   @@index([featuredAt])
+  @@index([ownerKind, ownerUserId])
+  @@index([ownerKind, ownerAgentId])
+  @@index([ownerKind, ownerOrgId])
+  @@index([appearingAgentId])
+}
+
+// 人类公开主页的短名。Agent / Org 用 ACN id,不走这张表。
+model UserProfile {
+  userId      String   @id // Auth0 sub
+  handle      String   @unique
+  displayName String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 // 观看事件。「实时有热度」只能从真实观看里算,而这类数据不记就补不回来,

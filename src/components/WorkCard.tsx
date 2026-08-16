@@ -11,6 +11,7 @@ export interface WorkCardData {
   title: string;
   coverUrl: string | null;
   authorName: string | null;
+  authorHref?: string | null;
   publishedAt: string;
   episodeCount?: number;
   href?: string;
@@ -19,11 +20,10 @@ export interface WorkCardData {
 export default function WorkCard({ work }: { work: WorkCardData }) {
   const { t, tCategory, fmtDate } = useT();
 
+  const href = work.href ?? `/series/${work.id}`;
   return (
-    <Link
-      href={work.href ?? `/series/${work.id}`}
-      className="group overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/50 transition-colors hover:border-zinc-600"
-    >
+    <article className="group overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/50 transition-colors hover:border-zinc-600">
+      <Link href={href} className="block">
       <div className="relative aspect-[3/4] bg-zinc-950">
         {work.coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -56,13 +56,26 @@ export default function WorkCard({ work }: { work: WorkCardData }) {
           </span>
         )}
       </div>
+      </Link>
       <div className="px-3.5 py-3">
-        <h3 className="line-clamp-2 text-sm font-medium text-zinc-100">{work.title}</h3>
+        <h3 className="line-clamp-2 text-sm font-medium text-zinc-100">
+          <Link href={href} className="hover:text-accent">
+            {work.title}
+          </Link>
+        </h3>
         <p className="mt-1 text-xs text-zinc-500">
-          {work.authorName && <>{work.authorName} · </>}
+          {work.authorName &&
+            (work.authorHref ? (
+              <Link href={work.authorHref} className="hover:text-accent">
+                {work.authorName}
+              </Link>
+            ) : (
+              work.authorName
+            ))}
+          {work.authorName && <> · </>}
           {fmtDate(work.publishedAt)}
         </p>
       </div>
-    </Link>
+    </article>
   );
 }
