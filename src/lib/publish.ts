@@ -6,6 +6,7 @@ import {
   registerPublishedVideo,
   type VideoRegistryResult,
 } from "@/lib/videoRegistry";
+import { acceptedBoundAgentId } from "@/lib/videoRegistryRules";
 
 export type ComiclawListing = {
   title: string;
@@ -124,7 +125,6 @@ async function assertSeriesUsable(
       kind: true,
       columnId: true,
       column: { select: { ownerUserId: true } },
-      episodeProjects: { select: { ownerUserId: true }, take: 20 },
     },
   });
   if (!series || series.kind !== "SERIES") {
@@ -132,12 +132,15 @@ async function assertSeriesUsable(
   }
   if (project.seriesWorkId === series.id) return series;
   if (project.columnId && series.columnId === project.columnId) return series;
-  if (
-    project.ownerUserId &&
-    (series.column?.ownerUserId === project.ownerUserId ||
-      series.episodeProjects.some((p) => p.ownerUserId === project.ownerUserId))
-  ) {
+  if (project.ownerUserId && series.column?.ownerUserId === project.ownerUserId) {
     return series;
+  }
+  if (project.ownerUserId) {
+    const alreadyOnSeries = await prisma.project.findFirst({
+      where: { seriesWorkId: series.id, ownerUserId: project.ownerUserId },
+      select: { id: true },
+    });
+    if (alreadyOnSeries) return series;
   }
   throw new PublishError(403, "You cannot publish into this series");
 }
@@ -150,13 +153,19 @@ async function registerListedVideo(args: {
   projectOwnerUserId: string | null;
   listing: ComiclawListing;
   publisherAgentId?: string | null;
+  allowExplicitBoundAgent?: boolean;
 }): Promise<VideoRegistryResult> {
-  const appearingAgentId =
-    args.listing.boundAgentId?.trim() ||
-    (await findAppearingAgentId({
-      projectId: args.projectId,
-      workId: args.workId,
-    }));
+  const inferred = await findAppearingAgentId({
+    projectId: args.projectId,
+    workId: args.workId,
+  });
+  const appearingAgentId = acceptedBoundAgentId({
+    requested: args.listing.boundAgentId ?? null,
+    inferred,
+    publisherAgentId: args.publisherAgentId,
+    filmAuthorAgentId: args.filmAuthorAgentId,
+    allowExplicitBoundAgent: args.allowExplicitBoundAgent,
+  });
   return registerPublishedVideo({
     workId: args.workId,
     displayName: args.displayName,
@@ -171,7 +180,7 @@ async function registerListedVideo(args: {
 export async function publishProjectToComiclaw(
   projectId: string,
   listing: ComiclawListing,
-  opts?: { publisherAgentId?: string | null },
+  opts?: { publisherAgentId?: string | null; allowExplicitBoundAgent?: boolean },
 ) {
   const project = await prisma.project.findUnique({
     where: { id: projectId },
@@ -195,6 +204,7 @@ export async function publishProjectToComiclaw(
     projectOwnerUserId: project.ownerUserId,
     listing,
     publisherAgentId: opts?.publisherAgentId,
+    allowExplicitBoundAgent: opts?.allowExplicitBoundAgent,
   });
 
   if (listing.mode !== "episode") {

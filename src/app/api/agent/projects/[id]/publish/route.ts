@@ -8,7 +8,7 @@ import {
   getComiclawPublishSnapshot,
   publishProjectToComiclaw,
 } from "@/lib/publish";
-import type { ProductionAuth } from "@/lib/acnAuth";
+import { productionAgentId, type ProductionAuth } from "@/lib/acnAuth";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -62,11 +62,18 @@ export const POST = withProjectWorkerAuth(
     if (gated) return gated;
 
     const body = await parseBody(req, agentComiclawListingSchema);
-    const published = await publishProjectToComiclaw(id, {
-      ...body,
-      title: body.title?.trim() || project.name,
-      mode: body.mode ?? "video",
-    });
+    const published = await publishProjectToComiclaw(
+      id,
+      {
+        ...body,
+        title: body.title?.trim() || project.name,
+        mode: body.mode ?? "video",
+      },
+      {
+        publisherAgentId: productionAgentId(auth),
+        allowExplicitBoundAgent: auth.kind === "studio_key",
+      },
+    );
     emitProjectUpdate(id, "comiclaw.published");
     return Response.json(published);
   },

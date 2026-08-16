@@ -19,6 +19,26 @@ function trimId(value: string | null | undefined): string | null {
   return id || null;
 }
 
+/** Client-supplied boundAgentId is a hint. Workers cannot point at an arbitrary agent. */
+export function acceptedBoundAgentId(args: {
+  requested?: string | null;
+  inferred?: string | null;
+  publisherAgentId?: string | null;
+  filmAuthorAgentId?: string | null;
+  allowExplicitBoundAgent?: boolean;
+}): string | null {
+  const requested = trimId(args.requested);
+  const inferred = trimId(args.inferred);
+  if (!requested) return inferred;
+  if (args.allowExplicitBoundAgent) return requested;
+  const allowed = new Set(
+    [inferred, trimId(args.publisherAgentId), trimId(args.filmAuthorAgentId)].filter(
+      (id): id is string => Boolean(id),
+    ),
+  );
+  return allowed.has(requested) ? requested : inferred;
+}
+
 export function resolveVideoRegistrySubject(args: {
   appearingAgentId?: string | null;
   publisherAgentId?: string | null;

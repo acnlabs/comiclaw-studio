@@ -5,6 +5,7 @@
 import assert from "node:assert/strict";
 import { registerAssetPayload } from "../src/lib/assetRegistry";
 import {
+  acceptedBoundAgentId,
   resolveVideoRegistrySubject,
   videoRegisterArgs,
 } from "../src/lib/videoRegistryRules";
@@ -71,5 +72,25 @@ assert.deepEqual(registerAssetPayload(args), {
   bound_agent_id: "agent-star",
 });
 ok("published work id is the stable video localId");
+
+assert.equal(
+  acceptedBoundAgentId({
+    requested: "agent-other",
+    inferred: "agent-star",
+    publisherAgentId: "agent-comiclaw",
+  }),
+  "agent-star",
+);
+ok("workers cannot bind a published film to an unrelated agent");
+
+assert.equal(
+  acceptedBoundAgentId({
+    requested: "agent-featured",
+    inferred: "agent-star",
+    allowExplicitBoundAgent: true,
+  }),
+  "agent-featured",
+);
+ok("studio key may set an explicit appearing agent");
 
 console.log("\nAll video registry checks passed.");
