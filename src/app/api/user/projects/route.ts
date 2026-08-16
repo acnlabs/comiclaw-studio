@@ -2,7 +2,7 @@ import { after } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { verifyUserToken } from "@/lib/userAuth";
-import { unauthorized, badRequest, notFoundJson, forbidden } from "@/lib/auth";
+import { unauthorized, badRequest, notFoundJson, forbidden, tooManyRequests } from "@/lib/auth";
 import { mapError, parseBody, withRetry } from "@/lib/api";
 import {
   ContributePolicyEnum,
@@ -14,18 +14,19 @@ import { canDeriveFrom, DERIVATION_ERRORS } from "@/lib/derivativeProject";
 import { coCreationData, declaresOwnGovernance } from "@/lib/coCreation";
 import { resolveOrgBindOnCreate } from "@/lib/orgBinding";
 import { reconcilePendingLicenses } from "@/lib/casting";
+import { maxOrgCreatesPerDay, startOfUtcDay } from "@/lib/columnQuota";
 
 const optionalStr = z.string().trim().max(2000).optional().nullable();
 
 const userCreateProjectSchema = z.object({
   name: z.string().trim().min(1).max(200),
   description: optionalStr,
-  /** PRIVATE delivery (default) or PUBLIC co-creation entry under a column */
+  /** PRIVATE delivery (default) or PUBLIC standalone collab project */
   visibility: ProjectVisibilityEnum.optional(),
+  /** Official 记 only: attach to a column the user owns. Not required for collab. */
   columnId: optionalStr,
   /** Set to build your own co-creation project under someone else's entry */
   parentProjectId: optionalStr,
-  /** When creating a PUBLIC entry under a new column in one step — use /api/user/columns first */
   orgMode: OrgBindModeEnum.optional(),
   acnOrgId: optionalStr,
   orgJoinPolicy: OrgJoinPolicyEnum.optional(),
@@ -120,7 +121,8 @@ async function createDerivative(
 /**
  * Create a project owned by the signed-in user.
  * - PRIVATE: classic delivery cell
- * - PUBLIC: co-creation entry; must attach a column the user owns
+ * - PUBLIC: standalone collab project (own theme; optional ACN Org)
+ * - columnId + PUBLIC: official 记 under a column the user owns
  * - parentProjectId: a co-creation project under someone else's entry
  */
 export async function POST(req: Request) {
@@ -140,11 +142,13 @@ export async function POST(req: Request) {
   const visibility = body.visibility ?? "PRIVATE";
   const columnId = body.columnId?.trim() || null;
 
-  if (visibility === "PUBLIC" && !columnId) {
-    return badRequest("PUBLIC co-creation projects require columnId");
-  }
   if (visibility === "PRIVATE" && columnId) {
-    return badRequest("PRIVATE projects cannot attach to a co-creation column");
+    return badRequest("PRIVATE projects cannot attach to a column");
+  }
+  if (body.orgMode === "attach" || body.acnOrgId?.trim()) {
+    return badRequest(
+      "orgMode=attach is not available for user-created projects; use create or none"
+    );
   }
 
   if (columnId) {
@@ -158,23 +162,47 @@ export async function POST(req: Request) {
     }
   }
 
-  const wantsOrgBind =
-    body.orgMode != null || Boolean(body.acnOrgId?.trim());
+  const wantsOrgCreate = body.orgMode === "create";
   let acnOrgId: string | null = null;
 
-  if (wantsOrgBind) {
+  if (wantsOrgCreate || body.orgMode === "none") {
     if (visibility !== "PUBLIC") {
-      return badRequest("Org binding is only for PUBLIC co-creation projects");
+      return badRequest("Org binding is only for PUBLIC collab projects");
+    }
+  }
+
+  if (wantsOrgCreate) {
+    const since = startOfUtcDay();
+    const [columnOrgs, projectOrgs] = await Promise.all([
+      prisma.column.count({
+        where: { ownerUserId: sub, orgCreatedAt: { gte: since } },
+      }),
+      prisma.project.count({
+        where: {
+          ownerUserId: sub,
+          acnOrgId: { not: null },
+          createdAt: { gte: since },
+        },
+      }),
+    ]);
+    const limit = maxOrgCreatesPerDay();
+    if (columnOrgs + projectOrgs >= limit) {
+      return tooManyRequests(
+        `Daily limit of ${limit} new collaboration Orgs reached; retry after 00:00 UTC or create with orgMode=none`
+      );
     }
     const bind = await resolveOrgBindOnCreate({
-      mode: body.orgMode,
-      acnOrgId: body.acnOrgId,
+      mode: "create",
       displayName: body.name,
       joinPolicy: body.orgJoinPolicy,
     });
     if (bind instanceof Response) return bind;
     acnOrgId = bind.acnOrgId;
   }
+
+  const contributePolicy =
+    body.contributePolicy ??
+    (wantsOrgCreate ? "org_members" : visibility === "PUBLIC" && !columnId ? "open" : null);
 
   const project = await withRetry(async () => {
     const entryOrder = columnId ? await nextEntryOrder(columnId) : null;
@@ -187,7 +215,7 @@ export async function POST(req: Request) {
         columnId,
         entryOrder,
         acnOrgId,
-        contributePolicy: body.contributePolicy ?? null,
+        contributePolicy,
         ...(visibility === "PUBLIC" ? { isPrivate: false } : {}),
       },
     });

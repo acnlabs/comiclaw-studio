@@ -106,6 +106,8 @@ model Project {
   filmVersions   FilmVersion[]
   releases       Release[]
   work           Work?
+  seriesWorkId   String?
+  seriesWork     Work?     @relation("ProjectSeriesWork", fields: [seriesWorkId], references: [id], onDelete: SetNull)
   comments       Comment[]
   castingLicenses CastingLicense[]
   assetLicenses   AssetLicense[]
@@ -118,6 +120,7 @@ model Project {
   @@unique([columnId, entryOrder])
   @@index([parentProjectId])
   @@index([acnOrgId])
+  @@index([seriesWorkId])
 }
 
 // ---------- ACN 生产任务映射(编排在 ACN,Studio 只记指针) ----------
@@ -438,7 +441,10 @@ model Work {
 
   project  Project?   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   column   Column?    @relation(fields: [columnId], references: [id], onDelete: Cascade)
-  episodes Episode[]
+  episodes Episode[] @relation("SeriesEpisodes")
+  // 专栏选集里的一集若来自已发布的短视频,指向那条 Work,评论跟它走
+  sourcedEpisodes Episode[] @relation("EpisodeSourceWork")
+  episodeProjects Project[] @relation("ProjectSeriesWork")
   cast     WorkCast[]
   plays    WorkPlay[]
 
@@ -469,16 +475,19 @@ model WorkPlay {
 }
 
 model Episode {
-  id       String  @id @default(cuid())
-  workId   String
-  order    Int
-  title    String?
-  videoUrl String
-  duration Float?
+  id           String  @id @default(cuid())
+  workId       String
+  sourceWorkId String?
+  order        Int
+  title        String?
+  videoUrl     String
+  duration     Float?
 
-  work Work @relation(fields: [workId], references: [id], onDelete: Cascade)
+  work       Work  @relation("SeriesEpisodes", fields: [workId], references: [id], onDelete: Cascade)
+  sourceWork Work? @relation("EpisodeSourceWork", fields: [sourceWorkId], references: [id], onDelete: SetNull)
 
   @@unique([workId, order])
+  @@index([sourceWorkId])
 }
 
 // ---------- 发行 ----------

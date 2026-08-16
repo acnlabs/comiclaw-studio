@@ -7,6 +7,7 @@ import {
   REGISTRY_PATH,
   storeProductPath,
   STORE_PRODUCTS_PATH,
+  isStoreListableKind,
   type AssetKind,
   type AssetOwner,
   type ChangeOwnerReason,
@@ -101,6 +102,10 @@ export async function upsertAssetListing(args: {
   owner: AssetOwner;
   credits: number;
 }): Promise<string | null> {
+  if (!isStoreListableKind(args.kind)) {
+    console.error("[agentplanet] refusing to list a non-store kind", args.kind);
+    return null;
+  }
   try {
     if (args.storeProductId) {
       const res = await storeFetch(storeProductPath(args.storeProductId), {

@@ -9,11 +9,8 @@ import { AUTH0_AUDIENCE } from "@/lib/auth0";
 import type { MessageKey } from "@/lib/i18n";
 
 type Kind = "private" | "cocreate";
-type ColumnMode = "existing" | "new";
 /** Self-serve: create or none only (attach needs Org stewardship proof). */
 type OrgMode = "none" | "create";
-
-export type CreatePanelColumn = { id: string; slug: string; name: string };
 
 const ORG_LABEL: Record<OrgMode, MessageKey> = {
   create: "studioCreate.org.create",
@@ -62,11 +59,6 @@ export default function StudioCreatePanel() {
   const [kind, setKind] = useState<Kind>("private");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [myColumns, setMyColumns] = useState<CreatePanelColumn[]>([]);
-  const [columnMode, setColumnMode] = useState<ColumnMode>("new");
-  const [columnId, setColumnId] = useState("");
-  const [columnName, setColumnName] = useState("");
-  const [columnSlug, setColumnSlug] = useState("");
   const [orgMode, setOrgMode] = useState<OrgMode>("create");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,23 +73,9 @@ export default function StudioCreatePanel() {
     };
   }, [getAccessTokenSilently]);
 
-  /** Columns are only needed once the dialog opens, so fetch lazily. */
-  const openDialog = async () => {
+  const openDialog = () => {
     setOpen(true);
     setError(null);
-    try {
-      const headers = await authHeaders();
-      const res = await fetch("/api/user/my-columns", { headers });
-      const data = (await res.json()) as { columns?: CreatePanelColumn[] };
-      const cols = data.columns ?? [];
-      setMyColumns(cols);
-      if (cols[0]) {
-        setColumnId(cols[0].id);
-        setColumnMode("existing");
-      }
-    } catch {
-      setMyColumns([]);
-    }
   };
 
   const close = () => {
@@ -121,56 +99,25 @@ export default function StudioCreatePanel() {
         setError(data?.error || t("studioCreate.error"));
       };
 
-      if (kind === "private") {
-        const res = await fetch("/api/user/projects", {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            name: name.trim(),
-            description: description.trim() || null,
-            visibility: "PRIVATE",
-          }),
-        });
-        if (!res.ok) return fail(res);
-        const data = await res.json();
-        router.push(data.sharePath || `/p/${data.shareToken}`);
-        return;
-      }
-
-      let targetColumnId = columnId;
-      if (columnMode === "new") {
-        const colRes = await fetch("/api/user/columns", {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            name: columnName.trim() || name.trim(),
-            // A Chinese-only name slugifies to nothing, so let the owner set
-            // the URL instead of falling back to column-<random>.
-            slug: columnSlug.trim() || undefined,
-            orgMode,
-            orgJoinPolicy: "approval",
-            contributePolicy: "org_members",
-          }),
-        });
-        if (!colRes.ok) return fail(colRes);
-        const colData = await colRes.json();
-        targetColumnId = colData.column?.id;
-      }
-
-      if (!targetColumnId) {
-        setError(t("studioCreate.needColumn"));
-        return;
-      }
-
       const res = await fetch("/api/user/projects", {
         method: "POST",
         headers,
-        body: JSON.stringify({
-          name: name.trim(),
-          description: description.trim() || null,
-          visibility: "PUBLIC",
-          columnId: targetColumnId,
-        }),
+        body: JSON.stringify(
+          kind === "private"
+            ? {
+                name: name.trim(),
+                description: description.trim() || null,
+                visibility: "PRIVATE",
+              }
+            : {
+                name: name.trim(),
+                description: description.trim() || null,
+                visibility: "PUBLIC",
+                orgMode,
+                orgJoinPolicy: orgMode === "create" ? "approval" : undefined,
+                contributePolicy: orgMode === "create" ? "org_members" : "open",
+              }
+        ),
       });
       if (!res.ok) return fail(res);
       const data = await res.json();
@@ -186,7 +133,7 @@ export default function StudioCreatePanel() {
     <>
       <button
         type="button"
-        onClick={() => void openDialog()}
+        onClick={openDialog}
         className="rounded-full bg-accent px-4 py-1.5 text-sm font-medium text-zinc-950 transition-opacity hover:opacity-90"
       >
         {t("studioCreate.open")}
@@ -234,85 +181,23 @@ export default function StudioCreatePanel() {
           </label>
 
           {kind === "cocreate" ? (
-            <div className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-              <Segmented<ColumnMode>
-                value={columnMode}
-                onChange={setColumnMode}
-                options={[
-                  {
-                    value: "existing",
-                    label: t("studioCreate.columnExisting"),
-                  },
-                  { value: "new", label: t("studioCreate.columnNew") },
-                ]}
+            <div className="space-y-1.5 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+              <p className="text-sm text-zinc-400">
+                {t("studioCreate.orgSection")}
+              </p>
+              <Segmented<OrgMode>
+                value={orgMode}
+                onChange={setOrgMode}
+                options={(["create", "none"] as OrgMode[]).map((m) => ({
+                  value: m,
+                  label: t(ORG_LABEL[m]),
+                }))}
               />
-
-              {columnMode === "existing" ? (
-                myColumns.length === 0 ? (
-                  <p className="text-xs text-zinc-500">
-                    {t("studioCreate.noOwnedColumns")}
-                  </p>
-                ) : (
-                  <label className="block text-sm text-zinc-400">
-                    {t("studioCreate.pickColumn")}
-                    <select
-                      value={columnId}
-                      onChange={(e) => setColumnId(e.target.value)}
-                      className={inputClass}
-                    >
-                      {myColumns.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )
-              ) : (
-                <>
-                  <label className="block text-sm text-zinc-400">
-                    {t("studioCreate.columnName")}
-                    <input
-                      value={columnName}
-                      onChange={(e) => setColumnName(e.target.value)}
-                      required
-                      className={inputClass}
-                    />
-                  </label>
-                  <label className="block text-sm text-zinc-400">
-                    {t("studioCreate.columnSlug")}
-                    <input
-                      value={columnSlug}
-                      onChange={(e) => setColumnSlug(e.target.value)}
-                      placeholder="my-column"
-                      className={`${inputClass} font-mono`}
-                    />
-                    <span className="mt-1 block text-xs text-zinc-600">
-                      {t("studioCreate.columnSlugHint", {
-                        slug: columnSlug.trim() || "my-column",
-                      })}
-                    </span>
-                  </label>
-                  <div className="space-y-1.5">
-                    <p className="text-sm text-zinc-400">
-                      {t("studioCreate.orgSection")}
-                    </p>
-                    <Segmented<OrgMode>
-                      value={orgMode}
-                      onChange={setOrgMode}
-                      options={(["create", "none"] as OrgMode[]).map((m) => ({
-                        value: m,
-                        label: t(ORG_LABEL[m]),
-                      }))}
-                    />
-                    <p className="text-xs leading-relaxed text-zinc-600">
-                      {orgMode === "create"
-                        ? t("studioCreate.orgCreateHint")
-                        : t("studioCreate.orgNoneHint")}
-                    </p>
-                  </div>
-                </>
-              )}
+              <p className="text-xs leading-relaxed text-zinc-600">
+                {orgMode === "create"
+                  ? t("studioCreate.orgCreateHint")
+                  : t("studioCreate.orgNoneHint")}
+              </p>
             </div>
           ) : null}
 

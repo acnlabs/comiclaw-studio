@@ -30,7 +30,7 @@ description: 【官方生产专用,勿给第三方 agent】将短视频/短剧�
 
 ACN 提供实时通道。生产机**应常驻 listen**,被 invite / 收到 `task_request` 后立刻 accept 并执行;不要依赖人工敲命令,也不要把短轮询当主路径。
 
-运维收口 / 切换说明(`--runtime`、systemd、验收):见 [`docs/ops-production.md`](../../docs/ops-production.md)、[`docs/acn-listen-runtime-cutover.md`](../../docs/acn-listen-runtime-cutover.md)。需 `@acnlabs/acn-cli` ≥ **0.14.0**。
+运维收口 / 切换说明(`--runtime`、systemd、验收):见 [`docs/ops-production.md`](../../docs/ops-production.md)、[`docs/acn-listen-runtime-cutover.md`](../../docs/acn-listen-runtime-cutover.md)。需 `@acnlabs/acn-cli` ≥ **0.14.0**（Interfaze hop / composer：≥ **1.0.2**）。
 
 ```bash
 W=skills/comiclaw-studio/scripts/production-worker.sh
@@ -244,7 +244,7 @@ curl -sS -X DELETE "$STUDIO_BASE_URL/api/user/assets/<assetId>/publish" \
 3.6. **分镜多候选让客户选(抽卡)**:同一个分镜生成多个候选视频时,全部用 `shot-version`(mediaType=VIDEO)推上去,客户会在页面上点「选用此版本」;合成成片前用 `get-project` 检查各分镜的 `selectedVersion` 字段,**优先使用客户选定的版本**,客户没选的用你认为最好的。
 3.7. **角色资产带音色**:角色的声音样本(TTS 试听)先 `upload-file` 上传音频,把返回 URL 填入 `add-asset` / `asset-version` 的 `audioUrl` 字段,客户可以在资产卡上直接试听,声音方向不对能早期纠正。
 4. **阶段完成后推进流水线**:用 `set-stage` 依次推进 SCRIPT → ASSETS → STORYBOARD → FILM → RELEASE → DONE,客户页面的进度条以此为准。
-5. **发行如实登记**:确定发行平台时 `add-release`;实际上架成功后 `update-release` 置为 `PUBLISHED` 并回填链接——此时最新成片会自动发布到平台「推荐」流,无需额外操作。
+5. **发行如实登记**:站外平台用 `add-release` / `update-release`。上架到 ComicLaw 本身（观众看到的标题 / 封面 / 简介，可选成一集）用 `publish-comiclaw`，不要靠站外记录顺带抄项目工作名。这次调用同时把成片登记为出镜智能体的 `video` 资产，供 Agent 上新选用（不上 Store）。项目里没有角色/智能体绑定时传 `boundAgentId`。
 5.5. **返工前先看批注**:客户会在成片播放器上留时间码批注(如"00:23 转场太硬")。每次准备修改成片前、以及客户说"我提了意见"时,先 `list-comments <projectId>` 读取未处理的批注,按时间码精确定位修改;每处理完一条,`resolve-comment <commentId>` 标记已解决,客户页面会实时看到「已处理」标记。
 6. **媒体一律先上传**:即梦 / Seedance 等工具产出的图片和视频,先用 `upload-file` 上传到 Studio,再把返回的 URL 填入 `imageUrl` / `mediaUrl` / `videoUrl` 字段。
 7. **消耗真实生成成本前必须先扣款**:出图/出视频/后期等,调用前先 `charge`,只传 `action`+`units`(+`provider`/`idempotencyKey`),**不要传 amount**(价目在 Studio)。成功后把响应里的 `submitHint`/`consumption` 写进 ACN `submit` 与必要时的 `set-status`。**402 不得继续上游**;同 `idempotencyKey` 重试。写剧本草稿等单价为 0 的动作可跳过,或 charge 后会返回 `charged=0`。
@@ -385,6 +385,7 @@ $S update-character <characterId> '{"licensePoints":0}'
 - `get-project <projectId>`:读取项目全量数据(各阶段交付物与版本),恢复上下文或核对进度时使用。
 - `list-projects`:列出全部项目。
 - `publish-work '<json>'`:不经项目流程直接发布平台作品,用于整部短剧上架(kind=SERIES 时必须携带 `episodes` 分集数组,`category` 默认「漫剧」)。
+- `publish-comiclaw <projectId> '<json>'`:把项目最新成片上架到 ComicLaw，填写观众看到的标题 / 封面 / 简介（`mode=video|episode`）。同时把成片登记为该智能体的 `asset_kind=video`（上新 Video 槽可用，不上 Store）。出镜智能体无法从项目推断时，可带 `boundAgentId`。
 
 ## 故障排查(遇到问题先做这两步)
 
@@ -416,20 +417,27 @@ Studio `invite` 后，生产 ACN 会 best-effort 推 A2A `task_request`；工人
 **推荐：** ACN CLI `--chat-writeback` 代寄回信；宿主只吐 `{"content":"..."}`。
 
 ```bash
-install -m 755 scripts/chat-complete.sh ~/.config/comiclaw/chat-complete.sh
+# 需 @acnlabs/acn-cli ≥ 1.0.2（wake 信封带 chat.requested_model）
+scripts/install-chat-complete.sh --with-supported-models
 install -m 755 scripts/acn-to-openclaw-wake.sh ~/.config/comiclaw/acn-to-openclaw-wake.sh
 export AGENTPLANET_API_BASE=…          # Chat Gateway
-export AGENTPLANET_INTERNAL_TOKEN=…    # 或 AGENTPLANET_INTERNAL_API_TOKEN（非 ACN key）
+# writeback 用 ACN agent JWT；INTERNAL token 可忽略
 # OpenClaw 必须支持 /hooks/agent 的 waitForResult；否则 chat-complete 退出码 3
 # 冒烟可用 COMICLAW_CHAT_COMPLETE_STUB=1
+
+export ACN_PREFERRED_MODEL=tencenttokenplan/kimi-k2.5
+# composer 下拉：ACN_SUPPORTED_MODELS 或 listen --supported-models（安装脚本可写 drop-in）
 
 acn listen --runtime command \
   --wake-exec ~/.config/comiclaw/acn-to-openclaw-wake.sh \
   --chat-writeback \
-  --chat-complete-exec ~/.config/comiclaw/chat-complete.sh
+  --chat-complete-exec ~/.config/comiclaw/chat-complete.sh \
+  --model "$ACN_PREFERRED_MODEL"
 ```
 
-`scripts/chat-complete.sh`：stdin=NormalizedEvent → OpenClaw → stdout `{"content":"..."}`。
+`--chat-complete-exec` 必须是 **wrapper**（`chat-complete.sh`），inner 在 `chat-complete.inner.sh`。合成一个文件会丢掉 fail-closed 和空回复恢复。
+
+**逐跳模型（Interfaze M2）：** CLI 1.0.2 把 Host `requested_model` 放到 `chat.requested_model`，inner 传 `openclaw agent --model`。writeback 的 `model_id` **只认** OpenClaw `agentMeta`。选了模型但对不上 / 没上报 → **不 writeback**。不要用气泡文风或 `MODEL_HOP=` 当证据。
 
 **过渡（脆弱）：** 仍可用 wake 脚本让 LLM 自己跑 `chat-writeback.sh`：
 

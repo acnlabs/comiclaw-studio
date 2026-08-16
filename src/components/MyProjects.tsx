@@ -15,6 +15,7 @@ interface MyProject {
   coverUrl: string | null;
   currentStage: string;
   shareToken: string;
+  visibility?: string;
   updatedAt: string;
 }
 
@@ -79,7 +80,14 @@ export default function MyProjects({ bare }: { bare?: boolean }) {
                   />
                 )}
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium text-zinc-100">{p.name}</div>
+                  <div className="flex items-center gap-2">
+                    <div className="truncate font-medium text-zinc-100">{p.name}</div>
+                    {p.visibility === "PUBLIC" ? (
+                      <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent">
+                        {t("studioCreate.kindCocreate")}
+                      </span>
+                    ) : null}
+                  </div>
                   <div className="mt-1 text-xs text-zinc-500">
                     {t("common.updatedAt", { date: fmtDate(p.updatedAt) })}
                   </div>

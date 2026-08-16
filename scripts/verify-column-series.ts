@@ -57,6 +57,12 @@ async function main() {
   assert.deepEqual(await episodes(column.id), [
     { order: 1, title: "第 1 记", videoUrl: "https://example.com/hook-1.mp4" },
   ]);
+  const video1 = await prisma.work.findUniqueOrThrow({ where: { projectId: e1.id } });
+  const firstEps = await prisma.episode.findMany({
+    where: { workId: first.id },
+    orderBy: { order: "asc" },
+  });
+  assert.equal(firstEps[0]?.sourceWorkId, video1.id, "episode comments follow the feed work");
   ok("the first aired hook creates the series and becomes episode 1");
 
   // The next entry appends rather than replacing, and keeps entry order.
@@ -66,6 +72,16 @@ async function main() {
     { order: 1, title: "第 1 记", videoUrl: "https://example.com/hook-1.mp4" },
     { order: 2, title: "第 2 记", videoUrl: "https://example.com/hook-2.mp4" },
   ]);
+  const video2 = await prisma.work.findUniqueOrThrow({ where: { projectId: e2.id } });
+  const secondEps = await prisma.episode.findMany({
+    where: { workId: first.id },
+    orderBy: { order: "asc" },
+  });
+  assert.deepEqual(
+    secondEps.map((e) => e.sourceWorkId),
+    [video1.id, video2.id],
+    "each episode points at its own feed work",
+  );
   ok("a later hook appends as the next episode, in entry order");
 
   // The daily loop calls this on every release, so repeats must not pile up.

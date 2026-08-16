@@ -1,83 +1,24 @@
 "use client";
 
-import { useRef, useState } from "react";
 import { useT } from "@/components/LocaleProvider";
 import MyProjects from "@/components/MyProjects";
-import MyColumnsPanel from "@/components/studio/MyColumnsPanel";
 import StudioCreatePanel from "@/components/studio/StudioCreatePanel";
 
-type Tab = "projects" | "columns";
-
-const ORDER: Tab[] = ["projects", "columns"];
-
 /**
- * Studio is the workbench: things being made. Owned assets and their earnings
- * live under Cast and /credits instead.
+ * Studio is the workbench: projects being made.
+ * Official serials are a kind of project, not a separate "栏目" tab.
  */
 export default function StudioTabs() {
   const { t } = useT();
-  const [tab, setTab] = useState<Tab>("projects");
-  const tabRefs = useRef<Partial<Record<Tab, HTMLButtonElement | null>>>({});
-
-  const labels: Record<Tab, string> = {
-    projects: t("my.title"),
-    columns: t("myColumns.title"),
-  };
-
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    const delta =
-      e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
-    if (!delta) return;
-    e.preventDefault();
-    const next =
-      ORDER[(ORDER.indexOf(tab) + delta + ORDER.length) % ORDER.length];
-    setTab(next);
-    tabRefs.current[next]?.focus();
-  };
 
   return (
     <div className="mt-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div
-          role="tablist"
-          aria-label={t("studio.title")}
-          onKeyDown={onKeyDown}
-          className="inline-flex rounded-full bg-zinc-800/80 p-0.5"
-        >
-          {ORDER.map((id) => (
-            <button
-              key={id}
-              ref={(el) => {
-                tabRefs.current[id] = el;
-              }}
-              type="button"
-              role="tab"
-              id={`studio-tab-${id}`}
-              aria-selected={tab === id}
-              aria-controls={`studio-panel-${id}`}
-              tabIndex={tab === id ? 0 : -1}
-              onClick={() => setTab(id)}
-              className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-                tab === id
-                  ? "bg-accent text-zinc-950"
-                  : "text-zinc-400 hover:text-zinc-200"
-              }`}
-            >
-              {labels[id]}
-            </button>
-          ))}
-        </div>
+        <h2 className="text-sm font-medium text-zinc-300">{t("my.title")}</h2>
         <StudioCreatePanel />
       </div>
-
-      <div
-        role="tabpanel"
-        id={`studio-panel-${tab}`}
-        aria-labelledby={`studio-tab-${tab}`}
-        className="mt-6"
-      >
-        {tab === "projects" ? <MyProjects bare /> : null}
-        {tab === "columns" ? <MyColumnsPanel bare /> : null}
+      <div className="mt-6">
+        <MyProjects bare />
       </div>
     </div>
   );

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useT } from "@/components/LocaleProvider";
+import WorkDiscussion from "@/components/WorkDiscussion";
 
 export interface FeedItem {
   id: string;
@@ -14,6 +15,9 @@ export interface FeedItem {
   playUrl: string;
   coverUrl: string | null;
   episodeCount: number;
+  /** 评论主体:短视频是自己,短剧是当前正片那一集 */
+  videoId: string;
+  episodeId?: string | null;
   /** 官方推荐位 */
   featured?: boolean;
 }
@@ -27,6 +31,12 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const [muted, setMuted] = useState(true);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+
+  useEffect(() => {
+    setCommentsOpen(false);
+  }, [activeIndex]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -48,6 +58,8 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
           const video = entry.target as HTMLVideoElement;
           const workId = video.dataset.workId;
           if (entry.intersectionRatio >= 0.6) {
+            const idx = videoRefs.current.indexOf(video);
+            if (idx >= 0) setActiveIndex(idx);
             video.play().catch(() => {});
             if (workId && !counted.has(workId) && !pending.has(video)) {
               pending.set(
@@ -174,6 +186,14 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
       {/* 右侧悬浮控制 */}
       <div className="absolute right-3 top-1/2 flex -translate-y-1/2 flex-col gap-2 sm:right-6">
         <button
+          onClick={() => setCommentsOpen(true)}
+          aria-label={t("feed.comments")}
+          title={t("feed.comments")}
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-700 bg-zinc-900/80 text-base backdrop-blur transition-colors hover:bg-zinc-800"
+        >
+          💬
+        </button>
+        <button
           onClick={() => setMuted((m) => !m)}
           aria-label={muted ? t("feed.unmute") : t("feed.mute")}
           title={muted ? t("feed.unmute") : t("feed.mute")}
@@ -198,6 +218,35 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
           ↓
         </button>
       </div>
+
+      {commentsOpen && items[activeIndex] && (
+        <div
+          className="absolute inset-0 z-40 flex items-end bg-black/50"
+          onClick={() => setCommentsOpen(false)}
+        >
+          <div
+            className="max-h-[70%] w-full overflow-y-auto rounded-t-2xl border border-zinc-800 bg-zinc-950 p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setCommentsOpen(false)}
+                className="text-xs text-zinc-500 hover:text-zinc-300"
+              >
+                {t("feed.closeComments")}
+              </button>
+            </div>
+            <WorkDiscussion
+              workId={items[activeIndex].id}
+              videoId={items[activeIndex].videoId}
+              episodeId={items[activeIndex].episodeId}
+              title={items[activeIndex].title}
+              className="rounded-none border-0 bg-transparent p-0"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useT } from "@/components/LocaleProvider";
+import { mastheadTint } from "@/lib/mastheadTint";
 
 export interface WorkCardData {
   id: string;
@@ -12,6 +13,7 @@ export interface WorkCardData {
   authorName: string | null;
   publishedAt: string;
   episodeCount?: number;
+  href?: string;
 }
 
 export default function WorkCard({ work }: { work: WorkCardData }) {
@@ -19,7 +21,7 @@ export default function WorkCard({ work }: { work: WorkCardData }) {
 
   return (
     <Link
-      href={`/series/${work.id}`}
+      href={work.href ?? `/series/${work.id}`}
       className="group overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/50 transition-colors hover:border-zinc-600"
     >
       <div className="relative aspect-[3/4] bg-zinc-950">
@@ -31,7 +33,13 @@ export default function WorkCard({ work }: { work: WorkCardData }) {
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-3xl">🎬</div>
+          <div
+            className={`flex h-full w-full items-center justify-center bg-gradient-to-br px-4 ${mastheadTint(work.id + work.title)}`}
+          >
+            <span className="line-clamp-3 text-center text-lg font-bold tracking-tight text-zinc-100/90">
+              {work.title}
+            </span>
+          </div>
         )}
         <div className="absolute left-2 top-2 flex gap-1.5">
           <span className="rounded-md bg-zinc-950/80 px-2 py-0.5 text-xs font-medium text-accent">

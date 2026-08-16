@@ -152,6 +152,43 @@ export interface ProjectData {
   shots: ShotData[];
   filmVersions: FilmVersionData[];
   releases: ReleaseData[];
+  work?: { id: string; title: string } | null;
+  seriesWorkId?: string | null;
+  seriesWork?: { id: string; title: string } | null;
+}
+
+export interface SeriesOption {
+  id: string;
+  title: string;
+  description: string | null;
+  coverUrl: string | null;
+}
+
+export interface ComiclawPublishSnapshot {
+  hasFilm: boolean;
+  canChooseSeries: boolean;
+  video: {
+    id: string;
+    title: string;
+    description: string | null;
+    coverUrl: string | null;
+    authorName: string | null;
+  } | null;
+  series: SeriesOption | null;
+  defaults: {
+    title: string;
+    description: string;
+    coverUrl: string;
+    authorName: string;
+    mode: "video" | "episode";
+    episodeOrder: number;
+    episodeTitle: string;
+    seriesWorkId: string;
+    seriesTitle: string;
+    seriesDescription: string;
+    seriesCoverUrl: string;
+  };
+  seriesOptions: SeriesOption[];
 }
 
 export interface ColumnData {

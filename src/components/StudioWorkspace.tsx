@@ -52,12 +52,7 @@ export default function StudioWorkspace({ project }: { project: ProjectData }) {
         </Link>
         {project.column ? (
           <p className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-zinc-500">
-            <Link
-              href={`/columns/${project.column.slug}`}
-              className="transition-colors hover:text-accent"
-            >
-              {project.column.name}
-            </Link>
+            <span>{project.column.name}</span>
             {project.parentProject ? (
               <>
                 <span aria-hidden>·</span>
@@ -153,7 +148,9 @@ export default function StudioWorkspace({ project }: { project: ProjectData }) {
         {tab === "FILM" && (
           <FilmPanel versions={project.filmVersions} shareToken={project.shareToken} />
         )}
-        {tab === "RELEASE" && <ReleasePanel releases={project.releases} />}
+        {tab === "RELEASE" && (
+          <ReleasePanel releases={project.releases} shareToken={project.shareToken} />
+        )}
       </main>
     </div>
   );
