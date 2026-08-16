@@ -16,7 +16,9 @@ import {
   REGISTRY_PATH,
   sellerMatchesOwner,
   storeProductPath,
+  STORE_LISTABLE_ASSET_KINDS,
   STORE_PRODUCTS_PATH,
+  isStoreListableKind,
   type AssetOwner,
 } from "../src/lib/assetRegistry";
 
@@ -29,7 +31,8 @@ assert.equal(ASSET_SOURCE, "comiclaw-studio");
 assert.equal(assetRef("character", "char_042"), "comiclaw:character:char_042");
 assert.equal(assetRef("scene", "scene_001"), "comiclaw:scene:scene_001");
 assert.equal(assetRef("prop", "prop_007"), "comiclaw:prop:prop_007");
-ok("asset_ref follows comiclaw:{kind}:{id} for all three kinds");
+assert.equal(assetRef("video", "work_001"), "comiclaw:video:work_001");
+ok("asset_ref follows comiclaw:{kind}:{id} including video");
 
 // Org-held scene: no acting agent, org id is the ACN org id.
 const orgOwner: AssetOwner = { type: "org", id: "org_a3a067ed" };
@@ -74,6 +77,19 @@ assert.equal(registerAssetPayload({
   displayName: "个人角色",
 }).owner_type, "user");
 ok("people register as user");
+
+const videoPayload = registerAssetPayload({
+  kind: "video",
+  localId: "work_001",
+  owner: { type: "agent", id: "agent-uuid" },
+  displayName: "15s 介绍",
+  boundAgentId: "agent-uuid",
+});
+assert.equal(videoPayload.asset_kind, "video");
+assert.equal(videoPayload.asset_ref, "comiclaw:video:work_001");
+assert.equal(isStoreListableKind("video"), false);
+assert.deepEqual([...STORE_LISTABLE_ASSET_KINDS], ["character", "scene", "prop"]);
+ok("video registers for Launch and is not store-listable");
 
 // Store rejects a listing whose seller differs from the registered owner,
 // notably an org asset sold under a member agent.

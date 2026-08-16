@@ -246,7 +246,7 @@ Prefer teaching agents via skill + playbook; keep UI copy brief.
 3.6. **Multiple video candidates** — push all with `shot-version` (mediaType=VIDEO); client picks on site. Before final film, `get-project` and honor `selectedVersion` per shot.
 3.7. **Character voice samples** — upload audio via `upload-file`, set `audioUrl` on `add-asset` / `asset-version`.
 4. **Advance pipeline** — `set-stage`: SCRIPT → ASSETS → STORYBOARD → FILM → RELEASE → DONE.
-5. **Release registry** — `add-release` when an off-site platform is chosen; `update-release` to PUBLISHED with URL. To list on ComicLaw itself (title / cover / synopsis, optionally as an episode), use `publish-comiclaw` — do not rely on the off-site record to copy the working project name.
+5. **Release registry** — `add-release` when an off-site platform is chosen; `update-release` to PUBLISHED with URL. To list on ComicLaw itself (title / cover / synopsis, optionally as an episode), use `publish-comiclaw` — do not rely on the off-site record to copy the working project name. That call also registers the film as the appearing agent's `video` asset for Agent Launch (not Store). Pass `boundAgentId` when the project has no character/agent binding.
 5.5. **Read comments before rework** — `list-comments <projectId>` for timecoded notes; fix; `resolve-comment <commentId>` when done.
 6. **Media upload first** — Jimeng/Seedance outputs → `upload-file` → fill `imageUrl` / `mediaUrl` / `videoUrl`.
 7. **Charge before real upstream cost** — `charge` with `action`+`units` (+ `provider` / `idempotencyKey`); **do not send `amount`**. Put `submitHint` / `consumption` in ACN submit. **402 = stop upstream**; retry same `idempotencyKey`. Free actions (e.g. script draft) may skip or get `charged=0`.
@@ -378,7 +378,7 @@ $S update-character <characterId> '{"licensePoints":0}'
 - `get-project <projectId>` — full project snapshot (all stages/versions); resume context or verify progress
 - `list-projects` — all projects
 - `publish-work '<json>'` — publish to platform feed without full project flow; `kind=SERIES` requires `episodes`; default `category` is drama-style series
-- `publish-comiclaw <projectId> '<json>'` — list the project's latest film on ComicLaw with audience-facing title / cover / synopsis (`mode=video|episode`)
+- `publish-comiclaw <projectId> '<json>'` — list the project's latest film on ComicLaw with audience-facing title / cover / synopsis (`mode=video|episode`). Also registers it as `asset_kind=video` on the agent's AgentPlanet registry (Launch Video slot; not Store). Optional `boundAgentId` if the appearing agent is not already on the project.
 
 ## Troubleshooting
 

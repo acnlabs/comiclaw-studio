@@ -115,7 +115,7 @@ usage() {
                                         置为 PUBLISHED 时自动把最新成片发布为平台作品
   publish-work '<json>'                 直接发布作品 {kind*: VIDEO|SERIES, title*, category, videoUrl,
                                         coverUrl, description, authorName, episodes: [{order, title, videoUrl, duration}]}
-  publish-comiclaw <projectId> '<json>' 发布到 ComicLaw（观众看到的标题/封面/简介，可与项目工作名不同）
+  publish-comiclaw <projectId> '<json>' 发布到 ComicLaw（观众看到的标题/封面/简介，可与项目工作名不同；同时登记为上新用的 video 资产）
                                         {title, description, coverUrl, authorName, mode: video|episode,
                                         episodeOrder, episodeTitle, seriesWorkId, seriesTitle,
                                         seriesDescription, seriesCoverUrl}

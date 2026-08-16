@@ -211,6 +211,7 @@ export const comiclawListingSchema = z.object({
   seriesTitle: optionalStr,
   seriesDescription: optionalStr,
   seriesCoverUrl: optionalStr,
+  boundAgentId: optionalStr,
 });
 
 export const agentComiclawListingSchema = comiclawListingSchema.extend({

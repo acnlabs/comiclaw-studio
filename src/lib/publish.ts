@@ -1,6 +1,11 @@
 import { prisma } from "@/lib/db";
 import { COLUMN_SERIES_CATEGORY } from "@/lib/discover";
 import type { ComiclawPublishSnapshot, SeriesOption } from "@/lib/types";
+import {
+  findAppearingAgentId,
+  registerPublishedVideo,
+  type VideoRegistryResult,
+} from "@/lib/videoRegistry";
 
 export type ComiclawListing = {
   title: string;
@@ -14,6 +19,8 @@ export type ComiclawListing = {
   seriesTitle?: string | null;
   seriesDescription?: string | null;
   seriesCoverUrl?: string | null;
+  /** Agent this film is about; Launch lists video assets bound to this id. */
+  boundAgentId?: string | null;
 };
 
 type ListingOverrides = Partial<
@@ -135,10 +142,36 @@ async function assertSeriesUsable(
   throw new PublishError(403, "You cannot publish into this series");
 }
 
+async function registerListedVideo(args: {
+  projectId: string;
+  workId: string;
+  displayName: string;
+  filmAuthorAgentId: string | null;
+  projectOwnerUserId: string | null;
+  listing: ComiclawListing;
+  publisherAgentId?: string | null;
+}): Promise<VideoRegistryResult> {
+  const appearingAgentId =
+    args.listing.boundAgentId?.trim() ||
+    (await findAppearingAgentId({
+      projectId: args.projectId,
+      workId: args.workId,
+    }));
+  return registerPublishedVideo({
+    workId: args.workId,
+    displayName: args.displayName,
+    appearingAgentId,
+    publisherAgentId: args.publisherAgentId,
+    filmAuthorAgentId: args.filmAuthorAgentId,
+    projectOwnerUserId: args.projectOwnerUserId,
+  });
+}
+
 /** 带上架信息发布到 ComicLaw。短视频进推荐;选剧集则同时写入一部系列。 */
 export async function publishProjectToComiclaw(
   projectId: string,
   listing: ComiclawListing,
+  opts?: { publisherAgentId?: string | null },
 ) {
   const project = await prisma.project.findUnique({
     where: { id: projectId },
@@ -154,11 +187,21 @@ export async function publishProjectToComiclaw(
   const video = await syncProjectToWork(projectId, listing);
   if (!video) throw new PublishError(400, "Add a final film before publishing");
 
+  const videoRegistry = await registerListedVideo({
+    projectId,
+    workId: video.id,
+    displayName: listing.title.trim() || video.title,
+    filmAuthorAgentId: film.authorAgentId,
+    projectOwnerUserId: project.ownerUserId,
+    listing,
+    publisherAgentId: opts?.publisherAgentId,
+  });
+
   if (listing.mode !== "episode") {
     if (project.columnId) {
       await syncColumnToSeries(project.columnId);
     }
-    return { video, series: null as null };
+    return { video, series: null as null, videoRegistry };
   }
 
   const order =
@@ -234,7 +277,7 @@ export async function publishProjectToComiclaw(
   });
 
   const series = await prisma.work.findUnique({ where: { id: seriesId } });
-  return { video, series };
+  return { video, series, videoRegistry };
 }
 
 export async function listSeriesForPublisher(ownerUserId: string | null) {

@@ -2,7 +2,9 @@
  * AgentPlanet asset registry client (platform-level ownership ledger).
  *
  * Per the ComicLaw × AgentPlanet registration matrix:
- * - `asset_kind` ∈ character | scene | prop
+ * - `asset_kind` ∈ character | scene | prop | video
+ * - character / scene / prop may be listed on Store; video may be registered
+ *   and referenced by Agent Launch, but is not for sale
  * - `owner_type` ∈ user | agent | org (there is no `human`; people are `user`)
  * - org ids are ACN org ids (`org_{uuid}`)
  * - a Store listing's seller MUST equal the registry owner, or listing 403s
@@ -38,7 +40,16 @@ export function storeProductPath(productId: string, action?: "unlist" | "order")
   return action ? `${base}/${action}` : base;
 }
 
-export type AssetKind = "character" | "scene" | "prop";
+export const ASSET_KINDS = ["character", "scene", "prop", "video"] as const;
+export type AssetKind = (typeof ASSET_KINDS)[number];
+
+/** Store will 4xx a listing whose kind is not in this set. Video is Launch-only. */
+export const STORE_LISTABLE_ASSET_KINDS = ["character", "scene", "prop"] as const;
+export type StoreListableAssetKind = (typeof STORE_LISTABLE_ASSET_KINDS)[number];
+
+export function isStoreListableKind(kind: string): kind is StoreListableAssetKind {
+  return (STORE_LISTABLE_ASSET_KINDS as readonly string[]).includes(kind);
+}
 
 export type AssetOwner =
   | { type: "user"; id: string }
