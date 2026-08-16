@@ -15,6 +15,8 @@ import { coCreationData, declaresOwnGovernance } from "@/lib/coCreation";
 import { resolveOrgBindOnCreate } from "@/lib/orgBinding";
 import { reconcilePendingLicenses } from "@/lib/casting";
 import { maxOrgCreatesPerDay, startOfUtcDay } from "@/lib/columnQuota";
+import { ownerFields, resolveCreateOwner } from "@/lib/owner";
+import { ensureUserProfile } from "@/lib/userHandle";
 
 const optionalStr = z.string().trim().max(2000).optional().nullable();
 
@@ -48,7 +50,7 @@ export async function GET(req: Request) {
   if (!sub) return unauthorized();
 
   const projects = await prisma.project.findMany({
-    where: { ownerUserId: sub },
+    where: { ownerKind: "user", ownerUserId: sub },
     orderBy: { updatedAt: "desc" },
     select: {
       id: true,
@@ -97,11 +99,13 @@ async function createDerivative(
   });
   if (!allowed.ok) return forbidden(DERIVATION_ERRORS[allowed.reason]);
 
+  const owner = resolveCreateOwner({ actor: { kind: "user", userId: sub } });
+  await ensureUserProfile(sub);
   const project = await prisma.project.create({
     data: coCreationData(parent, {
       name: body.name,
       description: body.description,
-      ownerUserId: sub,
+      ...ownerFields(owner),
     }),
   });
 
@@ -204,13 +208,16 @@ export async function POST(req: Request) {
     body.contributePolicy ??
     (wantsOrgCreate ? "org_members" : visibility === "PUBLIC" && !columnId ? "open" : null);
 
+  const owner = resolveCreateOwner({ actor: { kind: "user", userId: sub } });
+  await ensureUserProfile(sub);
+
   const project = await withRetry(async () => {
     const entryOrder = columnId ? await nextEntryOrder(columnId) : null;
     return prisma.project.create({
       data: {
         name: body.name,
         description: body.description ?? null,
-        ownerUserId: sub,
+        ...ownerFields(owner),
         visibility,
         columnId,
         entryOrder,

@@ -13,6 +13,9 @@ export type CoCreationDraft = {
   description?: string | null;
   coverUrl?: string | null;
   ownerUserId?: string | null;
+  ownerKind?: string | null;
+  ownerAgentId?: string | null;
+  ownerOrgId?: string | null;
   agentName?: string | null;
   clientName?: string | null;
 };
@@ -26,6 +29,9 @@ export function coCreationData(
     description: draft.description ?? null,
     coverUrl: draft.coverUrl ?? null,
     ownerUserId: draft.ownerUserId ?? null,
+    ownerKind: draft.ownerKind ?? (draft.ownerUserId ? "user" : "agent"),
+    ownerAgentId: draft.ownerAgentId ?? null,
+    ownerOrgId: draft.ownerOrgId ?? null,
     agentName: draft.agentName ?? null,
     clientName: draft.clientName ?? null,
     // 一记之下都是公开的:这一记本身就公开,挂在它下面的项目藏不住也不该藏

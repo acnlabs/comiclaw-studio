@@ -2,6 +2,13 @@ import { prisma } from "@/lib/db";
 import { COLUMN_SERIES_CATEGORY } from "@/lib/discover";
 import type { ComiclawPublishSnapshot, SeriesOption } from "@/lib/types";
 import {
+  ownerEqualsWhere,
+  ownerFields,
+  ownerFromRecord,
+  ownersMatch,
+  type ProjectOwner,
+} from "@/lib/owner";
+import {
   findAppearingAgentId,
   registerPublishedVideo,
   type VideoRegistryResult,
@@ -44,6 +51,7 @@ export async function syncProjectToWork(
   const film = project.filmVersions[0];
   if (!film) return null; // 没有成片,无内容可发布
 
+  const owner = ownerFromRecord(project);
   const data = {
     kind: "VIDEO",
     title: listing?.title?.trim() || project.name,
@@ -58,6 +66,7 @@ export async function syncProjectToWork(
       listing?.authorName === undefined
         ? (project.clientName ?? project.agentName)
         : listing.authorName,
+    ...ownerFields(owner),
   };
 
   return prisma.work.upsert({
@@ -116,14 +125,27 @@ async function upsertSeriesEpisode(args: {
 
 async function assertSeriesUsable(
   seriesId: string,
-  project: { id: string; ownerUserId: string | null; seriesWorkId: string | null; columnId: string | null },
+  project: {
+    id: string;
+    ownerKind?: string | null;
+    ownerUserId: string | null;
+    ownerAgentId?: string | null;
+    ownerOrgId?: string | null;
+    seriesWorkId: string | null;
+    columnId: string | null;
+  },
 ) {
+  const owner = ownerFromRecord(project);
   const series = await prisma.work.findUnique({
     where: { id: seriesId },
     select: {
       id: true,
       kind: true,
       columnId: true,
+      ownerKind: true,
+      ownerUserId: true,
+      ownerAgentId: true,
+      ownerOrgId: true,
       column: { select: { ownerUserId: true } },
     },
   });
@@ -132,12 +154,14 @@ async function assertSeriesUsable(
   }
   if (project.seriesWorkId === series.id) return series;
   if (project.columnId && series.columnId === project.columnId) return series;
-  if (project.ownerUserId && series.column?.ownerUserId === project.ownerUserId) {
+  if (ownersMatch(owner, ownerFromRecord(series))) return series;
+  if (owner.ownerKind === "user" && owner.ownerUserId && series.column?.ownerUserId === owner.ownerUserId) {
     return series;
   }
-  if (project.ownerUserId) {
+  const sameOwner = ownerEqualsWhere(owner);
+  if (sameOwner) {
     const alreadyOnSeries = await prisma.project.findFirst({
-      where: { seriesWorkId: series.id, ownerUserId: project.ownerUserId },
+      where: { seriesWorkId: series.id, ...sameOwner },
       select: { id: true },
     });
     if (alreadyOnSeries) return series;
@@ -206,6 +230,12 @@ export async function publishProjectToComiclaw(
     publisherAgentId: opts?.publisherAgentId,
     allowExplicitBoundAgent: opts?.allowExplicitBoundAgent,
   });
+  if (videoRegistry.status !== "skipped" && videoRegistry.boundAgentId) {
+    await prisma.work.update({
+      where: { id: video.id },
+      data: { appearingAgentId: videoRegistry.boundAgentId },
+    });
+  }
 
   if (listing.mode !== "episode") {
     if (project.columnId) {
@@ -248,6 +278,7 @@ export async function publishProjectToComiclaw(
         coverUrl: listing.seriesCoverUrl ?? listing.coverUrl ?? project.coverUrl,
         authorName: listing.authorName ?? project.clientName ?? project.agentName,
         videoUrl: null,
+        ...ownerFields(ownerFromRecord(project)),
       },
     });
     seriesId = created.id;
@@ -290,14 +321,18 @@ export async function publishProjectToComiclaw(
   return { video, series, videoRegistry };
 }
 
-export async function listSeriesForPublisher(ownerUserId: string | null) {
-  if (!ownerUserId) return [] as SeriesOption[];
+export async function listSeriesForPublisher(owner: ProjectOwner) {
+  const sameOwner = ownerEqualsWhere(owner);
+  if (!sameOwner) return [] as SeriesOption[];
   return prisma.work.findMany({
     where: {
       kind: "SERIES",
       OR: [
-        { column: { ownerUserId } },
-        { episodeProjects: { some: { ownerUserId } } },
+        sameOwner,
+        ...(owner.ownerKind === "user" && owner.ownerUserId
+          ? [{ column: { ownerUserId: owner.ownerUserId } }]
+          : []),
+        { episodeProjects: { some: sameOwner } },
       ],
     },
     select: { id: true, title: true, description: true, coverUrl: true },
@@ -343,7 +378,7 @@ export async function getComiclawPublishSnapshot(
     }
   }
 
-  const seriesOptions = await listSeriesForPublisher(project.ownerUserId);
+  const seriesOptions = await listSeriesForPublisher(ownerFromRecord(project));
   if (series && !seriesOptions.some((s) => s.id === series.id)) {
     seriesOptions.unshift({
       id: series.id,
@@ -438,6 +473,7 @@ export async function syncColumnToSeries(columnId: string) {
     // 系列的正片由选集承载,不设单片地址
     videoUrl: null,
     authorName: aired[0].agentName ?? aired[0].clientName,
+    ...ownerFields(ownerFromRecord(aired[0])),
   };
 
   return prisma.$transaction(async (tx) => {

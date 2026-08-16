@@ -1,11 +1,21 @@
 import { prisma } from "@/lib/db";
 import { withAgentAuth, parseBody } from "@/lib/api";
 import { publishWorkSchema } from "@/lib/schemas";
+import { ownerFields, resolveCreateOwner } from "@/lib/owner";
 
 // 直接发布平台作品(不经 studio 项目流程,如整部短剧)
 export const POST = withAgentAuth(async (req) => {
   const body = await parseBody(req, publishWorkSchema);
   const episodes = body.episodes ?? [];
+  const owner = resolveCreateOwner({
+    requested: {
+      kind: body.ownerKind,
+      userId: body.ownerUserId,
+      agentId: body.ownerAgentId,
+      orgId: body.ownerOrgId,
+    },
+    actor: { kind: "studio_key" },
+  });
 
   const work = await prisma.work.create({
     data: {
@@ -16,6 +26,7 @@ export const POST = withAgentAuth(async (req) => {
       coverUrl: body.coverUrl ?? null,
       videoUrl: body.videoUrl ?? null,
       authorName: body.authorName ?? null,
+      ...ownerFields(owner),
       cast: body.characterIds
         ? { create: body.characterIds.map((characterId) => ({ characterId })) }
         : undefined,

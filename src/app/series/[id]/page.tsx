@@ -3,7 +3,9 @@ import { prisma } from "@/lib/db";
 import { fmtDate } from "@/lib/format";
 import { getLocale } from "@/lib/locale";
 import { translate, translateCategory } from "@/lib/i18n";
+import Link from "next/link";
 import WorkWatch from "@/components/WorkWatch";
+import { profileHrefForOwner } from "@/lib/profile";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +22,7 @@ export default async function WorkPage(props: {
     include: { episodes: { orderBy: { order: "asc" } } },
   });
   if (!work) notFound();
+  const authorHref = await profileHrefForOwner(work);
 
   return (
     <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
@@ -40,7 +43,13 @@ export default async function WorkPage(props: {
       <h1 className="mt-2 text-2xl font-bold text-zinc-50">{work.title}</h1>
       {work.authorName && (
         <p className="mt-1 text-sm text-zinc-500">
-          {translate(locale, "series.creator", { name: work.authorName })}
+          {authorHref ? (
+            <Link href={authorHref} className="hover:text-accent">
+              {translate(locale, "series.creator", { name: work.authorName })}
+            </Link>
+          ) : (
+            translate(locale, "series.creator", { name: work.authorName })
+          )}
         </p>
       )}
       {work.description && (

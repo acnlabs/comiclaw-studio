@@ -12,6 +12,7 @@ export interface FeedItem {
   title: string;
   description: string | null;
   authorName: string | null;
+  authorHref?: string | null;
   playUrl: string;
   coverUrl: string | null;
   episodeCount: number;
@@ -162,9 +163,17 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
 
               {/* 底部信息 */}
               <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-4 pb-4 pt-16">
-                {item.authorName && (
-                  <p className="text-sm font-semibold text-zinc-100">@{item.authorName}</p>
-                )}
+                {item.authorName &&
+                  (item.authorHref ? (
+                    <Link
+                      href={item.authorHref}
+                      className="pointer-events-auto text-sm font-semibold text-zinc-100 hover:text-accent"
+                    >
+                      @{item.authorName}
+                    </Link>
+                  ) : (
+                    <p className="text-sm font-semibold text-zinc-100">@{item.authorName}</p>
+                  ))}
                 <p className="mt-0.5 line-clamp-2 text-sm text-zinc-200">{item.title}</p>
                 {item.description && (
                   <p className="mt-1 line-clamp-2 text-xs text-zinc-400">{item.description}</p>

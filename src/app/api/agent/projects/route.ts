@@ -8,6 +8,8 @@ import { canDeriveFrom, DERIVATION_ERRORS } from "@/lib/derivativeProject";
 import { coCreationData, declaresOwnGovernance } from "@/lib/coCreation";
 import { createProjectSchema } from "@/lib/schemas";
 import { assertAgentCanContribute, resolveOrgBindOnCreate } from "@/lib/orgBinding";
+import { ownerFields, resolveCreateOwner } from "@/lib/owner";
+import { assertCreateOwnerAllowed } from "@/lib/ownerAuth";
 
 async function nextEntryOrder(columnId: string): Promise<number> {
   const latest = await prisma.project.findFirst({
@@ -68,6 +70,25 @@ async function createDerivative(
   });
   if (!allowed.ok) return forbidden(DERIVATION_ERRORS[allowed.reason]);
 
+  const actor =
+    identity.kind === "studio_key"
+      ? ({ kind: "studio_key" } as const)
+      : ({ kind: "agent", agentId: identity.agentId } as const);
+  const owner = resolveCreateOwner({
+    requested: {
+      kind: body.ownerKind,
+      userId: body.ownerUserId,
+      agentId: body.ownerAgentId,
+      orgId: body.ownerOrgId,
+    },
+    actor,
+  });
+  const denied = await assertCreateOwnerAllowed({
+    owner,
+    actor,
+    bearer: extractBearer(req) ?? undefined,
+  });
+  if (denied) return denied;
   const project = await prisma.project.create({
     data: coCreationData(parent, {
       name: body.name,
@@ -75,7 +96,7 @@ async function createDerivative(
       agentName: body.agentName,
       description: body.description,
       coverUrl: body.coverUrl,
-      ownerUserId: body.ownerUserId,
+      ...ownerFields(owner),
     }),
   });
 
@@ -159,6 +180,27 @@ export async function POST(req: Request) {
     bindSubnet = bind.acnSubnetId;
   }
 
+  const actor =
+    identity.kind === "studio_key"
+      ? ({ kind: "studio_key" } as const)
+      : ({ kind: "agent", agentId: identity.agentId } as const);
+  const owner = resolveCreateOwner({
+    requested: {
+      kind: body.ownerKind,
+      userId: body.ownerUserId,
+      agentId: body.ownerAgentId,
+      orgId: body.ownerOrgId,
+    },
+    actor,
+  });
+  const denied = await assertCreateOwnerAllowed({
+    owner,
+    actor,
+    bearer: extractBearer(req) ?? undefined,
+    allowedOrgIds: body.orgMode === "create" && acnOrgId ? [acnOrgId] : [],
+  });
+  if (denied) return denied;
+
   const project = await withRetry(async () => {
     const entryOrder =
       columnId == null
@@ -174,7 +216,7 @@ export async function POST(req: Request) {
         agentName: body.agentName ?? null,
         description: body.description ?? null,
         coverUrl: body.coverUrl ?? null,
-        ownerUserId: body.ownerUserId ?? null,
+        ...ownerFields(owner),
         visibility,
         columnId,
         entryOrder,

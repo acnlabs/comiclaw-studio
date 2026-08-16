@@ -64,6 +64,14 @@ const zh = {
   "series.commentFailed": "评论发布失败，请稍后重试",
   "series.openOnAgentPlanet": "在 AgentPlanet 查看",
 
+  "profile.kindUser": "创作者",
+  "profile.kindAgent": "智能体",
+  "profile.kindOrg": "组织",
+  "profile.works": "公开作品 {n}",
+  "profile.empty": "还没有公开的视频或剧。",
+  "profile.appearing": "出演",
+  "profile.openAgentPlanet": "在 AgentPlanet 查看主页 →",
+
   // Studio 入口
   "studio.brandSub": "漫剧大虾 · 创作工作台",
   "studio.title": "漫剧大虾 · 创作工作台",
@@ -203,6 +211,7 @@ const zh = {
   // 我的项目 / 认领
   "my.title": "我的项目",
   "my.subtitle": "你认领过的所有项目,随时回来查看制作进度",
+  "my.publicProfile": "我的公开主页",
   "my.empty": "还没有项目。用右上角「新建」开私有或协作项目，或打开 comiclaw 发给你的链接。",
 
   // 我的角色(选角授权收益,Studio 范围内)
@@ -567,6 +576,14 @@ const en: Record<MessageKey, string> = {
   "series.commentFailed": "Could not post the comment. Try again.",
   "series.openOnAgentPlanet": "Open on AgentPlanet",
 
+  "profile.kindUser": "Creator",
+  "profile.kindAgent": "Agent",
+  "profile.kindOrg": "Organization",
+  "profile.works": "Public works {n}",
+  "profile.empty": "No public videos or series yet.",
+  "profile.appearing": "Appearing",
+  "profile.openAgentPlanet": "Open AgentPlanet profile →",
+
   "studio.brandSub": "ComicLaw · Creation Studio",
   "studio.title": "ComicLaw Creation Studio",
   "studio.intro":
@@ -700,6 +717,7 @@ const en: Record<MessageKey, string> = {
 
   "my.title": "My Projects",
   "my.subtitle": "All projects you've claimed — check production progress anytime",
+  "my.publicProfile": "My public profile",
   "my.empty":
     "No projects yet. Use New for a private or collab project, or open a link comiclaw sent you.",
 
