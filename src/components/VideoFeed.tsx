@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useAuth0 } from "@auth0/auth0-react";
+import { AUTH0_AUDIENCE } from "@/lib/auth0";
 import { useT } from "@/components/LocaleProvider";
 import AuthorCredit from "@/components/AuthorCredit";
 import WorkDiscussion from "@/components/WorkDiscussion";
@@ -27,15 +29,29 @@ export interface FeedItem {
 
 /** 停留这么久才算看过一次;划过去不算 */
 const PLAY_COUNTS_AFTER_MS = 3000;
+/** 播到这里算完播。片子 loop,ended 不一定稳定,所以也看进度 */
+const COMPLETE_AT_RATIO = 0.9;
+
+type FeedEventKind = "play" | "skip" | "complete";
+
+function eventPath(kind: FeedEventKind) {
+  return kind === "play" ? "/api/feed/plays" : "/api/feed/signals";
+}
 
 // TikTok 式竖版信息流:滚动吸附逐条观看,进入视口自动播放
 export default function VideoFeed({ items }: { items: FeedItem[] }) {
   const { t, tCategory } = useT();
+  const { isAuthenticated, getAccessTokenSilently } = useAuth0();
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+  const signedInRef = useRef(isAuthenticated);
+  const tokenRef = useRef(getAccessTokenSilently);
   const [muted, setMuted] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
   const [commentsOpen, setCommentsOpen] = useState(false);
+
+  signedInRef.current = isAuthenticated;
+  tokenRef.current = getAccessTokenSilently;
 
   useEffect(() => {
     setCommentsOpen(false);
@@ -47,12 +63,55 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
 
     // 只有真的停下来看了才算一次播放,划过去不算——热度要经得起看
     const pending = new Map<Element, ReturnType<typeof setTimeout>>();
-    const counted = new Set<string>();
+    const played = new Set<string>();
+    const skipped = new Set<string>();
+    const completed = new Set<string>();
+
+    const post = (kind: FeedEventKind, workId: string, token?: string) => {
+      const headers: Record<string, string> = { "content-type": "application/json" };
+      if (token) headers.authorization = `Bearer ${token}`;
+      const body = kind === "play" ? { workId } : { workId, kind };
+      return fetch(eventPath(kind), {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+        keepalive: true,
+      });
+    };
+
+    // 热度必须马上记。身份是事后补上的,等 Auth0 会把播放弄丢
+    const report = (kind: FeedEventKind, workId: string) => {
+      void post(kind, workId).catch(() => {});
+      if (!signedInRef.current) return;
+      void tokenRef
+        .current({ authorizationParams: { audience: AUTH0_AUDIENCE } })
+        .then((token) => post(kind, workId, token))
+        .catch(() => {});
+    };
 
     const stopTimer = (target: Element) => {
       const timer = pending.get(target);
       if (timer) clearTimeout(timer);
       pending.delete(target);
+    };
+
+    const markComplete = (workId: string | undefined) => {
+      if (!workId || completed.has(workId)) return;
+      completed.add(workId);
+      report("complete", workId);
+    };
+
+    const onTimeUpdate = (event: Event) => {
+      const video = event.currentTarget as HTMLVideoElement;
+      const duration = video.duration;
+      if (!Number.isFinite(duration) || duration <= 0) return;
+      if (video.currentTime / duration >= COMPLETE_AT_RATIO) {
+        markComplete(video.dataset.workId);
+      }
+    };
+
+    const onEnded = (event: Event) => {
+      markComplete((event.currentTarget as HTMLVideoElement).dataset.workId);
     };
 
     const observer = new IntersectionObserver(
@@ -64,25 +123,31 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
             const idx = videoRefs.current.indexOf(video);
             if (idx >= 0) setActiveIndex(idx);
             video.play().catch(() => {});
-            if (workId && !counted.has(workId) && !pending.has(video)) {
+            if (workId && !played.has(workId) && !pending.has(video)) {
               pending.set(
                 video,
                 setTimeout(() => {
                   pending.delete(video);
-                  counted.add(workId);
-                  // 记不上不影响观看,服务端还会按会话+小时去重
-                  void fetch("/api/feed/plays", {
-                    method: "POST",
-                    headers: { "content-type": "application/json" },
-                    body: JSON.stringify({ workId }),
-                    keepalive: true,
-                  }).catch(() => {});
+                  played.add(workId);
+                  report("play", workId);
                 }, PLAY_COUNTS_AFTER_MS)
               );
             }
           } else {
             video.pause();
+            const wasPending = pending.has(video);
             stopTimer(video);
+            // 还没撑到起算播放就划走 → skip。已经起算或已完播的不再记划走
+            if (
+              workId &&
+              wasPending &&
+              !played.has(workId) &&
+              !completed.has(workId) &&
+              !skipped.has(workId)
+            ) {
+              skipped.add(workId);
+              report("skip", workId);
+            }
           }
         }
       },
@@ -90,10 +155,17 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
     );
 
     for (const v of videoRefs.current) {
-      if (v) observer.observe(v);
+      if (!v) continue;
+      v.addEventListener("timeupdate", onTimeUpdate);
+      v.addEventListener("ended", onEnded);
+      observer.observe(v);
     }
     return () => {
       observer.disconnect();
+      for (const v of videoRefs.current) {
+        v?.removeEventListener("timeupdate", onTimeUpdate);
+        v?.removeEventListener("ended", onEnded);
+      }
       for (const timer of pending.values()) clearTimeout(timer);
       pending.clear();
     };

@@ -458,6 +458,7 @@ model Work {
   episodeProjects Project[] @relation("ProjectSeriesWork")
   cast     WorkCast[]
   plays    WorkPlay[]
+  signals  WorkSignal[]
 
   @@index([featuredAt])
   @@index([ownerKind, ownerUserId])
@@ -487,6 +488,8 @@ model WorkPlay {
   // 来源网络的加盐哈希。cookie 由调用方决定发不发,不发就每次都像新访客,
   // 所以还要按网络封顶——这一项调用方控制不了
   networkHash String?
+  // 登录用户的 Auth0 sub。匿名观看保持空;热度不依赖这一列
+  userId      String?
   hourBucket  DateTime
   createdAt   DateTime @default(now())
 
@@ -496,6 +499,28 @@ model WorkPlay {
   @@index([workId, networkHash, hourBucket])
   @@index([workId, createdAt])
   @@index([createdAt])
+  @@index([userId, createdAt])
+}
+
+// 划走 / 完播。先记下来,排序以后再用;不计入热度。
+model WorkSignal {
+  id String @id @default(cuid())
+
+  workId      String
+  sessionKey  String
+  userId      String?
+  // skip | complete
+  kind        String
+  networkHash String?
+  hourBucket  DateTime
+  createdAt   DateTime @default(now())
+
+  work Work @relation(fields: [workId], references: [id], onDelete: Cascade)
+
+  @@unique([workId, sessionKey, kind, hourBucket])
+  @@index([workId, kind, createdAt])
+  @@index([userId, kind, createdAt])
+  @@index([workId, networkHash, kind, hourBucket])
 }
 
 model Episode {

@@ -165,6 +165,7 @@ async function main() {
   ok("featuring without the ops key is refused");
 
   const ids = [hot.id, quiet.id, spam.id];
+  await prisma.workSignal.deleteMany({ where: { workId: { in: ids } } });
   await prisma.workPlay.deleteMany({ where: { workId: { in: ids } } });
   await prisma.work.deleteMany({ where: { id: { in: ids } } });
   console.log("\nall feed-play checks passed");
