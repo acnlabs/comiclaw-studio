@@ -10,6 +10,7 @@ import {
   ownersMatch,
   resolveCreateOwner,
 } from "../src/lib/owner";
+import { authorLine } from "../src/lib/authorLine";
 
 function ok(label: string) {
   console.log(`✓ ${label}`);
@@ -143,5 +144,11 @@ assert.deepEqual(
   { ownerKind: "org", ownerOrgId: "org_abc" },
 );
 ok("org owner filter does not fall back to ownerUserId");
+
+assert.equal(authorLine({ handle: "daxia", authorName: "漫剧大虾官方" }), "@daxia");
+ok("a profile handle is shown as @handle, not the display name");
+
+assert.equal(authorLine({ handle: null, authorName: "漫剧大虾官方" }), "漫剧大虾官方");
+ok("a display name without a profile is not prefixed with @");
 
 console.log("\nAll owner checks passed.");

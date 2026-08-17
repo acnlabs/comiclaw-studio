@@ -135,14 +135,21 @@ export async function ensureHandleForUser(userId: string, displayName?: string |
   return ensureUserProfile(userId, displayName);
 }
 
-export async function profileHrefsForWorks(
+export type WorkAuthorLink = {
+  href: string | null;
+  handle: string | null;
+};
+
+export { authorLine } from "@/lib/authorLine";
+
+export async function authorLinksForWorks(
   works: {
     ownerKind: string | null;
     ownerUserId: string | null;
     ownerAgentId: string | null;
     ownerOrgId: string | null;
   }[],
-): Promise<(string | null)[]> {
+): Promise<WorkAuthorLink[]> {
   const userIds = [
     ...new Set(
       works
@@ -157,13 +164,32 @@ export async function profileHrefsForWorks(
       })
     : [];
   const handleByUser = new Map(handles.map((h) => [h.userId, h.handle]));
-  return works.map((w) =>
-    profileHref({
-      kind: w.ownerKind,
-      userId: w.ownerUserId,
-      agentId: w.ownerAgentId,
-      orgId: w.ownerOrgId,
-      handle: w.ownerUserId ? handleByUser.get(w.ownerUserId) ?? null : null,
-    }),
-  );
+  return works.map((w) => {
+    const handle =
+      w.ownerKind === "user" && w.ownerUserId
+        ? handleByUser.get(w.ownerUserId) ?? null
+        : null;
+    return {
+      href: profileHref({
+        kind: w.ownerKind,
+        userId: w.ownerUserId,
+        agentId: w.ownerAgentId,
+        orgId: w.ownerOrgId,
+        handle,
+      }),
+      handle,
+    };
+  });
+}
+
+export async function profileHrefsForWorks(
+  works: {
+    ownerKind: string | null;
+    ownerUserId: string | null;
+    ownerAgentId: string | null;
+    ownerOrgId: string | null;
+  }[],
+): Promise<(string | null)[]> {
+  const links = await authorLinksForWorks(works);
+  return links.map((l) => l.href);
 }

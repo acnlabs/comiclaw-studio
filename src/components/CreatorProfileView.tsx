@@ -74,6 +74,12 @@ export default async function CreatorProfileView({
                   title: w.title,
                   coverUrl: w.coverUrl,
                   authorName: w.authorName,
+                  authorHandle: profile.kind === "user" ? profile.handle : null,
+                  authorHref:
+                    profile.kind === "agent" &&
+                    !(w.ownerKind === "agent" && w.ownerAgentId === profile.id)
+                      ? undefined
+                      : profile.href,
                   publishedAt: w.publishedAt.toISOString(),
                   episodeCount: w._count.episodes,
                 }}

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import VideoFeed, { type FeedItem } from "@/components/VideoFeed";
 import { HEAT_WINDOW_HOURS, feedAuthorKey, feedTier, rankForYou } from "@/lib/feedRanking";
-import { profileHrefsForWorks } from "@/lib/profile";
+import { authorLinksForWorks } from "@/lib/profile";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +40,7 @@ async function loadFeedItems(): Promise<FeedItem[]> {
     now
   );
 
-  const hrefs = await profileHrefsForWorks(ranked.map(({ work }) => work));
+  const authors = await authorLinksForWorks(ranked.map(({ work }) => work));
 
   // 短剧取第一集作为信息流内容;无可播放内容的作品不进入信息流
   return ranked
@@ -51,7 +51,8 @@ async function loadFeedItems(): Promise<FeedItem[]> {
       title: w.title,
       description: w.description,
       authorName: w.authorName,
-      authorHref: hrefs[i],
+      authorHandle: authors[i]?.handle ?? null,
+      authorHref: authors[i]?.href ?? null,
       playUrl: w.videoUrl ?? w.episodes[0]?.videoUrl ?? "",
       coverUrl: w.coverUrl,
       episodeCount: w._count.episodes,

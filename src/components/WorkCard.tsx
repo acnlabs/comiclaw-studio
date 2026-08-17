@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useT } from "@/components/LocaleProvider";
+import AuthorCredit from "@/components/AuthorCredit";
 import { mastheadTint } from "@/lib/mastheadTint";
 
 export interface WorkCardData {
@@ -11,6 +12,7 @@ export interface WorkCardData {
   title: string;
   coverUrl: string | null;
   authorName: string | null;
+  authorHandle?: string | null;
   authorHref?: string | null;
   publishedAt: string;
   episodeCount?: number;
@@ -64,15 +66,17 @@ export default function WorkCard({ work }: { work: WorkCardData }) {
           </Link>
         </h3>
         <p className="mt-1 text-xs text-zinc-500">
-          {work.authorName &&
-            (work.authorHref ? (
-              <Link href={work.authorHref} className="hover:text-accent">
-                {work.authorName}
-              </Link>
-            ) : (
-              work.authorName
-            ))}
-          {work.authorName && <> · </>}
+          {(work.authorHandle || work.authorName) && (
+            <>
+              <AuthorCredit
+                handle={work.authorHandle}
+                authorName={work.authorName}
+                href={work.authorHref}
+                className="hover:text-accent"
+              />
+              {" · "}
+            </>
+          )}
           {fmtDate(work.publishedAt)}
         </p>
       </div>
