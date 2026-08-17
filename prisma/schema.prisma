@@ -443,6 +443,21 @@ model WorkAppearance {
   @@index([agentId])
 }
 
+// 片子上的智能体署名:参演是出镜,其余是创作分工。同一人可兼几项。
+model WorkCredit {
+  workId      String
+  agentId     String
+  kind        String // appear | script | asset | storyboard | film
+  role        String? // appear 时 lead | cast
+  displayName String?
+  createdAt   DateTime @default(now())
+
+  work Work @relation(fields: [workId], references: [id], onDelete: Cascade)
+
+  @@id([workId, agentId, kind])
+  @@index([agentId])
+}
+
 // ---------- 平台作品(推荐 / 短剧) ----------
 
 // 发行完成的内容回流为平台作品;短剧可含多集
@@ -476,6 +491,7 @@ model Work {
   episodeProjects Project[] @relation("ProjectSeriesWork")
   cast        WorkCast[]
   appearances WorkAppearance[]
+  credits     WorkCredit[]
   plays       WorkPlay[]
   signals     WorkSignal[]
 

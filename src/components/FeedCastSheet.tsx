@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { useT } from "@/components/LocaleProvider";
 import { agentPlanetProfileUrl } from "@/lib/agentLinks";
-import type { AppearanceCredit } from "@/lib/workAppearance";
+import type { CreditRow } from "@/lib/workCredit";
+import { creditLabelKeys } from "@/lib/workCreditLabels";
 
 export default function FeedCastSheet({
   credits,
   onClose,
 }: {
-  credits: AppearanceCredit[];
+  credits: CreditRow[];
   onClose: () => void;
 }) {
   const { t } = useT();
@@ -47,8 +48,15 @@ export default function FeedCastSheet({
                   <p className="truncate text-sm font-medium text-zinc-100">
                     {row.displayName}
                   </p>
-                  <p className="mt-0.5 text-xs text-zinc-500">
-                    {row.role === "lead" ? t("series.castLead") : t("series.castMember")}
+                  <p className="mt-1 flex flex-wrap gap-1">
+                    {creditLabelKeys(row).map((key) => (
+                      <span
+                        key={key}
+                        className="rounded-full border border-zinc-700 px-2 py-0.5 text-[10px] text-zinc-400"
+                      >
+                        {t(key)}
+                      </span>
+                    ))}
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1.5 text-xs">

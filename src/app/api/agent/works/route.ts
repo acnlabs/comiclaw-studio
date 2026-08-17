@@ -6,6 +6,7 @@ import {
   appearancesFromCharacterIds,
   replaceWorkAppearances,
 } from "@/lib/workAppearance";
+import { creditsFromAppearances, replaceWorkCredits } from "@/lib/workCredit";
 
 // 直接发布平台作品(不经 studio 项目流程,如整部短剧)
 export const POST = withAgentAuth(async (req) => {
@@ -55,6 +56,7 @@ export const POST = withAgentAuth(async (req) => {
     : await appearancesFromCharacterIds(body.characterIds ?? []);
   if (drafts.length) {
     await replaceWorkAppearances(work.id, drafts);
+    await replaceWorkCredits(work.id, creditsFromAppearances(drafts));
     const lead = drafts.find((row) => row.role === "lead") ?? drafts[0];
     if (lead) {
       await prisma.work.update({

@@ -1,14 +1,15 @@
 "use client";
 
 import { useT } from "@/components/LocaleProvider";
-import type { AppearanceCredit } from "@/lib/workAppearance";
+import type { CreditRow } from "@/lib/workCredit";
+import { creditLabelKeys } from "@/lib/workCreditLabels";
 
 export default function FeedCastLine({
   credits,
   onOpen,
   className,
 }: {
-  credits: AppearanceCredit[];
+  credits: CreditRow[];
   onOpen: () => void;
   className?: string;
 }) {
@@ -22,22 +23,23 @@ export default function FeedCastLine({
       aria-label={t("feed.castOpenList", { n: credits.length })}
       className={className}
     >
-      <span className="flex items-center gap-1.5">
-        <span className="shrink-0 text-xs text-zinc-400">{t("feed.castPrefix")}</span>
-        <span className="min-w-0 flex-1 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <span className="inline-flex items-center gap-1.5 pr-1">
-            {credits.map((row) => (
-              <span
-                key={row.agentId}
-                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-white/15 bg-zinc-950/60 px-2.5 py-1 text-xs text-zinc-100"
-              >
-                {row.displayName}
-                {row.role === "lead" ? (
-                  <span className="text-[10px] text-zinc-400">{t("series.castLead")}</span>
-                ) : null}
+      <span className="flex min-w-0 items-baseline gap-1 text-xs">
+        <span className="min-w-0 flex-1 overflow-x-auto overscroll-x-contain whitespace-nowrap text-zinc-200 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {credits.map((row, index) => (
+            <span key={row.agentId}>
+              {index > 0 ? <span className="text-zinc-500"> · </span> : null}
+              {row.displayName}
+              <span className="text-zinc-500">
+                {" "}
+                {creditLabelKeys(row)
+                  .map((key) => t(key))
+                  .join("/")}
               </span>
-            ))}
-          </span>
+            </span>
+          ))}
+        </span>
+        <span className="shrink-0 text-zinc-500" aria-hidden>
+          ▾
         </span>
       </span>
     </button>

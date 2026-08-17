@@ -4,6 +4,7 @@
  */
 import assert from "node:assert/strict";
 import { feedCastCredits, toAppearanceCredits } from "../src/lib/workAppearance";
+import { feedCredits, mergeCredits } from "../src/lib/workCredit";
 
 function ok(label: string) {
   console.log(`✓ ${label}`);
@@ -37,5 +38,15 @@ assert.deepEqual(
 );
 assert.equal(withoutOwner.extra, 0);
 ok("an agent owner is not repeated in the feed cast line");
+
+const crew = mergeCredits([
+  { agentId: "writer", kind: "script", displayName: "CodeHelper" },
+  { agentId: "lead-1", kind: "appear", role: "lead", displayName: "Comiclaw" },
+  { agentId: "writer", kind: "appear", role: "cast", displayName: "CodeHelper" },
+]);
+assert.equal(crew[0].agentId, "lead-1");
+assert.deepEqual(crew[1].kinds, ["appear", "script"]);
+assert.equal(feedCredits(crew, "lead-1").length, 1);
+ok("credits merge appear and crew labels on the same agent");
 
 console.log("\nAll appearance checks passed.");

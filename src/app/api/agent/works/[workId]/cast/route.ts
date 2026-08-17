@@ -3,6 +3,7 @@ import { withAgentAuth, parseBody } from "@/lib/api";
 import { notFoundJson, badRequest } from "@/lib/auth";
 import { z } from "zod";
 import { appearancesFromCharacterIds, replaceWorkAppearances } from "@/lib/workAppearance";
+import { creditsFromAppearances, replaceAppearCredits } from "@/lib/workCredit";
 
 type Ctx = { params: Promise<{ workId: string }> };
 
@@ -34,9 +35,11 @@ export const POST = withAgentAuth(async (req, ctx: Ctx) => {
       data: body.characterIds.map((characterId) => ({ workId, characterId })),
     }),
   ]);
-  await replaceWorkAppearances(
-    workId,
-    await appearancesFromCharacterIds(body.characterIds, work.appearingAgentId),
+  const appearances = await appearancesFromCharacterIds(
+    body.characterIds,
+    work.appearingAgentId,
   );
+  await replaceWorkAppearances(workId, appearances);
+  await replaceAppearCredits(workId, creditsFromAppearances(appearances));
   return Response.json({ workId, characterIds: body.characterIds });
 });
