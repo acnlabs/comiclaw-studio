@@ -591,7 +591,7 @@ model Episode {
 model Release {
   id          String    @id @default(cuid())
   projectId   String
-  platform    String // 抖音 | 视频号 | B站 | ...
+  platform    String // YouTube | 抖音 | 视频号 | B站 | ...
   url         String?
   status      String    @default("PENDING") // PENDING | PUBLISHED
   publishedAt DateTime?
@@ -599,6 +599,26 @@ model Release {
   createdAt   DateTime  @default(now())
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+// 创作者自己的站外账号(OAuth)。钱进这个账号,不经 ComicLaw。
+// ownerType 目前只有 user(Auth0 sub);Google 授权必须人在浏览器里点。
+model ExternalAccount {
+  id              String    @id @default(cuid())
+  ownerType       String // user
+  ownerId         String // Auth0 sub
+  platform        String // youtube
+  channelId       String?
+  channelTitle    String?
+  refreshToken    String // AES-GCM,见 youtubeCrypto
+  accessToken     String?
+  accessExpiresAt DateTime?
+  scopes          String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([ownerType, ownerId, platform])
+  @@index([ownerId, platform])
 }
 
 // ---------- 生成任务 ↔ 扣款交易 关联 ----------

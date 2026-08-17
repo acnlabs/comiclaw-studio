@@ -120,6 +120,10 @@ usage() {
                                         episodeOrder, episodeTitle, seriesWorkId, seriesTitle,
                                         seriesDescription, seriesCoverUrl}
   get-comiclaw-listing <projectId>      读取当前上架快照（默认值 + 已上架作品）
+  youtube-status <projectId>            看项目主人是否已在 Studio 绑了 YouTube(人必须先在发行面板点连接)
+  publish-youtube <projectId> '<json>'  把最新成片上传到项目主人的 YouTube;成功后写 Release
+                                        {title, description, tags, privacy: public|unlisted|private}
+                                        钱进主人自己的 YouTube,Studio 不经手;上传≠分成(仍要过 YPP 门槛)
 
 按用量扣款(生产成本;Studio 按价目表定价,工人只报 units)
   pricing                               查看价目表(每单位 Credits)
@@ -185,6 +189,8 @@ case "$cmd" in
   publish-work)    call POST "/api/agent/works" "$2" ;;
   publish-comiclaw) require_worker_task; call POST "/api/agent/projects/$2/publish" "$3" ;;
   get-comiclaw-listing) require_worker_task; call GET "/api/agent/projects/$2/publish" ;;
+  youtube-status)  require_worker_task; call GET "/api/agent/projects/$2/youtube" ;;
+  publish-youtube) require_worker_task; call POST "/api/agent/projects/$2/youtube" "${3:-{}}" ;;
   create-character) call POST "/api/agent/characters" "$2" ;;
   set-work-cast)    call POST "/api/agent/works/$2/cast" "$3" ;;
   list-characters)  call GET "/api/agent/characters" ;;

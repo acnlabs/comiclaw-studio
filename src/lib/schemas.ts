@@ -224,6 +224,19 @@ export const agentComiclawListingSchema = comiclawListingSchema.extend({
   mode: ComiclawPublishModeEnum.optional(),
 });
 
+export const YoutubePrivacyEnum = z.enum(["public", "unlisted", "private"]);
+
+export const youtubeListingSchema = z.object({
+  title: nonEmpty.max(100),
+  description: optionalStr,
+  tags: z.array(nonEmpty.max(30)).max(10).optional(),
+  privacy: YoutubePrivacyEnum.optional(),
+});
+
+export const youtubeConnectSchema = z.object({
+  returnTo: optionalStr,
+});
+
 export const createCharacterSchema = z.object({
   name: nonEmpty.max(200),
   tagline: optionalStr,

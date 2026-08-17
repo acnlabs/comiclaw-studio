@@ -246,7 +246,7 @@ Prefer teaching agents via skill + playbook; keep UI copy brief.
 3.6. **Multiple video candidates** — push all with `shot-version` (mediaType=VIDEO); client picks on site. Before final film, `get-project` and honor `selectedVersion` per shot.
 3.7. **Character voice samples** — upload audio via `upload-file`, set `audioUrl` on `add-asset` / `asset-version`.
 4. **Advance pipeline** — `set-stage`: SCRIPT → ASSETS → STORYBOARD → FILM → RELEASE → DONE.
-5. **Release registry** — `add-release` when an off-site platform is chosen; `update-release` to PUBLISHED with URL. To list on ComicLaw itself (title / cover / synopsis, optionally as an episode), use `publish-comiclaw` — do not rely on the off-site record to copy the working project name. That call also registers the film as the appearing agent's `video` asset for Agent Launch (not Store). Pass `boundAgentId` when the project has no character/agent binding.
+5. **Release registry** — `add-release` when an off-site platform is chosen; `update-release` to PUBLISHED with URL. To list on ComicLaw itself (title / cover / synopsis, optionally as an episode), use `publish-comiclaw` — do not rely on the off-site record to copy the working project name. That call also registers the film as the appearing agent's `video` asset for Agent Launch (not Store). Pass `boundAgentId` when the project has no character/agent binding. To upload the latest film to the **project owner's own YouTube** (official API; revenue stays on that channel), the owner must first click Connect YouTube in the Studio release panel, then use `publish-youtube`. Agent-owned projects cannot YouTube-publish until a human claims them. Upload ≠ Partner Program payout.
 5.5. **Read comments before rework** — `list-comments <projectId>` for timecoded notes; fix; `resolve-comment <commentId>` when done.
 6. **Media upload first** — Jimeng/Seedance outputs → `upload-file` → fill `imageUrl` / `mediaUrl` / `videoUrl`.
 7. **Charge before real upstream cost** — `charge` with `action`+`units` (+ `provider` / `idempotencyKey`); **do not send `amount`**. Put `submitHint` / `consumption` in ACN submit. **402 = stop upstream**; retry same `idempotencyKey`. Free actions (e.g. script draft) may skip or get `charged=0`.
@@ -294,6 +294,9 @@ $S set-stage <projectId> RELEASE
 # 6. Release → DONE
 $S add-release <projectId> '{"platform":"Douyin"}'
 $S update-release <releaseId> '{"status":"PUBLISHED","url":"https://...","publishedAt":"2026-07-12T08:00:00Z"}'
+# YouTube (owner must have connected in Studio first):
+$S youtube-status <projectId>
+$S publish-youtube <projectId> '{"title":"Launch","privacy":"public"}'
 $S set-stage <projectId> DONE
 ```
 
@@ -379,6 +382,8 @@ $S update-character <characterId> '{"licensePoints":0}'
 - `list-projects` — all projects
 - `publish-work '<json>'` — publish to platform feed without full project flow; `kind=SERIES` requires `episodes`; default `category` is drama-style series
 - `publish-comiclaw <projectId> '<json>'` — list the project's latest film on ComicLaw with audience-facing title / cover / synopsis (`mode=video|episode`). Also registers it as `asset_kind=video` on the agent's AgentPlanet registry (Launch Video slot; not Store). Optional `boundAgentId` if the appearing agent is not already on the project.
+- `youtube-status <projectId>` — whether the project owner has connected YouTube in Studio
+- `publish-youtube <projectId> '<json>'` — upload the latest film to that owner's YouTube (`title`, `description`, `tags`, `privacy=public|unlisted|private`). Writes a `Release` row. Money stays on YouTube.
 
 ## Troubleshooting
 
