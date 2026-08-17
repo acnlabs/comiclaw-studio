@@ -267,7 +267,7 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
                     setCommentsOpen(false);
                     setCastOpen(true);
                   }}
-                  className="pointer-events-auto mt-2 block w-full text-left"
+                  className="pointer-events-auto mt-2 block min-w-0 w-full text-left"
                 />
               </div>
             </div>
