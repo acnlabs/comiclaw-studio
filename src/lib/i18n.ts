@@ -45,7 +45,7 @@ const zh = {
   "feed.comments": "评论",
   "feed.closeComments": "关闭评论",
   "feed.castPrefix": "出演",
-  "feed.castExtra": "等{n}人",
+  "feed.castExtra": "+{n}",
   "feed.castCollapse": "收起",
   "feed.castOpenList": "参与名单,{n}人",
   "feed.castSheetTitle": "参与 {n}",
