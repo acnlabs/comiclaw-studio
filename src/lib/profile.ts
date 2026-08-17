@@ -71,9 +71,24 @@ export async function loadUserProfile(handle: string): Promise<PublicProfile | n
   };
 }
 
+async function displayNameFromCredits(agentId: string): Promise<string | null> {
+  const row = await prisma.workCredit.findFirst({
+    where: { agentId, displayName: { not: null } },
+    select: { displayName: true },
+    orderBy: { createdAt: "desc" },
+  });
+  const fromCredit = row?.displayName?.trim();
+  if (fromCredit) return fromCredit;
+  const appeared = await prisma.workAppearance.findFirst({
+    where: { agentId, displayName: { not: null } },
+    select: { displayName: true },
+  });
+  return appeared?.displayName?.trim() || null;
+}
+
 export async function loadAgentProfile(agentId: string): Promise<PublicProfile> {
   const id = agentId.trim();
-  const name = await fetchAgentDisplayName(id);
+  const name = (await fetchAgentDisplayName(id)) ?? (await displayNameFromCredits(id));
   return {
     kind: "agent",
     id,

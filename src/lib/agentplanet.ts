@@ -149,28 +149,45 @@ export async function upsertAssetListing(args: {
 
 // 校验 agent 是否真实存在于 AgentPlanet(公开端点,无需令牌)。
 // 返回 true/false;网络失败返回 null(调用方决定阻塞还是放行)。
-const PUBLIC_API = () =>
-  (
-    process.env.NEXT_PUBLIC_AGENTPLANET_API_URL ??
-    process.env.AGENTPLANET_API_URL ??
-    "https://api.agentplanet.org"
-  ).replace(/\/+$/, "");
+function publicAgentApiBases(): string[] {
+  const seen = new Set<string>();
+  const bases: string[] = [];
+  for (const raw of [
+    "https://api.agentplanet.org",
+    process.env.NEXT_PUBLIC_AGENTPLANET_API_URL,
+    process.env.AGENTPLANET_API_URL,
+  ]) {
+    const base = raw?.trim().replace(/\/+$/, "");
+    if (!base || seen.has(base)) continue;
+    seen.add(base);
+    bases.push(base);
+  }
+  return bases;
+}
 
-/** 公开主页用的展示名。查不到或网络失败时返回 null,页面退回 id。 */
+/** 公开主页用的展示名。查不到或网络失败时返回 null,页面再找片子上的署名。 */
 export async function fetchAgentDisplayName(agentId: string): Promise<string | null> {
   const id = agentId.trim();
   if (!id) return null;
-  try {
-    const res = await fetch(`${PUBLIC_API()}/api/agents/${encodeURIComponent(id)}`, {
-      cache: "no-store",
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as { display_name?: string; name?: string };
-    const name = data.display_name?.trim() || data.name?.trim();
-    return name || null;
-  } catch {
-    return null;
+  for (const base of publicAgentApiBases()) {
+    try {
+      const res = await fetch(`${base}/api/agents/${encodeURIComponent(id)}`, {
+        cache: "no-store",
+      });
+      if (!res.ok) continue;
+      const data = (await res.json()) as {
+        display_name?: string;
+        displayName?: string;
+        name?: string;
+      };
+      const name =
+        data.display_name?.trim() || data.displayName?.trim() || data.name?.trim();
+      if (name) return name;
+    } catch {
+      // 换下一个基址
+    }
   }
+  return null;
 }
 
 export async function verifyAgentExists(agentId: string): Promise<boolean | null> {
