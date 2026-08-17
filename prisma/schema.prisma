@@ -458,6 +458,17 @@ model WorkCredit {
   @@index([agentId])
 }
 
+// 上架/名单变更时给这个 agent 发过 ACN 通知。跟署名行分开,replace credits 不会抹掉。
+model WorkCreditNotify {
+  workId  String
+  agentId String
+  sentAt  DateTime @default(now())
+
+  work Work @relation(fields: [workId], references: [id], onDelete: Cascade)
+
+  @@id([workId, agentId])
+}
+
 // ---------- 平台作品(推荐 / 短剧) ----------
 
 // 发行完成的内容回流为平台作品;短剧可含多集
@@ -492,6 +503,7 @@ model Work {
   cast        WorkCast[]
   appearances WorkAppearance[]
   credits     WorkCredit[]
+  creditNotifies WorkCreditNotify[]
   plays       WorkPlay[]
   signals     WorkSignal[]
 

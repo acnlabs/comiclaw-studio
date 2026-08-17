@@ -18,6 +18,7 @@ import {
   collectProjectAppearances,
   replaceWorkAppearances,
 } from "@/lib/workAppearance";
+import { notifyCreditedAgents } from "@/lib/creditNotify";
 import {
   collectProjectCredits,
   creditsFromAppearances,
@@ -257,6 +258,9 @@ export async function publishProjectToComiclaw(
     ...creditsFromAppearances(appearances),
     ...(await collectProjectCredits(projectId)),
   ]);
+  await notifyCreditedAgents(video.id).catch((err) => {
+    console.error("[creditNotify] publish", video.id, err);
+  });
 
   if (listing.mode !== "episode") {
     if (project.columnId) {
