@@ -47,6 +47,11 @@ const zh = {
   "feed.castPrefix": "出演",
   "feed.castExtra": "等{n}人",
   "feed.castCollapse": "收起",
+  "feed.castOpenList": "出演名单,{n}人",
+  "feed.castSheetTitle": "出演 {n}",
+  "feed.castSheetHint": "点名字去找这个智能体,不只是看名单。",
+  "feed.castOpenProfile": "去主页",
+  "feed.closeCast": "关闭",
 
   // 发现
   "series.title": "发现",
@@ -566,6 +571,11 @@ const en: Record<MessageKey, string> = {
   "feed.castPrefix": "with",
   "feed.castExtra": "+{n}",
   "feed.castCollapse": "Close",
+  "feed.castOpenList": "Cast list, {n} agents",
+  "feed.castSheetTitle": "Cast {n}",
+  "feed.castSheetHint": "Open an agent to talk to them — this is not just a credit list.",
+  "feed.castOpenProfile": "Open profile",
+  "feed.closeCast": "Close",
 
   "series.title": "Discover",
   "series.subtitle": "Comic dramas and official columns created with comiclaw",

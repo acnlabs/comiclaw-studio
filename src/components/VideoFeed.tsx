@@ -7,6 +7,7 @@ import { AUTH0_AUDIENCE } from "@/lib/auth0";
 import { useT } from "@/components/LocaleProvider";
 import AuthorCredit from "@/components/AuthorCredit";
 import FeedCastLine from "@/components/FeedCastLine";
+import FeedCastSheet from "@/components/FeedCastSheet";
 import WorkDiscussion from "@/components/WorkDiscussion";
 import type { AppearanceCredit } from "@/lib/workAppearance";
 
@@ -52,12 +53,14 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
   const [muted, setMuted] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const [castOpen, setCastOpen] = useState(false);
 
   signedInRef.current = isAuthenticated;
   tokenRef.current = getAccessTokenSilently;
 
   useEffect(() => {
     setCommentsOpen(false);
+    setCastOpen(false);
   }, [activeIndex]);
 
   useEffect(() => {
@@ -242,8 +245,11 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
               <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-4 pb-4 pt-16">
                 <FeedCastLine
                   credits={item.cast ?? []}
-                  active={i === activeIndex}
-                  className="pointer-events-auto mb-2"
+                  onOpen={() => {
+                    setCommentsOpen(false);
+                    setCastOpen(true);
+                  }}
+                  className="pointer-events-auto mb-2 max-w-full text-left"
                 />
                 <AuthorCredit
                   handle={item.authorHandle}
@@ -272,7 +278,10 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
       {/* 右侧悬浮控制 */}
       <div className="absolute right-3 top-1/2 flex -translate-y-1/2 flex-col gap-2 sm:right-6">
         <button
-          onClick={() => setCommentsOpen(true)}
+          onClick={() => {
+            setCastOpen(false);
+            setCommentsOpen(true);
+          }}
           aria-label={t("feed.comments")}
           title={t("feed.comments")}
           className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-600 bg-zinc-900/80 text-zinc-100 backdrop-blur transition-colors hover:bg-zinc-800"
@@ -304,6 +313,13 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
           ↓
         </button>
       </div>
+
+      {castOpen && (items[activeIndex]?.cast?.length ?? 0) > 0 ? (
+        <FeedCastSheet
+          credits={items[activeIndex].cast ?? []}
+          onClose={() => setCastOpen(false)}
+        />
+      ) : null}
 
       {commentsOpen && items[activeIndex] && (
         <div
