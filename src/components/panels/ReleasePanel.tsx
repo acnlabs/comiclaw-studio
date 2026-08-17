@@ -4,6 +4,7 @@ import type { ReleaseData } from "@/lib/types";
 import { useT } from "@/components/LocaleProvider";
 import { EmptyState, Badge } from "@/components/ui";
 import ComiclawPublishForm from "@/components/panels/ComiclawPublishForm";
+import YouTubePublishForm from "@/components/panels/YouTubePublishForm";
 
 export default function ReleasePanel({
   releases,
@@ -17,6 +18,7 @@ export default function ReleasePanel({
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <ComiclawPublishForm shareToken={shareToken} />
+      <YouTubePublishForm shareToken={shareToken} />
 
       {releases.length === 0 ? (
         <EmptyState text={t("panel.release.empty")} />
