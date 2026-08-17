@@ -2,6 +2,10 @@ import { prisma } from "@/lib/db";
 import { withAgentAuth, parseBody } from "@/lib/api";
 import { publishWorkSchema } from "@/lib/schemas";
 import { ownerFields, resolveCreateOwner } from "@/lib/owner";
+import {
+  appearancesFromCharacterIds,
+  replaceWorkAppearances,
+} from "@/lib/workAppearance";
 
 // 直接发布平台作品(不经 studio 项目流程,如整部短剧)
 export const POST = withAgentAuth(async (req) => {
@@ -41,5 +45,23 @@ export const POST = withAgentAuth(async (req) => {
     },
     include: { episodes: true },
   });
+  const drafts = body.appearingAgentIds?.length
+    ? body.appearingAgentIds.map((agentId, i) => ({
+        agentId,
+        characterId: null,
+        role: i === 0 ? ("lead" as const) : ("cast" as const),
+        displayName: null,
+      }))
+    : await appearancesFromCharacterIds(body.characterIds ?? []);
+  if (drafts.length) {
+    await replaceWorkAppearances(work.id, drafts);
+    const lead = drafts.find((row) => row.role === "lead") ?? drafts[0];
+    if (lead) {
+      await prisma.work.update({
+        where: { id: work.id },
+        data: { appearingAgentId: lead.agentId },
+      });
+    }
+  }
   return Response.json({ work }, { status: 201 });
 });

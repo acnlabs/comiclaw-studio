@@ -275,7 +275,8 @@ export const publishWorkSchema = z
     ownerUserId: optionalStr,
     ownerAgentId: optionalStr,
     ownerOrgId: optionalStr,
-    characterIds: z.array(z.string()).optional(), // 参演的智能体角色
+    characterIds: z.array(z.string()).optional(), // 参演的角色图
+    appearingAgentIds: z.array(z.string()).optional(), // 参演的智能体身份
     episodes: z
       .array(
         z.object({

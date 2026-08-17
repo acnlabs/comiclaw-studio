@@ -14,6 +14,10 @@ import {
   type VideoRegistryResult,
 } from "@/lib/videoRegistry";
 import { acceptedBoundAgentId } from "@/lib/videoRegistryRules";
+import {
+  collectProjectAppearances,
+  replaceWorkAppearances,
+} from "@/lib/workAppearance";
 
 export type ComiclawListing = {
   title: string;
@@ -230,12 +234,22 @@ export async function publishProjectToComiclaw(
     publisherAgentId: opts?.publisherAgentId,
     allowExplicitBoundAgent: opts?.allowExplicitBoundAgent,
   });
-  if (videoRegistry.status !== "skipped" && videoRegistry.boundAgentId) {
+  const leadAgentId =
+    videoRegistry.status !== "skipped" ? videoRegistry.boundAgentId : null;
+  if (leadAgentId) {
     await prisma.work.update({
       where: { id: video.id },
-      data: { appearingAgentId: videoRegistry.boundAgentId },
+      data: { appearingAgentId: leadAgentId },
     });
   }
+  await replaceWorkAppearances(
+    video.id,
+    await collectProjectAppearances({
+      projectId,
+      workId: video.id,
+      leadAgentId,
+    }),
+  );
 
   if (listing.mode !== "episode") {
     if (project.columnId) {

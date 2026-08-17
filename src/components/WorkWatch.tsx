@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import WorkPlayer from "@/components/WorkPlayer";
+import WorkCastList from "@/components/WorkCastList";
 import WorkDiscussion from "@/components/WorkDiscussion";
+import type { AppearanceCredit } from "@/lib/workAppearance";
 
 type EpisodeData = {
   id: string;
@@ -20,6 +22,7 @@ export default function WorkWatch({
   coverUrl,
   episodes,
   initialEpisodeId,
+  castByWorkId,
 }: {
   workId: string;
   title: string;
@@ -27,6 +30,7 @@ export default function WorkWatch({
   coverUrl: string | null;
   episodes: EpisodeData[];
   initialEpisodeId?: string | null;
+  castByWorkId?: Record<string, AppearanceCredit[]>;
 }) {
   const [current, setCurrent] = useState<EpisodeData | null>(
     (initialEpisodeId && episodes.find((e) => e.id === initialEpisodeId)) ||
@@ -53,6 +57,7 @@ export default function WorkWatch({
         current={current}
         onCurrentChange={onCurrentChange}
       />
+      <WorkCastList credits={castByWorkId?.[videoId] ?? castByWorkId?.[workId] ?? []} />
       <WorkDiscussion
         workId={workId}
         videoId={videoId}

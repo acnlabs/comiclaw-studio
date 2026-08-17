@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { withAgentAuth, parseBody } from "@/lib/api";
 import { notFoundJson, badRequest } from "@/lib/auth";
 import { z } from "zod";
+import { appearancesFromCharacterIds, replaceWorkAppearances } from "@/lib/workAppearance";
 
 type Ctx = { params: Promise<{ workId: string }> };
 
@@ -12,7 +13,10 @@ export const POST = withAgentAuth(async (req, ctx: Ctx) => {
   const { workId } = await ctx.params;
   const body = await parseBody(req, castSchema);
 
-  const work = await prisma.work.findUnique({ where: { id: workId }, select: { id: true } });
+  const work = await prisma.work.findUnique({
+    where: { id: workId },
+    select: { id: true, appearingAgentId: true },
+  });
   if (!work) return notFoundJson();
 
   if (body.characterIds.length > 0) {
@@ -30,5 +34,9 @@ export const POST = withAgentAuth(async (req, ctx: Ctx) => {
       data: body.characterIds.map((characterId) => ({ workId, characterId })),
     }),
   ]);
+  await replaceWorkAppearances(
+    workId,
+    await appearancesFromCharacterIds(body.characterIds, work.appearingAgentId),
+  );
   return Response.json({ workId, characterIds: body.characterIds });
 });

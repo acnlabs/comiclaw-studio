@@ -6,6 +6,7 @@ import { translate, translateCategory } from "@/lib/i18n";
 import Link from "next/link";
 import WorkWatch from "@/components/WorkWatch";
 import { authorLine, authorLinksForWorks } from "@/lib/profile";
+import { toAppearanceCredits } from "@/lib/workAppearance";
 
 export const dynamic = "force-dynamic";
 
@@ -19,10 +20,26 @@ export default async function WorkPage(props: {
 
   const work = await prisma.work.findUnique({
     where: { id },
-    include: { episodes: { orderBy: { order: "asc" } } },
+    include: {
+      appearances: true,
+      episodes: {
+        orderBy: { order: "asc" },
+        include: { sourceWork: { select: { id: true, appearances: true } } },
+      },
+    },
   });
   if (!work) notFound();
   const [author] = await authorLinksForWorks([work]);
+  const castByWorkId: Record<string, ReturnType<typeof toAppearanceCredits>> = {
+    [work.id]: toAppearanceCredits(work.appearances),
+  };
+  for (const episode of work.episodes) {
+    if (episode.sourceWork) {
+      castByWorkId[episode.sourceWork.id] = toAppearanceCredits(
+        episode.sourceWork.appearances,
+      );
+    }
+  }
   const creatorLine = authorLine({
     handle: author?.handle,
     authorName: work.authorName,
@@ -70,6 +87,7 @@ export default async function WorkPage(props: {
           coverUrl={work.coverUrl}
           episodes={work.episodes}
           initialEpisodeId={ep}
+          castByWorkId={castByWorkId}
         />
       </div>
     </div>

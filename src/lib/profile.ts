@@ -108,7 +108,13 @@ export async function listOwnedWorks(args: {
 
   const where =
     args.kind === "agent" && args.includeAppearing
-      ? { OR: [ownerFilter, { appearingAgentId: args.id }] }
+      ? {
+          OR: [
+            ownerFilter,
+            { appearingAgentId: args.id },
+            { appearances: { some: { agentId: args.id } } },
+          ],
+        }
       : ownerFilter;
 
   return prisma.work.findMany({
@@ -125,6 +131,14 @@ export async function listOwnedWorks(args: {
       ownerKind: true,
       ownerAgentId: true,
       appearingAgentId: true,
+      ...(args.includeAppearing
+        ? {
+            appearances: {
+              where: { agentId: args.id },
+              select: { agentId: true },
+            },
+          }
+        : {}),
       _count: { select: { episodes: true } },
     },
     take: 100,

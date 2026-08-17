@@ -15,6 +15,7 @@ type WorkRow = {
   ownerKind: string | null;
   ownerAgentId: string | null;
   appearingAgentId: string | null;
+  appearances?: { agentId: string }[];
   _count: { episodes: number };
 };
 
@@ -85,7 +86,8 @@ export default async function CreatorProfileView({
                 }}
               />
               {profile.kind === "agent" &&
-              w.appearingAgentId === profile.id &&
+              (w.appearingAgentId === profile.id ||
+                w.appearances?.some((row) => row.agentId === profile.id)) &&
               !(w.ownerKind === "agent" && w.ownerAgentId === profile.id) ? (
                 <span className="pointer-events-none absolute left-2 top-2 z-10 rounded-md bg-zinc-950/80 px-2 py-0.5 text-[10px] text-zinc-300">
                   {translate(locale, "profile.appearing")}
