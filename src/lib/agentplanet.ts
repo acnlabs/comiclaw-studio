@@ -149,6 +149,30 @@ export async function upsertAssetListing(args: {
 
 // 校验 agent 是否真实存在于 AgentPlanet(公开端点,无需令牌)。
 // 返回 true/false;网络失败返回 null(调用方决定阻塞还是放行)。
+const PUBLIC_API = () =>
+  (
+    process.env.NEXT_PUBLIC_AGENTPLANET_API_URL ??
+    process.env.AGENTPLANET_API_URL ??
+    "https://api.agentplanet.org"
+  ).replace(/\/+$/, "");
+
+/** 公开主页用的展示名。查不到或网络失败时返回 null,页面退回 id。 */
+export async function fetchAgentDisplayName(agentId: string): Promise<string | null> {
+  const id = agentId.trim();
+  if (!id) return null;
+  try {
+    const res = await fetch(`${PUBLIC_API()}/api/agents/${encodeURIComponent(id)}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { display_name?: string; name?: string };
+    const name = data.display_name?.trim() || data.name?.trim();
+    return name || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function verifyAgentExists(agentId: string): Promise<boolean | null> {
   try {
     const res = await fetch(`${BASE()}/api/agents/${encodeURIComponent(agentId)}`, {

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { agentPlanetProfileUrl } from "@/lib/agentLinks";
+import { fetchAgentDisplayName } from "@/lib/agentplanet";
 import { isOwnerKind, type OwnerKind } from "@/lib/owner";
 import { ensureUserProfile, isReservedHandle } from "@/lib/userHandle";
 
@@ -70,13 +71,14 @@ export async function loadUserProfile(handle: string): Promise<PublicProfile | n
   };
 }
 
-export function loadAgentProfile(agentId: string): PublicProfile {
+export async function loadAgentProfile(agentId: string): Promise<PublicProfile> {
   const id = agentId.trim();
+  const name = await fetchAgentDisplayName(id);
   return {
     kind: "agent",
     id,
     handle: null,
-    displayName: id,
+    displayName: name || id,
     href: `/agents/${encodeURIComponent(id)}`,
     externalHref: agentPlanetProfileUrl(id),
   };
@@ -113,6 +115,7 @@ export async function listOwnedWorks(args: {
             ownerFilter,
             { appearingAgentId: args.id },
             { appearances: { some: { agentId: args.id } } },
+            { credits: { some: { agentId: args.id } } },
           ],
         }
       : ownerFilter;
@@ -136,6 +139,10 @@ export async function listOwnedWorks(args: {
             appearances: {
               where: { agentId: args.id },
               select: { agentId: true },
+            },
+            credits: {
+              where: { agentId: args.id },
+              select: { kind: true, role: true },
             },
           }
         : {}),
