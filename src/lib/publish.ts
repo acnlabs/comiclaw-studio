@@ -18,6 +18,11 @@ import {
   collectProjectAppearances,
   replaceWorkAppearances,
 } from "@/lib/workAppearance";
+import {
+  collectProjectCredits,
+  creditsFromAppearances,
+  replaceWorkCredits,
+} from "@/lib/workCredit";
 
 export type ComiclawListing = {
   title: string;
@@ -242,14 +247,16 @@ export async function publishProjectToComiclaw(
       data: { appearingAgentId: leadAgentId },
     });
   }
-  await replaceWorkAppearances(
-    video.id,
-    await collectProjectAppearances({
-      projectId,
-      workId: video.id,
-      leadAgentId,
-    }),
-  );
+  const appearances = await collectProjectAppearances({
+    projectId,
+    workId: video.id,
+    leadAgentId,
+  });
+  await replaceWorkAppearances(video.id, appearances);
+  await replaceWorkCredits(video.id, [
+    ...creditsFromAppearances(appearances),
+    ...(await collectProjectCredits(projectId)),
+  ]);
 
   if (listing.mode !== "episode") {
     if (project.columnId) {

@@ -9,7 +9,7 @@ import AuthorCredit from "@/components/AuthorCredit";
 import FeedCastLine from "@/components/FeedCastLine";
 import FeedCastSheet from "@/components/FeedCastSheet";
 import WorkDiscussion from "@/components/WorkDiscussion";
-import type { AppearanceCredit } from "@/lib/workAppearance";
+import type { CreditRow } from "@/lib/workCredit";
 
 export interface FeedItem {
   id: string;
@@ -20,7 +20,7 @@ export interface FeedItem {
   authorName: string | null;
   authorHandle?: string | null;
   authorHref?: string | null;
-  cast?: AppearanceCredit[];
+  credits?: CreditRow[];
   playUrl: string;
   coverUrl: string | null;
   episodeCount: number;
@@ -243,19 +243,11 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
 
               {/* 底部信息 */}
               <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-4 pb-4 pt-16">
-                <FeedCastLine
-                  credits={item.cast ?? []}
-                  onOpen={() => {
-                    setCommentsOpen(false);
-                    setCastOpen(true);
-                  }}
-                  className="pointer-events-auto mb-2 max-w-full text-left"
-                />
                 <AuthorCredit
                   handle={item.authorHandle}
                   authorName={item.authorName}
                   href={item.authorHref}
-                  className="pointer-events-auto text-sm font-semibold text-zinc-100 hover:text-accent"
+                  className="pointer-events-auto block text-sm font-semibold text-zinc-100 hover:text-accent"
                 />
                 <p className="mt-0.5 line-clamp-2 text-sm text-zinc-200">{item.title}</p>
                 {item.description && (
@@ -269,6 +261,14 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
                     {t("feed.watchAll", { n: item.episodeCount })}
                   </Link>
                 )}
+                <FeedCastLine
+                  credits={item.credits ?? []}
+                  onOpen={() => {
+                    setCommentsOpen(false);
+                    setCastOpen(true);
+                  }}
+                  className="pointer-events-auto mt-2 block w-full text-left"
+                />
               </div>
             </div>
           </section>
@@ -314,9 +314,9 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
         </button>
       </div>
 
-      {castOpen && (items[activeIndex]?.cast?.length ?? 0) > 0 ? (
+      {castOpen && (items[activeIndex]?.credits?.length ?? 0) > 0 ? (
         <FeedCastSheet
-          credits={items[activeIndex].cast ?? []}
+          credits={items[activeIndex].credits ?? []}
           onClose={() => setCastOpen(false)}
         />
       ) : null}

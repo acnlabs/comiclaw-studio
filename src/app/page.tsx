@@ -2,7 +2,15 @@ import { prisma } from "@/lib/db";
 import VideoFeed, { type FeedItem } from "@/components/VideoFeed";
 import { HEAT_WINDOW_HOURS, feedAuthorKey, feedTier, rankForYou } from "@/lib/feedRanking";
 import { authorLinksForWorks } from "@/lib/profile";
-import { feedCastCredits, toAppearanceCredits } from "@/lib/workAppearance";
+import { toAppearanceCredits } from "@/lib/workAppearance";
+import {
+  CREDIT_KINDS,
+  creditsFromAppearances,
+  feedCredits,
+  mergeCredits,
+  type CreditDraft,
+  type CreditKind,
+} from "@/lib/workCredit";
 
 export const dynamic = "force-dynamic";
 
@@ -14,10 +22,13 @@ async function loadFeedItems(): Promise<FeedItem[]> {
     where: { columnId: null },
     include: {
       appearances: true,
+      credits: true,
       episodes: {
         orderBy: { order: "asc" },
         take: 1,
-        include: { sourceWork: { select: { appearances: true } } },
+        include: {
+          sourceWork: { select: { appearances: true, credits: true } },
+        },
       },
       _count: { select: { episodes: true } },
     },
@@ -51,10 +62,19 @@ async function loadFeedItems(): Promise<FeedItem[]> {
   // 短剧取第一集作为信息流内容;无可播放内容的作品不进入信息流
   return ranked
     .map(({ work: w, ...rankable }, i) => {
-      const cast = feedCastCredits(
-        toAppearanceCredits(w.episodes[0]?.sourceWork?.appearances ?? w.appearances),
-        w.ownerKind === "agent" ? w.ownerAgentId : null,
-      );
+      const source = w.episodes[0]?.sourceWork;
+      const creditDrafts: CreditDraft[] = (source?.credits ?? w.credits).length
+        ? (source?.credits ?? w.credits).map((row) => ({
+            agentId: row.agentId,
+            kind: CREDIT_KINDS.includes(row.kind as CreditKind)
+              ? (row.kind as CreditKind)
+              : "appear",
+            role: row.role === "lead" ? "lead" : "cast",
+            displayName: row.displayName,
+          }))
+        : creditsFromAppearances(
+            toAppearanceCredits(source?.appearances ?? w.appearances),
+          );
       return {
       id: w.id,
       kind: w.kind,
@@ -64,7 +84,10 @@ async function loadFeedItems(): Promise<FeedItem[]> {
       authorName: w.authorName,
       authorHandle: authors[i]?.handle ?? null,
       authorHref: authors[i]?.href ?? null,
-      cast: cast.all,
+      credits: feedCredits(
+        mergeCredits(creditDrafts),
+        w.ownerKind === "agent" ? w.ownerAgentId : null,
+      ),
       playUrl: w.videoUrl ?? w.episodes[0]?.videoUrl ?? "",
       coverUrl: w.coverUrl,
       episodeCount: w._count.episodes,
