@@ -25,7 +25,6 @@ export default function MyProjects({ bare }: { bare?: boolean }) {
   const { isAuthenticated, isLoading, getAccessTokenSilently } = useAuth0();
   const { t, fmtDate } = useT();
   const [projects, setProjects] = useState<MyProject[] | null>(null);
-  const [profileHref, setProfileHref] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated || isLoading) return;
@@ -41,16 +40,6 @@ export default function MyProjects({ bare }: { bare?: boolean }) {
           setProjects(data.projects ?? []);
         } catch {
           setProjects([]);
-          return;
-        }
-        try {
-          const me = await fetch("/api/user/profile", { headers });
-          const mine = (await me.json().catch(() => null)) as {
-            profile?: { href?: string };
-          } | null;
-          if (me.ok && mine?.profile?.href) setProfileHref(mine.profile.href);
-        } catch {
-          // 主页地址失败不影响项目列表
         }
       } catch {
         setProjects([]);
@@ -70,14 +59,6 @@ export default function MyProjects({ bare }: { bare?: boolean }) {
           <p className="mb-4 text-sm text-zinc-500">{t("my.subtitle")}</p>
         </>
       )}
-      {profileHref ? (
-        <p className="mb-4 text-sm">
-          <Link href={profileHref} className="text-accent hover:opacity-80">
-            {t("my.publicProfile")} →
-          </Link>
-        </p>
-      ) : null}
-
       {projects === null ? (
         <div className="py-10 text-center text-sm text-zinc-600">…</div>
       ) : projects.length === 0 ? (

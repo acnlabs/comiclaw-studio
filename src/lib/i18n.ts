@@ -17,6 +17,9 @@ const zh = {
   "nav.accountIdCopied": "账号 ID 已复制",
   "nav.credits": "Credits",
   "nav.creditsTitle": "Credits 收支明细",
+  "nav.accountMenu": "账户",
+  "nav.bindYoutube": "绑定 YouTube",
+  "nav.youtubeBound": "YouTube 已绑定",
 
   // 通用
   "common.video": "短视频",
@@ -573,6 +576,9 @@ const en: Record<MessageKey, string> = {
   "nav.accountIdCopied": "Account ID copied",
   "nav.credits": "Credits",
   "nav.creditsTitle": "Credits activity",
+  "nav.accountMenu": "Account",
+  "nav.bindYoutube": "Connect YouTube",
+  "nav.youtubeBound": "YouTube connected",
 
   "common.video": "Video",
   "common.series": "Series",
