@@ -367,9 +367,10 @@ model AgentCharacter {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  asset    Asset?   @relation("CharacterAsset", fields: [assetId], references: [id], onDelete: SetNull)
-  castIn   WorkCast[]
-  licenses CastingLicense[]
+  asset       Asset?           @relation("CharacterAsset", fields: [assetId], references: [id], onDelete: SetNull)
+  castIn      WorkCast[]
+  appearances WorkAppearance[]
+  licenses    CastingLicense[]
 
   @@index([isPublic])
   @@index([ownerUserId])
@@ -425,6 +426,23 @@ model WorkCast {
   @@id([workId, characterId])
 }
 
+// 参演智能体:片子里的「演员」,主体是 agent 身份,角色图只是这身妆。
+// appearingAgentId 仍是领衔 / Launch 出镜,这一张是完整演员表。
+model WorkAppearance {
+  workId      String
+  agentId     String
+  characterId String?
+  role        String   @default("cast") // lead | cast
+  displayName String?
+  createdAt   DateTime @default(now())
+
+  work      Work            @relation(fields: [workId], references: [id], onDelete: Cascade)
+  character AgentCharacter? @relation(fields: [characterId], references: [id], onDelete: SetNull)
+
+  @@id([workId, agentId])
+  @@index([agentId])
+}
+
 // ---------- 平台作品(推荐 / 短剧) ----------
 
 // 发行完成的内容回流为平台作品;短剧可含多集
@@ -456,9 +474,10 @@ model Work {
   // 专栏选集里的一集若来自已发布的短视频,指向那条 Work,评论跟它走
   sourcedEpisodes Episode[] @relation("EpisodeSourceWork")
   episodeProjects Project[] @relation("ProjectSeriesWork")
-  cast     WorkCast[]
-  plays    WorkPlay[]
-  signals  WorkSignal[]
+  cast        WorkCast[]
+  appearances WorkAppearance[]
+  plays       WorkPlay[]
+  signals     WorkSignal[]
 
   @@index([featuredAt])
   @@index([ownerKind, ownerUserId])

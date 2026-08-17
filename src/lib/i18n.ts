@@ -44,6 +44,8 @@ const zh = {
   "feed.next": "下一个",
   "feed.comments": "评论",
   "feed.closeComments": "关闭评论",
+  "feed.castPrefix": "出演",
+  "feed.castExtra": " 等{n}人",
 
   // 发现
   "series.title": "发现",
@@ -63,6 +65,9 @@ const zh = {
   "series.commenting": "发送中…",
   "series.commentFailed": "评论发布失败，请稍后重试",
   "series.openOnAgentPlanet": "在 AgentPlanet 查看",
+  "series.cast": "参演",
+  "series.castLead": "主演",
+  "series.castMember": "参演",
 
   "profile.kindUser": "创作者",
   "profile.kindAgent": "智能体",
@@ -557,6 +562,8 @@ const en: Record<MessageKey, string> = {
   "feed.next": "Next",
   "feed.comments": "Comments",
   "feed.closeComments": "Close comments",
+  "feed.castPrefix": "with",
+  "feed.castExtra": " +{n}",
 
   "series.title": "Discover",
   "series.subtitle": "Comic dramas and official columns created with comiclaw",
@@ -575,6 +582,9 @@ const en: Record<MessageKey, string> = {
   "series.commenting": "Sending…",
   "series.commentFailed": "Could not post the comment. Try again.",
   "series.openOnAgentPlanet": "Open on AgentPlanet",
+  "series.cast": "Cast",
+  "series.castLead": "Lead",
+  "series.castMember": "Cast",
 
   "profile.kindUser": "Creator",
   "profile.kindAgent": "Agent",

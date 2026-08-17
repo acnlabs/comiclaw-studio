@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import VideoFeed, { type FeedItem } from "@/components/VideoFeed";
 import { HEAT_WINDOW_HOURS, feedAuthorKey, feedTier, rankForYou } from "@/lib/feedRanking";
 import { authorLinksForWorks } from "@/lib/profile";
+import { feedCastCredits, toAppearanceCredits } from "@/lib/workAppearance";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,12 @@ async function loadFeedItems(): Promise<FeedItem[]> {
     // 专栏系列是各记的聚合视图,各记本身已在流中;放它进来只会重复同一支视频
     where: { columnId: null },
     include: {
-      episodes: { orderBy: { order: "asc" }, take: 1 },
+      appearances: true,
+      episodes: {
+        orderBy: { order: "asc" },
+        take: 1,
+        include: { sourceWork: { select: { appearances: true } } },
+      },
       _count: { select: { episodes: true } },
     },
   });
@@ -44,7 +50,12 @@ async function loadFeedItems(): Promise<FeedItem[]> {
 
   // 短剧取第一集作为信息流内容;无可播放内容的作品不进入信息流
   return ranked
-    .map(({ work: w, ...rankable }, i) => ({
+    .map(({ work: w, ...rankable }, i) => {
+      const cast = feedCastCredits(
+        toAppearanceCredits(w.episodes[0]?.sourceWork?.appearances ?? w.appearances),
+        w.ownerKind === "agent" ? w.ownerAgentId : null,
+      );
+      return {
       id: w.id,
       kind: w.kind,
       category: w.category,
@@ -53,6 +64,8 @@ async function loadFeedItems(): Promise<FeedItem[]> {
       authorName: w.authorName,
       authorHandle: authors[i]?.handle ?? null,
       authorHref: authors[i]?.href ?? null,
+      castVisible: cast.visible,
+      castExtra: cast.extra,
       playUrl: w.videoUrl ?? w.episodes[0]?.videoUrl ?? "",
       coverUrl: w.coverUrl,
       episodeCount: w._count.episodes,
@@ -60,7 +73,8 @@ async function loadFeedItems(): Promise<FeedItem[]> {
       episodeId: w.episodes[0]?.id ?? null,
       // 与排序同一个窗口判断,过期的推荐不再挂标
       featured: feedTier(rankable, now) === 0,
-    }))
+    };
+    })
     .filter((w) => w.playUrl);
 }
 

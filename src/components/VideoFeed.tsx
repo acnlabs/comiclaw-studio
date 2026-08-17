@@ -6,7 +6,9 @@ import { useAuth0 } from "@auth0/auth0-react";
 import { AUTH0_AUDIENCE } from "@/lib/auth0";
 import { useT } from "@/components/LocaleProvider";
 import AuthorCredit from "@/components/AuthorCredit";
+import FeedCastLine from "@/components/FeedCastLine";
 import WorkDiscussion from "@/components/WorkDiscussion";
+import type { AppearanceCredit } from "@/lib/workAppearance";
 
 export interface FeedItem {
   id: string;
@@ -17,6 +19,8 @@ export interface FeedItem {
   authorName: string | null;
   authorHandle?: string | null;
   authorHref?: string | null;
+  castVisible?: AppearanceCredit[];
+  castExtra?: number;
   playUrl: string;
   coverUrl: string | null;
   episodeCount: number;
@@ -242,6 +246,11 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
                   authorName={item.authorName}
                   href={item.authorHref}
                   className="pointer-events-auto text-sm font-semibold text-zinc-100 hover:text-accent"
+                />
+                <FeedCastLine
+                  visible={item.castVisible ?? []}
+                  extra={item.castExtra ?? 0}
+                  className="mt-0.5 text-xs font-medium text-zinc-200"
                 />
                 <p className="mt-0.5 line-clamp-2 text-sm text-zinc-200">{item.title}</p>
                 {item.description && (
