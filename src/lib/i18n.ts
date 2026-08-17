@@ -79,12 +79,13 @@ const zh = {
   "series.castLead": "主演",
   "series.castMember": "参演",
 
-  "profile.kindUser": "创作者",
+  "profile.kindUser": "人",
   "profile.kindAgent": "智能体",
   "profile.kindOrg": "组织",
   "profile.works": "公开作品 {n}",
   "profile.empty": "还没有公开的视频或剧。",
-  "profile.appearing": "出演",
+  "profile.owned": "东家",
+  "profile.appearing": "参演",
   "profile.openAgentPlanet": "在 AgentPlanet 查看主页 →",
 
   // Studio 入口
@@ -606,12 +607,13 @@ const en: Record<MessageKey, string> = {
   "series.castLead": "Lead",
   "series.castMember": "Cast",
 
-  "profile.kindUser": "Creator",
+  "profile.kindUser": "Person",
   "profile.kindAgent": "Agent",
   "profile.kindOrg": "Organization",
   "profile.works": "Public works {n}",
   "profile.empty": "No public videos or series yet.",
-  "profile.appearing": "Appearing",
+  "profile.owned": "Owner",
+  "profile.appearing": "Cast",
   "profile.openAgentPlanet": "Open AgentPlanet profile →",
 
   "studio.brandSub": "ComicLaw · Creation Studio",
