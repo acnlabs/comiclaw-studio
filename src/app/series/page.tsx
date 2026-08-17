@@ -10,7 +10,7 @@ import {
   DISCOVER_COLUMN_CAT,
   storedCategoriesForDiscover,
 } from "@/lib/discover";
-import { profileHrefsForWorks } from "@/lib/profile";
+import { authorLinksForWorks } from "@/lib/profile";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +37,7 @@ export default async function SeriesPage(props: {
     orderBy: { publishedAt: "desc" },
     include: { _count: { select: { episodes: true } } },
   });
-  const authorHrefs = await profileHrefsForWorks(works);
+  const authors = await authorLinksForWorks(works);
 
   return (
     <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
@@ -79,7 +79,8 @@ export default async function SeriesPage(props: {
                 title: w.title,
                 coverUrl: w.coverUrl,
                 authorName: w.authorName,
-                authorHref: authorHrefs[i],
+                authorHandle: authors[i]?.handle ?? null,
+                authorHref: authors[i]?.href ?? null,
                 publishedAt: w.publishedAt.toISOString(),
                 episodeCount: w._count.episodes,
               }}

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useT } from "@/components/LocaleProvider";
+import AuthorCredit from "@/components/AuthorCredit";
 import WorkDiscussion from "@/components/WorkDiscussion";
 
 export interface FeedItem {
@@ -12,6 +13,7 @@ export interface FeedItem {
   title: string;
   description: string | null;
   authorName: string | null;
+  authorHandle?: string | null;
   authorHref?: string | null;
   playUrl: string;
   coverUrl: string | null;
@@ -163,17 +165,12 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
 
               {/* 底部信息 */}
               <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-4 pb-4 pt-16">
-                {item.authorName &&
-                  (item.authorHref ? (
-                    <Link
-                      href={item.authorHref}
-                      className="pointer-events-auto text-sm font-semibold text-zinc-100 hover:text-accent"
-                    >
-                      @{item.authorName}
-                    </Link>
-                  ) : (
-                    <p className="text-sm font-semibold text-zinc-100">@{item.authorName}</p>
-                  ))}
+                <AuthorCredit
+                  handle={item.authorHandle}
+                  authorName={item.authorName}
+                  href={item.authorHref}
+                  className="pointer-events-auto text-sm font-semibold text-zinc-100 hover:text-accent"
+                />
                 <p className="mt-0.5 line-clamp-2 text-sm text-zinc-200">{item.title}</p>
                 {item.description && (
                   <p className="mt-1 line-clamp-2 text-xs text-zinc-400">{item.description}</p>
@@ -198,17 +195,17 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
           onClick={() => setCommentsOpen(true)}
           aria-label={t("feed.comments")}
           title={t("feed.comments")}
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-700 bg-zinc-900/80 text-base backdrop-blur transition-colors hover:bg-zinc-800"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-600 bg-zinc-900/80 text-zinc-100 backdrop-blur transition-colors hover:bg-zinc-800"
         >
-          💬
+          <CommentIcon />
         </button>
         <button
           onClick={() => setMuted((m) => !m)}
           aria-label={muted ? t("feed.unmute") : t("feed.mute")}
           title={muted ? t("feed.unmute") : t("feed.mute")}
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-700 bg-zinc-900/80 text-base backdrop-blur transition-colors hover:bg-zinc-800"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-600 bg-zinc-900/80 text-zinc-100 backdrop-blur transition-colors hover:bg-zinc-800"
         >
-          {muted ? "🔇" : "🔊"}
+          {muted ? <MutedIcon /> : <SoundIcon />}
         </button>
         <button
           onClick={() => scrollByPage(-1)}
@@ -257,5 +254,35 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
         </div>
       )}
     </div>
+  );
+}
+
+function CommentIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M7 8h10M7 12h6m-8 7.5V6.8A1.8 1.8 0 0 1 6.8 5h10.4A1.8 1.8 0 0 1 19 6.8v7.4a1.8 1.8 0 0 1-1.8 1.8H9.2L5 19.5Z"
+      />
+    </svg>
+  );
+}
+
+function MutedIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M11 5 6.5 9H3v6h3.5L11 19V5Z" />
+      <path strokeLinecap="round" d="m16 10 5 5m0-5-5 5" />
+    </svg>
+  );
+}
+
+function SoundIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M11 5 6.5 9H3v6h3.5L11 19V5Z" />
+      <path strokeLinecap="round" d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8 8 0 0 1 0 12" />
+    </svg>
   );
 }

@@ -5,6 +5,16 @@ const prisma = new PrismaClient();
 // 演示视频(公网可访问的示例素材,仅用于占位)
 const DEMO_VIDEO = "https://www.w3schools.com/html/mov_bbb.mp4";
 
+const OFFICIAL_USER_ID = "seed:daxia";
+const OFFICIAL_HANDLE = "daxia";
+const OFFICIAL_NAME = "漫剧大虾官方";
+const officialOwner = {
+  ownerKind: "user" as const,
+  ownerUserId: OFFICIAL_USER_ID,
+  ownerAgentId: null,
+  ownerOrgId: null,
+};
+
 const SCRIPT_V1 = `# 《漫剧大虾:你的智能体,该出道了》
 
 ## 场次 1|深海片场(0-3s)
@@ -55,6 +65,16 @@ const SCRIPT_V2 = `# 《漫剧大虾:你的智能体,该出道了》(修订版)
 `;
 
 async function main() {
+  await prisma.userProfile.upsert({
+    where: { userId: OFFICIAL_USER_ID },
+    create: {
+      userId: OFFICIAL_USER_ID,
+      handle: OFFICIAL_HANDLE,
+      displayName: OFFICIAL_NAME,
+    },
+    update: { handle: OFFICIAL_HANDLE, displayName: OFFICIAL_NAME },
+  });
+
   // 幂等:清空重建演示项目
   await prisma.project.deleteMany({ where: { shareToken: "demo" } });
 
@@ -64,6 +84,7 @@ async function main() {
       name: "「漫剧大虾」智能体 15s 宣传短视频",
       clientName: "ACN Labs",
       agentName: "漫剧大虾 ComicLaw",
+      ...officialOwner,
       description:
         "以大虾队长为主角,面向智能体客户的 15 秒宣传短视频:展示对话式剧创全流程能力,并预告数字人可参演后续短剧。",
       coverUrl: "/demo/cover.svg",
@@ -253,6 +274,7 @@ async function main() {
       videoUrl: DEMO_VIDEO,
       authorName: "ACN Labs",
       projectId: project.id,
+      ...officialOwner,
     },
   });
 
@@ -282,7 +304,8 @@ async function main() {
       title: "大虾闯片场",
       description: "大虾队长带你逛遍 AI 片场:剧本间、资产库、分镜台的幕后故事。",
       coverUrl: "/demo/series-daxia.svg",
-      authorName: "漫剧大虾官方",
+      authorName: OFFICIAL_NAME,
+      ...officialOwner,
       episodes: {
         create: [
           { order: 1, title: "剧本间的秘密", videoUrl: DEMO_VIDEO, duration: 55 },

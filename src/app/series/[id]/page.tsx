@@ -5,7 +5,7 @@ import { getLocale } from "@/lib/locale";
 import { translate, translateCategory } from "@/lib/i18n";
 import Link from "next/link";
 import WorkWatch from "@/components/WorkWatch";
-import { profileHrefForOwner } from "@/lib/profile";
+import { authorLine, authorLinksForWorks } from "@/lib/profile";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +22,11 @@ export default async function WorkPage(props: {
     include: { episodes: { orderBy: { order: "asc" } } },
   });
   if (!work) notFound();
-  const authorHref = await profileHrefForOwner(work);
+  const [author] = await authorLinksForWorks([work]);
+  const creatorLine = authorLine({
+    handle: author?.handle,
+    authorName: work.authorName,
+  });
 
   return (
     <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
@@ -41,14 +45,14 @@ export default async function WorkPage(props: {
         </span>
       </div>
       <h1 className="mt-2 text-2xl font-bold text-zinc-50">{work.title}</h1>
-      {work.authorName && (
+      {creatorLine && (
         <p className="mt-1 text-sm text-zinc-500">
-          {authorHref ? (
-            <Link href={authorHref} className="hover:text-accent">
-              {translate(locale, "series.creator", { name: work.authorName })}
+          {author?.href ? (
+            <Link href={author.href} className="hover:text-accent">
+              {translate(locale, "series.creator", { name: creatorLine })}
             </Link>
           ) : (
-            translate(locale, "series.creator", { name: work.authorName })
+            translate(locale, "series.creator", { name: creatorLine })
           )}
         </p>
       )}
