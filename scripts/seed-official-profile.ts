@@ -1,9 +1,16 @@
 /**
  * 给官方演示片补东家和 handle,让推荐流作者行能点进 /u/daxia。
- * 本地: npx tsx scripts/seed-official-profile.ts
- * 生产: vercel env run --environment production -- npx tsx scripts/seed-official-profile.ts
+ * 本地: DATABASE_URL=… npx tsx scripts/seed-official-profile.ts
+ * 生产: 挂在 vercel-build 里,只有 VERCEL_ENV=production 才跑。
+ * Neon 的连接串是 Sensitive,CLI 和控制台都拉不出来,只有部署运行时有。
  */
 import { PrismaClient } from "@prisma/client";
+
+const vercelEnv = process.env.VERCEL_ENV;
+if (vercelEnv && vercelEnv !== "production") {
+  console.log(`[seed-official] VERCEL_ENV=${vercelEnv}: skip`);
+  process.exit(0);
+}
 
 const prisma = new PrismaClient();
 
