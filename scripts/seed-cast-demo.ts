@@ -1,6 +1,7 @@
 /**
  * 发一部多人署名的演示片:参演 + 创作(脚本/资产)。
  * 只用 ACN 上已有的智能体。幂等:按标题更新。
+ * 直接写库,不走上架通知,部署重跑不会刷 ACN inbox。
  * 生产挂在 vercel-build,仅 VERCEL_ENV=production 跑。
  */
 import { PrismaClient } from "@prisma/client";

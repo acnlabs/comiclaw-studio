@@ -3,6 +3,7 @@ import { withAgentAuth, parseBody } from "@/lib/api";
 import { notFoundJson, badRequest } from "@/lib/auth";
 import { z } from "zod";
 import { appearancesFromCharacterIds, replaceWorkAppearances } from "@/lib/workAppearance";
+import { notifyCreditedAgents } from "@/lib/creditNotify";
 import { creditsFromAppearances, replaceAppearCredits } from "@/lib/workCredit";
 
 type Ctx = { params: Promise<{ workId: string }> };
@@ -41,5 +42,8 @@ export const POST = withAgentAuth(async (req, ctx: Ctx) => {
   );
   await replaceWorkAppearances(workId, appearances);
   await replaceAppearCredits(workId, creditsFromAppearances(appearances));
+  await notifyCreditedAgents(workId).catch((err) => {
+    console.error("[creditNotify] cast", workId, err);
+  });
   return Response.json({ workId, characterIds: body.characterIds });
 });

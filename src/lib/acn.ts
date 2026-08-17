@@ -81,6 +81,76 @@ export function defaultProductionAgentId(): string {
   return ACN_PROD_AGENT_ID();
 }
 
+export function studioAgentId(): string {
+  return ACN_CHAT_AGENT_ID();
+}
+
+export function acnNotifyConfigured(): boolean {
+  return Boolean(ACN_API_URL() && ACN_CHAT_API_KEY() && ACN_CHAT_AGENT_ID());
+}
+
+export type CreditNoticeResult = "sent" | "skipped" | "failed";
+
+async function recipientCommMode(agentId: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `${ACN_API_URL()}/api/v1/agents/${encodeURIComponent(agentId)}/communication_profile`,
+      { cache: "no-store" },
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as { mode?: string };
+    return data.mode?.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+/** inbox 开着走 send;关着/只收通知走 message notify。Preview 会被挡住。 */
+export async function sendAcnCreditNotice(args: {
+  targetAgentId: string;
+  text: string;
+  summary: string;
+  contentUrl: string;
+}): Promise<CreditNoticeResult> {
+  if (!acnNotifyConfigured()) return "skipped";
+  const fromAgent = ACN_CHAT_AGENT_ID();
+  const mode = await recipientCommMode(args.targetAgentId);
+  if (mode === "closed") return "skipped";
+
+  const notifyOnly = mode === "manifest";
+  const path = notifyOnly
+    ? "/api/v1/communication/manifest/send"
+    : "/api/v1/communication/send";
+  const body = notifyOnly
+    ? {
+        from_agent: fromAgent,
+        target_agent: args.targetAgentId,
+        message_type: "collaboration",
+        summary: args.summary,
+        content_url: args.contentUrl,
+      }
+    : {
+        from_agent: fromAgent,
+        target_agent: args.targetAgentId,
+        message: { text: args.text },
+        message_type: "collaboration",
+        priority: "normal",
+      };
+
+  const res = await acnFetch(path, { method: "POST", body: JSON.stringify(body) });
+  if (res.ok) return "sent";
+  const err = await readError(res);
+  if (
+    res.status === 403 &&
+    (err.includes("external_write_blocked") ||
+      err.includes("Only production deployments may write"))
+  ) {
+    return "skipped";
+  }
+  console.error("[creditNotify] ACN", path, res.status, err, args.targetAgentId);
+  return "failed";
+}
+
 export interface AcnTask {
   task_id: string;
   title: string;
