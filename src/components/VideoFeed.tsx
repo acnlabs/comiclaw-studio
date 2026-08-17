@@ -19,8 +19,7 @@ export interface FeedItem {
   authorName: string | null;
   authorHandle?: string | null;
   authorHref?: string | null;
-  castVisible?: AppearanceCredit[];
-  castExtra?: number;
+  cast?: AppearanceCredit[];
   playUrl: string;
   coverUrl: string | null;
   episodeCount: number;
@@ -241,16 +240,16 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
 
               {/* 底部信息 */}
               <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-4 pb-4 pt-16">
+                <FeedCastLine
+                  credits={item.cast ?? []}
+                  active={i === activeIndex}
+                  className="pointer-events-auto mb-2"
+                />
                 <AuthorCredit
                   handle={item.authorHandle}
                   authorName={item.authorName}
                   href={item.authorHref}
                   className="pointer-events-auto text-sm font-semibold text-zinc-100 hover:text-accent"
-                />
-                <FeedCastLine
-                  visible={item.castVisible ?? []}
-                  extra={item.castExtra ?? 0}
-                  className="mt-0.5 text-xs font-medium text-zinc-200"
                 />
                 <p className="mt-0.5 line-clamp-2 text-sm text-zinc-200">{item.title}</p>
                 {item.description && (

@@ -45,7 +45,8 @@ const zh = {
   "feed.comments": "评论",
   "feed.closeComments": "关闭评论",
   "feed.castPrefix": "出演",
-  "feed.castExtra": " 等{n}人",
+  "feed.castExtra": "等{n}人",
+  "feed.castCollapse": "收起",
 
   // 发现
   "series.title": "发现",
@@ -563,7 +564,8 @@ const en: Record<MessageKey, string> = {
   "feed.comments": "Comments",
   "feed.closeComments": "Close comments",
   "feed.castPrefix": "with",
-  "feed.castExtra": " +{n}",
+  "feed.castExtra": "+{n}",
+  "feed.castCollapse": "Close",
 
   "series.title": "Discover",
   "series.subtitle": "Comic dramas and official columns created with comiclaw",

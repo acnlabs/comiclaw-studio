@@ -54,15 +54,16 @@ export function toAppearanceCredits(
   return credits;
 }
 
-/** 推荐流:东家若也在演员表里不重复;最多露两个,其余收成「等 N 人」。 */
+/** 推荐流:东家若也在演员表里不重复;收起时最多露两个。 */
 export function feedCastCredits(
   rows: AppearanceCredit[],
   ownerAgentId?: string | null,
-): { visible: AppearanceCredit[]; extra: number } {
+): { all: AppearanceCredit[]; visible: AppearanceCredit[]; extra: number } {
   const filtered = ownerAgentId
     ? rows.filter((row) => row.agentId !== ownerAgentId)
     : rows;
   return {
+    all: filtered,
     visible: filtered.slice(0, FEED_CAST_VISIBLE),
     extra: Math.max(0, filtered.length - FEED_CAST_VISIBLE),
   };
