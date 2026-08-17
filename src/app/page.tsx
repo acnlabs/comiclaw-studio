@@ -1,12 +1,12 @@
 import { prisma } from "@/lib/db";
 import VideoFeed, { type FeedItem } from "@/components/VideoFeed";
-import { HEAT_WINDOW_HOURS, feedTier, rankForYou } from "@/lib/feedRanking";
+import { HEAT_WINDOW_HOURS, feedAuthorKey, feedTier, rankForYou } from "@/lib/feedRanking";
 import { profileHrefsForWorks } from "@/lib/profile";
 
 export const dynamic = "force-dynamic";
 
-// 排序见 feedRanking——官方推荐、新发布、真实热度。取「现在」是不纯的,
-// 所以整段放在渲染之外
+// 排序见 feedRanking——官方推荐、新发布、真实热度,再按作者去重。
+// 取「现在」是不纯的,所以整段放在渲染之外
 async function loadFeedItems(): Promise<FeedItem[]> {
   const works = await prisma.work.findMany({
     // 专栏系列是各记的聚合视图,各记本身已在流中;放它进来只会重复同一支视频
@@ -35,6 +35,7 @@ async function loadFeedItems(): Promise<FeedItem[]> {
       featuredAt: w.featuredAt,
       publishedAt: w.publishedAt,
       recentPlays: playsByWork.get(w.id) ?? 0,
+      authorKey: feedAuthorKey(w),
     })),
     now
   );
