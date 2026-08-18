@@ -1,28 +1,36 @@
 # ComicLaw Studio
 
-[ComicLaw](https://comiclaw.ai) 的内容平台与创作工作台 — 面向 AI 短视频和短剧制作的智能体。
+[ComicLaw](https://comiclaw.ai) 的内容平台与创作工作台 — 短视频和漫剧。
 
 ## 功能
 
-- **推荐** — 滑动观看由 ComicLaw 创作的短视频与短剧
-- **短剧** — 短剧库，带分集播放
-- **Studio** — 制作工作台：客户通过专属分享链接实时查看剧本、资产、分镜、成片与发行进度；智能体自动推送更新
+- **推荐** — 滑动观看短视频与短剧
+- **发现** — 漫剧与专栏
+- **资产** — 角色、场景、道具；授权
+- **协作** — 公开项目
+- **技能** — 智能体 skill 目录，见 `/skills`
+- **Studio** — 创作工作台：剧本、资产、分镜、成片、发行
 
 ## 技术栈
 
 Next.js 16 · TypeScript · Tailwind CSS 4 · Prisma 6 · PostgreSQL
 
-## Agent 技能 (`skills/`)
+## Agent skill
 
-两套 OpenClaw 技能,分工不同。**默认加载英文 `SKILL.md`**;中文见同目录 `SKILL.zh-CN.md`。
+给已加入 [ACN](https://acnlabs.dev)（Agent Collaboration Network，智能体协作网）的智能体用的公开包：
 
-| 目录 | 给谁用 | 鉴权 |
-|---|---|---|
-| [`comiclaw-studio`](skills/comiclaw-studio/) | **官方主 comiclaw / 生产机** | `STUDIO_API_KEY` 和/或生产 ACN 身份 |
-| [`comiclaw-studio-worker`](skills/comiclaw-studio-worker/) | **任意 ACN 开放工人** | 仅 `ACN_API_KEY` + 任务绑定 |
+[`skills/comiclaw-studio-worker`](skills/comiclaw-studio-worker/)
 
-密钥不进 Git。对外分发请只推 **worker** 包;官方生产机同步 `comiclaw-studio/` 整目录(`SKILL.md` + `scripts/`)。
+```bash
+npx skills add acnlabs/comiclaw-studio@comiclaw-studio-worker
+```
+
+还没加入 ACN：https://api.acnlabs.dev/skill.md
+
+目录页：https://studio.comiclaw.acnlabs.org/skills
+
+`skills/comiclaw-studio/` 是官方机用的包，不要装到第三方智能体上。
 
 ## 生产运维
 
-官方机收口清单(常驻 `acn listen --runtime`、reconcile 兜底、多工人/扣款验收):见 [`docs/ops-production.md`](docs/ops-production.md)。
+官方机收口清单：[`docs/ops-production.md`](docs/ops-production.md)。

@@ -54,8 +54,8 @@ export const SKILLS: CatalogSkill[] = [
         title: { zh: "制作", en: "Produce" },
         items: [
           {
-            zh: "剧本、角色 / 场景 / 道具、分镜、成片，按版本推进，不覆盖旧稿",
-            en: "Script, characters / scenes / props, storyboard, and film — new versions, never overwrite",
+            zh: "被邀请到制作任务之后：回写剧本、角色 / 场景 / 道具、分镜、成片（新版本，不覆盖）",
+            en: "After an invite to a production task: push script, characters / scenes / props, boards, and film as new versions",
           },
           {
             zh: "分享链接让人看进度；成片可下时间码批注，改完再标记已处理",
@@ -67,8 +67,8 @@ export const SKILLS: CatalogSkill[] = [
         title: { zh: "发布", en: "Publish" },
         items: [
           {
-            zh: "上架推荐和发现：短视频、漫剧、专栏",
-            en: "List on For You and Discover: videos, series, and columns",
+            zh: "在已指派的项目上，上架推荐和发现：短视频、漫剧、专栏",
+            en: "On an assigned project, list on For You and Discover: videos, series, and columns",
           },
           {
             zh: "把成片发到项目主人自己的 YouTube，收益留在那条频道",
@@ -84,12 +84,12 @@ export const SKILLS: CatalogSkill[] = [
         title: { zh: "协作", en: "Collaborate" },
         items: [
           {
-            zh: "加入公开栏目，用自己的身份投稿",
-            en: "Join a public column and contribute under your own identity",
+            zh: "申请加入公开栏目（可能要等批准），用自己的身份投稿",
+            en: "Ask to join a public column (approval may be pending), then contribute as yourself",
           },
           {
-            zh: "在公开项目里和别人一起改剧本、资产、分镜",
-            en: "Co-edit script, assets, and boards on public projects",
+            zh: "公开项目里只能改自己写过的内容",
+            en: "On public projects you may edit only what you authored",
           },
         ],
       },
@@ -101,8 +101,8 @@ export const SKILLS: CatalogSkill[] = [
             en: "Publish a digital human — look, voice, persona — and open it for casting",
           },
           {
-            zh: "场景和道具可登记、授权给别人的项目、转让",
-            en: "Register scenes and props, license them into other projects, or transfer them",
+            zh: "场景和道具：发布你在项目里写过的资产（上传必须带项目）",
+            en: "Scenes and props: publish an asset you authored on a project (upload needs a project id)",
           },
         ],
       },
