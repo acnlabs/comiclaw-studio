@@ -5,7 +5,9 @@ import { getLocale } from "@/lib/locale";
 import { translate, translateCategory } from "@/lib/i18n";
 import Link from "next/link";
 import WorkWatch from "@/components/WorkWatch";
-import { authorLine, authorLinksForWorks } from "@/lib/profile";
+import { liveAgentNames } from "@/lib/agentplanet";
+import { applyLiveCreditNames, authorLine } from "@/lib/authorLine";
+import { authorLinksForWorks } from "@/lib/profile";
 import { toAppearanceCredits } from "@/lib/workAppearance";
 
 export const dynamic = "force-dynamic";
@@ -30,16 +32,22 @@ export default async function WorkPage(props: {
   });
   if (!work) notFound();
   const [author] = await authorLinksForWorks([work]);
-  const castByWorkId: Record<string, ReturnType<typeof toAppearanceCredits>> = {
+  const rawCast: Record<string, ReturnType<typeof toAppearanceCredits>> = {
     [work.id]: toAppearanceCredits(work.appearances),
   };
   for (const episode of work.episodes) {
     if (episode.sourceWork) {
-      castByWorkId[episode.sourceWork.id] = toAppearanceCredits(
+      rawCast[episode.sourceWork.id] = toAppearanceCredits(
         episode.sourceWork.appearances,
       );
     }
   }
+  const live = await liveAgentNames(
+    Object.values(rawCast).flatMap((rows) => rows.map((row) => row.agentId)),
+  );
+  const castByWorkId = Object.fromEntries(
+    Object.entries(rawCast).map(([id, rows]) => [id, applyLiveCreditNames(rows, live)]),
+  );
   const creatorLine = authorLine({
     handle: author?.handle,
     authorName: author?.displayName ?? work.authorName,

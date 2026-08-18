@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/db";
 import VideoFeed, { type FeedItem } from "@/components/VideoFeed";
 import { HEAT_WINDOW_HOURS, feedAuthorKey, feedTier, rankForYou } from "@/lib/feedRanking";
+import { liveAgentNames } from "@/lib/agentplanet";
+import { applyLiveCreditNames } from "@/lib/authorLine";
 import { authorLinksForWorks } from "@/lib/profile";
 import { toAppearanceCredits } from "@/lib/workAppearance";
 import {
@@ -60,7 +62,7 @@ async function loadFeedItems(): Promise<FeedItem[]> {
   const authors = await authorLinksForWorks(ranked.map(({ work }) => work));
 
   // 短剧取第一集作为信息流内容;无可播放内容的作品不进入信息流
-  return ranked
+  const items = ranked
     .map(({ work: w, ...rankable }, i) => {
       const source = w.episodes[0]?.sourceWork;
       const creditDrafts: CreditDraft[] = (source?.credits ?? w.credits).length
@@ -98,6 +100,11 @@ async function loadFeedItems(): Promise<FeedItem[]> {
     };
     })
     .filter((w) => w.playUrl);
+  const live = await liveAgentNames(items.flatMap((item) => item.credits.map((row) => row.agentId)));
+  return items.map((item) => ({
+    ...item,
+    credits: applyLiveCreditNames(item.credits, live),
+  }));
 }
 
 // 推荐:TikTok 式滑动观看的作品流
