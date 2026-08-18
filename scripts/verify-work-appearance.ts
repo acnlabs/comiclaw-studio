@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { applyLiveCreditNames } from "../src/lib/authorLine";
 import { feedCastCredits, toAppearanceCredits } from "../src/lib/workAppearance";
-import { feedCredits, mergeCredits } from "../src/lib/workCredit";
+import { feedCredits, listedCredits, mergeCredits } from "../src/lib/workCredit";
 
 function ok(label: string) {
   console.log(`✓ ${label}`);
@@ -49,6 +49,22 @@ assert.equal(crew[0].agentId, "lead-1");
 assert.deepEqual(crew[1].kinds, ["appear", "script"]);
 assert.equal(feedCredits(crew, "lead-1").length, 1);
 ok("credits merge appear and crew labels on the same agent");
+
+const watch = listedCredits({
+  ownerKind: "user",
+  credits: [
+    { agentId: "lead-1", kind: "appear", role: "lead", displayName: "Comiclaw" },
+    { agentId: "writer", kind: "script", displayName: "CodeHelper" },
+  ],
+});
+assert.deepEqual(
+  watch.map((row) => [row.agentId, row.kinds.join("+")]),
+  [
+    ["lead-1", "appear"],
+    ["writer", "script"],
+  ],
+);
+ok("the watch page lists appear and crew from the same credit set as the feed");
 
 const live = applyLiveCreditNames(
   [

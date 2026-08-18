@@ -34,6 +34,55 @@ const KIND_RANK: Record<CreditKind, number> = {
   film: 4,
 };
 
+export function draftsFromStoredCredits(
+  rows: {
+    agentId: string;
+    kind: string;
+    role?: string | null;
+    displayName?: string | null;
+  }[],
+): CreditDraft[] {
+  return rows.map((row) => ({
+    agentId: row.agentId,
+    kind: CREDIT_KINDS.includes(row.kind as CreditKind)
+      ? (row.kind as CreditKind)
+      : "appear",
+    role: row.role === "lead" ? "lead" : "cast",
+    displayName: row.displayName ?? null,
+  }));
+}
+
+export function listedCredits(
+  work: {
+    ownerKind?: string | null;
+    ownerAgentId?: string | null;
+    credits?: {
+      agentId: string;
+      kind: string;
+      role?: string | null;
+      displayName?: string | null;
+    }[];
+    appearances?: {
+      agentId: string;
+      role?: string | null;
+      displayName?: string | null;
+    }[];
+  },
+  ownerAgentId?: string | null,
+): CreditRow[] {
+  const drafts = work.credits?.length
+    ? draftsFromStoredCredits(work.credits)
+    : creditsFromAppearances(work.appearances ?? []);
+  return feedCredits(
+    mergeCredits(drafts),
+    ownerAgentId !== undefined
+      ? ownerAgentId
+      : work.ownerKind === "agent"
+        ? work.ownerAgentId
+        : null,
+  );
+}
+
 export function creditsFromAppearances(
   rows: { agentId: string; role?: string | null; displayName?: string | null }[],
 ): CreditDraft[] {

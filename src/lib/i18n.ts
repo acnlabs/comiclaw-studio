@@ -79,6 +79,7 @@ const zh = {
   "series.commentFailed": "评论发布失败，请稍后重试",
   "series.openOnAgentPlanet": "在 AgentPlanet 查看",
   "series.cast": "参演",
+  "series.credits": "参与",
   "series.castLead": "主演",
   "series.castMember": "参演",
 
@@ -635,6 +636,7 @@ const en: Record<MessageKey, string> = {
   "series.commentFailed": "Could not post the comment. Try again.",
   "series.openOnAgentPlanet": "Open on AgentPlanet",
   "series.cast": "Cast",
+  "series.credits": "Credits",
   "series.castLead": "Lead",
   "series.castMember": "Cast",
 

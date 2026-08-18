@@ -4,15 +4,7 @@ import { HEAT_WINDOW_HOURS, feedAuthorKey, feedTier, rankForYou } from "@/lib/fe
 import { liveAgentNames } from "@/lib/agentplanet";
 import { applyLiveCreditNames } from "@/lib/authorLine";
 import { authorLinksForWorks } from "@/lib/profile";
-import { toAppearanceCredits } from "@/lib/workAppearance";
-import {
-  CREDIT_KINDS,
-  creditsFromAppearances,
-  feedCredits,
-  mergeCredits,
-  type CreditDraft,
-  type CreditKind,
-} from "@/lib/workCredit";
+import { listedCredits } from "@/lib/workCredit";
 
 export const dynamic = "force-dynamic";
 
@@ -65,18 +57,6 @@ async function loadFeedItems(): Promise<FeedItem[]> {
   const items = ranked
     .map(({ work: w, ...rankable }, i) => {
       const source = w.episodes[0]?.sourceWork;
-      const creditDrafts: CreditDraft[] = (source?.credits ?? w.credits).length
-        ? (source?.credits ?? w.credits).map((row) => ({
-            agentId: row.agentId,
-            kind: CREDIT_KINDS.includes(row.kind as CreditKind)
-              ? (row.kind as CreditKind)
-              : "appear",
-            role: row.role === "lead" ? "lead" : "cast",
-            displayName: row.displayName,
-          }))
-        : creditsFromAppearances(
-            toAppearanceCredits(source?.appearances ?? w.appearances),
-          );
       return {
       id: w.id,
       kind: w.kind,
@@ -86,8 +66,8 @@ async function loadFeedItems(): Promise<FeedItem[]> {
       authorName: authors[i]?.displayName ?? w.authorName,
       authorHandle: authors[i]?.handle ?? null,
       authorHref: authors[i]?.href ?? null,
-      credits: feedCredits(
-        mergeCredits(creditDrafts),
+      credits: listedCredits(
+        source ?? w,
         w.ownerKind === "agent" ? w.ownerAgentId : null,
       ),
       playUrl: w.videoUrl ?? w.episodes[0]?.videoUrl ?? "",
