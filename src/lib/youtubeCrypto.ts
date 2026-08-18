@@ -110,3 +110,53 @@ export function verifyYoutubeOAuthState(args: {
     return null;
   }
 }
+
+export const YOUTUBE_OAUTH_COOKIE = "youtube_oauth";
+const OAUTH_COOKIE_MAX_AGE = Math.floor(STATE_TTL_MS / 1000);
+
+export function readYoutubeOAuthCookie(cookieHeader: string | null | undefined): string | null {
+  if (!cookieHeader) return null;
+  for (const part of cookieHeader.split(";")) {
+    const [name, ...rest] = part.trim().split("=");
+    if (name !== YOUTUBE_OAUTH_COOKIE) continue;
+    const value = rest.join("=").trim();
+    return value || null;
+  }
+  return null;
+}
+
+export function youtubeOAuthCookieMatchesState(
+  cookieState: string | null | undefined,
+  queryState: string,
+): boolean {
+  if (!cookieState || !queryState) return false;
+  const a = Buffer.from(cookieState);
+  const b = Buffer.from(queryState);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+
+export function youtubeOAuthCookieHeader(args: {
+  state?: string | null;
+  clear?: boolean;
+}): string {
+  const secure = process.env.NODE_ENV === "production";
+  if (args.clear || !args.state) {
+    return [
+      `${YOUTUBE_OAUTH_COOKIE}=`,
+      "Path=/api/user/youtube",
+      "Max-Age=0",
+      "HttpOnly",
+      "SameSite=Lax",
+      ...(secure ? ["Secure"] : []),
+    ].join("; ");
+  }
+  return [
+    `${YOUTUBE_OAUTH_COOKIE}=${args.state}`,
+    "Path=/api/user/youtube",
+    `Max-Age=${OAUTH_COOKIE_MAX_AGE}`,
+    "HttpOnly",
+    "SameSite=Lax",
+    ...(secure ? ["Secure"] : []),
+  ].join("; ");
+}

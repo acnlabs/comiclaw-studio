@@ -7,8 +7,10 @@ import {
   decryptSecret,
   encryptSecret,
   sanitizeYoutubeReturnTo,
+  readYoutubeOAuthCookie,
   signYoutubeOAuthState,
   verifyYoutubeOAuthState,
+  youtubeOAuthCookieMatchesState,
 } from "../src/lib/youtubeCrypto";
 import {
   buildYoutubeSnippet,
@@ -59,6 +61,21 @@ assert.equal(
   null,
 );
 ok("OAuth state is signed, bound to the user, and expires");
+
+const other = signYoutubeOAuthState({
+  sub: "auth0|other",
+  returnTo: "/p/share",
+  now,
+  secret,
+});
+assert.equal(youtubeOAuthCookieMatchesState(state, state), true);
+assert.equal(youtubeOAuthCookieMatchesState(null, state), false);
+assert.equal(youtubeOAuthCookieMatchesState(other, state), false);
+assert.equal(
+  readYoutubeOAuthCookie(`other=1; youtube_oauth=${state}; x=y`),
+  state,
+);
+ok("OAuth callback cookie must match the state that started connect");
 
 assert.deepEqual(
   resolveYoutubeAccountOwner({ ownerKind: "user", ownerUserId: "auth0|a" }),

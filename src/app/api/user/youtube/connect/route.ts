@@ -5,6 +5,7 @@ import { verifyUserToken } from "@/lib/userAuth";
 import { youtubeAuthorizeUrl } from "@/lib/youtubeApi";
 import {
   signYoutubeOAuthState,
+  youtubeOAuthCookieHeader,
   youtubeSecrets,
 } from "@/lib/youtubeCrypto";
 import { YOUTUBE_PUBLISH_ERRORS } from "@/lib/youtubePublish";
@@ -22,11 +23,18 @@ export const POST = withRouteErrors(async (req: Request) => {
     returnTo: body.returnTo,
     secret: secrets.tokenSecret,
   });
-  return Response.json({
-    authorizeUrl: youtubeAuthorizeUrl({
-      clientId: secrets.clientId,
-      redirectUri: secrets.redirectUri,
-      state,
-    }),
-  });
+  return Response.json(
+    {
+      authorizeUrl: youtubeAuthorizeUrl({
+        clientId: secrets.clientId,
+        redirectUri: secrets.redirectUri,
+        state,
+      }),
+    },
+    {
+      headers: {
+        "Set-Cookie": youtubeOAuthCookieHeader({ state }),
+      },
+    },
+  );
 });
