@@ -61,7 +61,8 @@ usage() {
 项目
   list-projects                         项目列表(仅 STUDIO_API_KEY;ACN 工人用任务/用户给的 projectId)
   create-project '<json>'               创建项目 {name*, clientName, agentName, description, coverUrl,
-                                        ownerUserId(客户的 AgentPlanet 账号 sub,可选;传入后项目自动归属该客户)}
+                                        ownerKind, ownerUserId(客户 AgentPlanet sub;有就必传,项目归客户;
+                                        没有则建完把 sharePath 发给客户并等认领)}
   get-project <projectId>               项目全量数据(含各阶段交付物与版本)
   update-project <projectId> '<json>'   更新信息 {name, description, coverUrl, ...}
   set-stage <projectId> <STAGE>         推进阶段 SCRIPT|ASSETS|STORYBOARD|FILM|RELEASE|DONE(自动清除状态条)
@@ -129,7 +130,7 @@ usage() {
                                         seriesDescription, seriesCoverUrl}
                                         署名跟东家走，不要传 authorName
   get-comiclaw-listing <projectId>      读取当前上架快照（默认值 + 已上架作品）
-  youtube-status <projectId>            看项目主人是否已绑 YouTube;未绑定时响应里有 ownerAction.url,发给主人去确认
+  youtube-status <projectId>            看项目主人是否已绑 YouTube;有 ownerAction.url 就发给主人并停下
   publish-youtube <projectId> '<json>'  把最新成片上传到项目主人的 YouTube;成功后写 Release
                                         {title, description, tags, privacy: public|unlisted|private}
                                         钱进主人自己的 YouTube,Studio 不经手;上传≠分成(仍要过 YPP 门槛)
@@ -176,7 +177,27 @@ case "$cmd" in
     esac
     ;;
   list-projects)   require_studio_key; call GET "/api/agent/projects" ;;
-  create-project)  call POST "/api/agent/projects" "$2" ;;
+  create-project)
+    resp=$(call POST "/api/agent/projects" "$2")
+    printf '%s\n' "$resp"
+    python3 -c '
+import json, sys
+req, raw, base = sys.argv[1], sys.argv[2], sys.argv[3].rstrip("/")
+try:
+    d = json.loads(raw)
+except Exception:
+    raise SystemExit(0)
+path = d.get("sharePath") or ""
+if path:
+    print(f"share: {base}{path}", file=sys.stderr)
+try:
+    body = json.loads(req) if req else {}
+except Exception:
+    body = {}
+if not str(body.get("ownerUserId") or "").strip():
+    print("note: no ownerUserId — send the share link and wait for claim. YouTube cannot publish until the client owns the project.", file=sys.stderr)
+' "$2" "$resp" "$BASE"
+    ;;
   get-project)     require_worker_task; call GET "/api/agent/projects/$2" ;;
   update-project)  require_worker_task; call PATCH "/api/agent/projects/$2" "$3" ;;
   set-stage)       require_worker_task; call PATCH "/api/agent/projects/$2" "{\"currentStage\":\"$3\"}" ;;

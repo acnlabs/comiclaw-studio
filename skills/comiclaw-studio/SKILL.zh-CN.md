@@ -53,7 +53,7 @@ acn tasks submit <acnTaskId> --result "..."
 $W reconcile
 ```
 
-`metadata.studio` 含: `project_id`, `type`(WRITE_SCRIPT|GENERATE_IMAGE), `input`。
+`metadata.studio` 含: `project_id`, `type`(WRITE_SCRIPT|GENERATE_IMAGE), `input`。建项目时若有 `owner_user_id` 必须带上。
 
 ### WRITE_SCRIPT
 
@@ -236,7 +236,7 @@ curl -sS -X DELETE "$STUDIO_BASE_URL/api/user/assets/<assetId>/publish" \
 
 0. **所有媒体文件必须先上传到 Studio**:设定图、分镜画面、成片视频在推送前必须先用 `upload-file` 上传到 Studio Blob,使用返回的 URL,**不得直接使用即梦 / Seedance / 任何外部平台的链接**——外部链接可能过期,导致客户看不到内容。
 
-1. **开工先建项目**:接到制作任务后立即 `create-project`,并把返回的分享链接(`STUDIO_BASE_URL` + `sharePath`)发给客户,告诉客户可随时打开查看进度。如果你知道客户的 AgentPlanet 账号(Auth0 sub,如 `auth0|xxx`),创建时带上 `ownerUserId` 字段,项目会直接出现在客户登录后的「我的项目」里;不知道则不传,客户打开链接登录后会自动认领。
+1. **开工先建项目**:接到制作任务后立即 `create-project`,并把返回的分享链接(`STUDIO_BASE_URL` + `sharePath`)发给客户。**硬规则:**手里有客户的 AgentPlanet sub（`auth0|xxx`，来自任务 `metadata.studio.owner_user_id`、对话或对方告知）就必须带 `ownerKind=user` 和 `ownerUserId`，项目直接进「我的项目」。没有就不要编，把分享链接发出去，**停下等对方认领**，再做 YouTube 或任何需要人名下的事。不要在 agent 名下的项目上硬发 YouTube。
 2. **每个阶段产出后立即推送**,不要等全部做完:剧本 → `push-script`;资产(角色/场景/道具)→ `add-asset`;分镜 → `add-shot`;成片 → `push-film`。
 2.5. **耗时步骤更新状态条**:生成资产、分镜、渲染等耗时操作开始时,用 `set-status <projectId> "正在生成分镜 3/9…"` 让客户实时看到你在做什么;步骤完成后推进阶段会自动清除,也可 `set-status <projectId> ""` 手动清除。
 3. **返工推新版本,不要试图覆盖**:剧本、资产设定图、分镜画面、成片都支持多版本,重新生成后分别用 `push-script` / `asset-version` / `shot-version` / `push-film` 推送,版本号自动递增;剧本新版要带 `changeLog` 说明改了什么。
@@ -244,7 +244,7 @@ curl -sS -X DELETE "$STUDIO_BASE_URL/api/user/assets/<assetId>/publish" \
 3.6. **分镜多候选让客户选(抽卡)**:同一个分镜生成多个候选视频时,全部用 `shot-version`(mediaType=VIDEO)推上去,客户会在页面上点「选用此版本」;合成成片前用 `get-project` 检查各分镜的 `selectedVersion` 字段,**优先使用客户选定的版本**,客户没选的用你认为最好的。
 3.7. **角色资产带音色**:角色的声音样本(TTS 试听)先 `upload-file` 上传音频,把返回 URL 填入 `add-asset` / `asset-version` 的 `audioUrl` 字段,客户可以在资产卡上直接试听,声音方向不对能早期纠正。
 4. **阶段完成后推进流水线**:用 `set-stage` 依次推进 SCRIPT → ASSETS → STORYBOARD → FILM → RELEASE → DONE,客户页面的进度条以此为准。
-5. **发行如实登记**:站外平台用 `add-release` / `update-release`。上架到 ComicLaw 本身（观众看到的标题 / 封面 / 简介，可选成一集）用 `publish-comiclaw`，不要靠站外记录顺带抄项目工作名。这次调用同时把成片登记为出镜智能体的 `video` 资产，供 Agent 上新选用（不上 Store）。项目里没有角色/智能体绑定时传 `boundAgentId`。发到**项目主人自己的 YouTube**（官方 API，分成进该频道）需要该 `projectId`（来自任务或用户，不要用 ACN key 去 `list-projects`）。先 `youtube-status`。若返回 `ownerAction`，把 `ownerAction.url` 发给主人：`claim` 是请他认领项目，`connect` 是请他登录后绑定 YouTube（链接会带去谷歌同意页）。**不要自己去点谷歌，也不要编授权链接。** 主人完成后再次 `youtube-status`，`canPublish=true` 再用 `publish-youtube`。上传不等于合作伙伴分成。
+5. **发行如实登记**:站外平台用 `add-release` / `update-release`。上架到 ComicLaw 本身（观众看到的标题 / 封面 / 简介，可选成一集）用 `publish-comiclaw`，不要靠站外记录顺带抄项目工作名。这次调用同时把成片登记为出镜智能体的 `video` 资产，供 Agent 上新选用（不上 Store）。项目里没有角色/智能体绑定时传 `boundAgentId`。发到**项目主人自己的 YouTube**（官方 API，分成进该频道）需要该 `projectId`（来自任务或用户，不要用 ACN key 去 `list-projects`）。先 `youtube-status`。若返回 `ownerAction`，把 `ownerAction.url` 发给主人并**停下**：`claim` 是请他认领，`connect` 是请他登录后绑定 YouTube（链接会带去谷歌同意页）。**不要自己去点谷歌，不要编授权链接，`canPublish` 不是 true 就不要 `publish-youtube`。** 对方回复完成后再跑一次 `youtube-status`，`canPublish=true` 再用 `publish-youtube`。上传不等于合作伙伴分成。
 5.5. **返工前先看批注**:客户会在成片播放器上留时间码批注(如"00:23 转场太硬")。每次准备修改成片前、以及客户说"我提了意见"时,先 `list-comments <projectId>` 读取未处理的批注,按时间码精确定位修改;每处理完一条,`resolve-comment <commentId>` 标记已解决,客户页面会实时看到「已处理」标记。
 6. **媒体一律先上传**:即梦 / Seedance 等工具产出的图片和视频,先用 `upload-file` 上传到 Studio,再把返回的 URL 填入 `imageUrl` / `mediaUrl` / `videoUrl` 字段。
 7. **消耗真实生成成本前必须先扣款**:出图/出视频/后期等,调用前先 `charge`,只传 `action`+`units`(+`provider`/`idempotencyKey`),**不要传 amount**(价目在 Studio)。成功后把响应里的 `submitHint`/`consumption` 写进 ACN `submit` 与必要时的 `set-status`。**402 不得继续上游**;同 `idempotencyKey` 重试。写剧本草稿等单价为 0 的动作可跳过,或 charge 后会返回 `charged=0`。
@@ -264,8 +264,8 @@ S=skills/comiclaw-studio/scripts/studio.sh
 # 媒体文件上传辅助函数(先上传,拿 URL,再推送)
 upload() { $S upload-file "$1" | python3 -c "import sys,json;print(json.load(sys.stdin)['url'])"; }
 
-# 1. 建项目,把 sharePath 拼上 STUDIO_BASE_URL 发给客户
-$S create-project '{"name":"「小智客服」15s 宣传短视频","clientName":"小智科技","agentName":"小智客服"}'
+# 1. 有客户 sub 就建到他名下;没有就把 sharePath 拼上 STUDIO_BASE_URL 发出去并等认领
+$S create-project '{"name":"「小智客服」15s 宣传短视频","clientName":"小智科技","agentName":"小智客服","ownerKind":"user","ownerUserId":"auth0|xxx"}'
 # => {"id":"<projectId>","shareToken":"...","sharePath":"/p/..."}
 
 # 2. 剧本阶段
@@ -298,7 +298,7 @@ $S set-stage <projectId> RELEASE
 # 6. 发行阶段(上架成功后置 PUBLISHED,自动同步发布平台作品)
 $S add-release <projectId> '{"platform":"抖音"}'
 $S update-release <releaseId> '{"status":"PUBLISHED","url":"https://douyin.com/...","publishedAt":"2026-07-12T08:00:00Z"}'
-# YouTube(主人须先在 Studio 连接):
+# YouTube:有 ownerAction 就停下;仅 canPublish=true 再发
 $S youtube-status <projectId>
 $S publish-youtube <projectId> '{"title":"上线片","privacy":"public"}'
 $S set-stage <projectId> DONE
@@ -310,7 +310,7 @@ OpenMontage 负责生产,本技能负责把生产过程同步给客户。**跑�
 
 | OpenMontage 阶段 | Studio 动作 |
 |---|---|
-| 接到任务、选定管线 | `create-project`(把管线名写进 description),发分享链接给客户 |
+| 接到任务、选定管线 | `create-project`(有 sub 就带 `ownerUserId`;没有就发分享链接并等认领) |
 | concept / script(概念与脚本) | `push-script`,然后 `set-stage <id> ASSETS` |
 | 资产生成(角色/场景图、TTS 配音样品) | 每个资产 `upload-file` + `add-asset`(图);完成后 `set-stage <id> STORYBOARD` |
 | 场景/动态片段生成(Veo/Kling 等出的分段素材) | 每段 `upload-file` + `add-shot`(order=场景序号,duration=片段时长,action=场景描述);完成后 `set-stage <id> FILM` |
@@ -389,8 +389,8 @@ $S update-character <characterId> '{"licensePoints":0}'
 - `list-projects`:列出全部项目（**仅 `STUDIO_API_KEY`**；ACN 模式会被脚本拒绝——用任务或用户给的 `projectId`）。
 - `publish-work '<json>'`:不经项目流程直接发布平台作品,用于整部短剧上架(kind=SERIES 时必须携带 `episodes` 分集数组,`category` 默认「漫剧」)。
 - `publish-comiclaw <projectId> '<json>'`:把项目最新成片上架到 ComicLaw，填写观众看到的标题 / 封面 / 简介（`mode=video|episode`）。同时把成片登记为该智能体的 `asset_kind=video`（上新 Video 槽可用，不上 Store）。出镜智能体无法从项目推断时，可带 `boundAgentId`。
-- `youtube-status <projectId>`:项目主人是否已绑定 YouTube。未认领/未绑定时带 `ownerAction.url`，把这条链接发给主人。
-- `publish-youtube <projectId> '<json>'`:把最新成片上传到该主人的 YouTube（`title` / `description` / `tags` / `privacy`）。成功后写 `Release`。钱留在 YouTube。
+- `youtube-status <projectId>`:项目主人是否已认领并绑定 YouTube。有 `ownerAction` 就把 `ownerAction.url` 发出去并**停下**，不要发片。
+- `publish-youtube <projectId> '<json>'`:把最新成片上传到该主人的 YouTube（`title` / `description` / `tags` / `privacy`）。仅当 `canPublish=true`。成功后写 `Release`。钱留在 YouTube。
 
 ## 故障排查(遇到问题先做这两步)
 
