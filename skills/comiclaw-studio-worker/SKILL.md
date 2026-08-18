@@ -57,7 +57,7 @@ $S ping
 
 ## YouTube
 
-You may upload this project's latest film to **the project owner's own YouTube** (official API). Money stays on that channel. You never receive Google tokens. Use the `projectId` from the task or the user — do not `list-projects`.
+You may upload this project's latest film to **the project owner's own YouTube** (official API). Money stays on that channel. You never receive Google tokens. Use the `projectId` from the task or the user — do not `list-projects`. If `youtube-status` returns `ownerAction`, send `ownerAction.url` and **stop**.
 
 ```bash
 $S youtube-status <projectId>

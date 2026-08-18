@@ -54,7 +54,7 @@ acn tasks submit <acnTaskId> --result "..."
 $W reconcile
 ```
 
-`metadata.studio` includes: `project_id`, `type` (WRITE_SCRIPT|GENERATE_IMAGE), `input`.
+`metadata.studio` includes: `project_id`, `type` (WRITE_SCRIPT|GENERATE_IMAGE), `input`. When creating a project, also use `owner_user_id` if present.
 
 ### WRITE_SCRIPT
 
@@ -238,7 +238,7 @@ Prefer teaching agents via skill + playbook; keep UI copy brief.
 
 0. **Upload all media to Studio first** — character sheets, storyboard frames, final video must go through `upload-file` to Studio Blob; use returned URLs. **Never** use raw Jimeng / Seedance / external URLs (they expire; clients won’t see content).
 
-1. **Create project at kickoff** — `create-project` immediately; send share link (`STUDIO_BASE_URL` + `sharePath`). If you know the client’s AgentPlanet sub (`auth0|xxx`), set `ownerUserId` so the project appears in “My projects”; otherwise the client claims via the link after login.
+1. **Create project at kickoff** — `create-project` immediately; send share link (`STUDIO_BASE_URL` + `sharePath`). **Hard rule:** if you have the client’s AgentPlanet sub (`auth0|xxx` — task `metadata.studio.owner_user_id`, chat, or they told you), pass `ownerKind=user` and `ownerUserId` so the project is theirs (shows in “My projects”). If you do not, omit it, send the share link, and **stop and wait for them to claim** before YouTube or anything that needs a human owner. Do not keep producing a YouTube publish on an agent-owned project.
 2. **Push after each stage**, don’t wait until everything is done: script → `push-script`; assets → `add-asset`; shots → `add-shot`; film → `push-film`.
 2.5. **Status bar for long steps** — `set-status <projectId> "Generating shot 3/9…"` during heavy work; cleared on stage advance or `set-status <projectId> ""`.
 3. **Rework = new version**, never overwrite — use `push-script` / `asset-version` / `shot-version` / `push-film`; script revisions need `changeLog`.
@@ -246,7 +246,7 @@ Prefer teaching agents via skill + playbook; keep UI copy brief.
 3.6. **Multiple video candidates** — push all with `shot-version` (mediaType=VIDEO); client picks on site. Before final film, `get-project` and honor `selectedVersion` per shot.
 3.7. **Character voice samples** — upload audio via `upload-file`, set `audioUrl` on `add-asset` / `asset-version`.
 4. **Advance pipeline** — `set-stage`: SCRIPT → ASSETS → STORYBOARD → FILM → RELEASE → DONE.
-5. **Release registry** — `add-release` when an off-site platform is chosen; `update-release` to PUBLISHED with URL. To list on ComicLaw itself (title / cover / synopsis, optionally as an episode), use `publish-comiclaw` — do not rely on the off-site record to copy the working project name. That call also registers the film as the appearing agent's `video` asset for Agent Launch (not Store). Pass `boundAgentId` when the project has no character/agent binding. To upload the latest film to the **project owner's own YouTube** (official API; revenue stays on that channel), you need that `projectId` (from the task or the user — do not `list-projects` on an ACN key). Call `youtube-status` first. If it returns `ownerAction`, send `ownerAction.url` to the owner: `claim` means they should claim the project, `connect` means they should sign in and bind YouTube (the link takes them to Google consent). **Do not click Google yourself and do not invent an authorize URL.** After they finish, call `youtube-status` again and only then `publish-youtube` when `canPublish=true`. Upload ≠ Partner Program payout.
+5. **Release registry** — `add-release` when an off-site platform is chosen; `update-release` to PUBLISHED with URL. To list on ComicLaw itself (title / cover / synopsis, optionally as an episode), use `publish-comiclaw` — do not rely on the off-site record to copy the working project name. That call also registers the film as the appearing agent's `video` asset for Agent Launch (not Store). Pass `boundAgentId` when the project has no character/agent binding. To upload the latest film to the **project owner's own YouTube** (official API; revenue stays on that channel), you need that `projectId` (from the task or the user — do not `list-projects` on an ACN key). Call `youtube-status` first. If it returns `ownerAction`, send `ownerAction.url` to the owner and **stop**: `claim` = they must claim the project, `connect` = they sign in and bind YouTube (the link takes them to Google consent). **Do not click Google yourself, do not invent an authorize URL, and do not `publish-youtube` while `canPublish` is false.** After they reply that they finished, call `youtube-status` again; only then `publish-youtube` when `canPublish=true`. Upload ≠ Partner Program payout.
 5.5. **Read comments before rework** — `list-comments <projectId>` for timecoded notes; fix; `resolve-comment <commentId>` when done.
 6. **Media upload first** — Jimeng/Seedance outputs → `upload-file` → fill `imageUrl` / `mediaUrl` / `videoUrl`.
 7. **Charge before real upstream cost** — `charge` with `action`+`units` (+ `provider` / `idempotencyKey`); **do not send `amount`**. Put `submitHint` / `consumption` in ACN submit. **402 = stop upstream**; retry same `idempotencyKey`. Free actions (e.g. script draft) may skip or get `charged=0`.
@@ -263,8 +263,9 @@ URL=$(./scripts/studio.sh upload-file /path/to/file.mp4 | python3 -c "import sys
 S=skills/comiclaw-studio/scripts/studio.sh
 upload() { $S upload-file "$1" | python3 -c "import sys,json;print(json.load(sys.stdin)['url'])"; }
 
-# 1. Create project; send share link
-$S create-project '{"name":"Agent X 15s promo","clientName":"Client Co","agentName":"Agent X"}'
+# 1. Create under the client when you have their sub; otherwise send share link and wait
+$S create-project '{"name":"Agent X 15s promo","clientName":"Client Co","agentName":"Agent X","ownerKind":"user","ownerUserId":"auth0|xxx"}'
+# No sub? omit ownerUserId, send STUDIO_BASE_URL+sharePath, wait for claim. Do not publish-youtube yet.
 
 # 2. Script
 $S push-script <projectId> '{"title":"Launch","logline":"15s pitch","content":"# Scene 1\n..."}'
@@ -294,7 +295,7 @@ $S set-stage <projectId> RELEASE
 # 6. Release → DONE
 $S add-release <projectId> '{"platform":"Douyin"}'
 $S update-release <releaseId> '{"status":"PUBLISHED","url":"https://...","publishedAt":"2026-07-12T08:00:00Z"}'
-# YouTube (owner must have connected in Studio first):
+# YouTube: stop if ownerAction; only publish when canPublish=true
 $S youtube-status <projectId>
 $S publish-youtube <projectId> '{"title":"Launch","privacy":"public"}'
 $S set-stage <projectId> DONE
@@ -306,7 +307,7 @@ OpenMontage produces; this skill syncs progress to clients. Push each stage to S
 
 | OpenMontage stage | Studio action |
 |---|---|
-| Task / pipeline chosen | `create-project`, send share link |
+| Task / pipeline chosen | `create-project` with `ownerUserId` if known; else send share link and wait for claim |
 | concept / script | `push-script`, `set-stage ASSETS` |
 | assets | `upload-file` + `add-asset`; then STORYBOARD |
 | scene clips | `add-shot` per segment; then FILM |
@@ -382,8 +383,8 @@ $S update-character <characterId> '{"licensePoints":0}'
 - `list-projects` — all projects (**`STUDIO_API_KEY` only**; ACN mode is refused — use the `projectId` from the task or the user)
 - `publish-work '<json>'` — publish to platform feed without full project flow; `kind=SERIES` requires `episodes`; default `category` is drama-style series
 - `publish-comiclaw <projectId> '<json>'` — list the project's latest film on ComicLaw with audience-facing title / cover / synopsis (`mode=video|episode`). Also registers it as `asset_kind=video` on the agent's AgentPlanet registry (Launch Video slot; not Store). Optional `boundAgentId` if the appearing agent is not already on the project.
-- `youtube-status <projectId>` — whether the owner has connected YouTube. If not claimed/connected, includes `ownerAction.url` to send back to the owner.
-- `publish-youtube <projectId> '<json>'` — upload the latest film to that owner's YouTube (`title`, `description`, `tags`, `privacy=public|unlisted|private`). Writes a `Release` row. Money stays on YouTube.
+- `youtube-status <projectId>` — whether the owner has claimed and connected YouTube. If `ownerAction` is set, send `ownerAction.url` and **stop**; do not publish yet.
+- `publish-youtube <projectId> '<json>'` — upload the latest film to that owner's YouTube (`title`, `description`, `tags`, `privacy=public|unlisted|private`). Only when `canPublish=true`. Writes a `Release` row. Money stays on YouTube.
 
 ## Troubleshooting
 

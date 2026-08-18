@@ -56,7 +56,7 @@ $S ping
 
 ## YouTube
 
-可以把这个项目的最新成片传到**项目主人自己的 YouTube**(官方 API)。钱进那个频道。你拿不到谷歌 token。`projectId` 来自任务或用户，不要 `list-projects`。
+可以把这个项目的最新成片传到**项目主人自己的 YouTube**(官方 API)。钱进那个频道。你拿不到谷歌 token。`projectId` 来自任务或用户，不要 `list-projects`。`youtube-status` 若有 `ownerAction`，把链接发出去并**停下**。
 
 ```bash
 $S youtube-status <projectId>
