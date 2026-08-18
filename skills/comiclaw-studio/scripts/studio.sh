@@ -114,11 +114,13 @@ usage() {
   update-release <releaseId> '<json>'   更新发行状态 {status: PENDING|PUBLISHED, url, publishedAt}
                                         置为 PUBLISHED 时自动把最新成片发布为平台作品
   publish-work '<json>'                 直接发布作品 {kind*: VIDEO|SERIES, title*, category, videoUrl,
-                                        coverUrl, description, authorName, episodes: [{order, title, videoUrl, duration}]}
+                                        coverUrl, description, episodes: [{order, title, videoUrl, duration}]}
+                                        署名跟东家走，不要传 authorName
   publish-comiclaw <projectId> '<json>' 发布到 ComicLaw（观众看到的标题/封面/简介，可与项目工作名不同；同时登记为上新用的 video 资产）
-                                        {title, description, coverUrl, authorName, mode: video|episode,
+                                        {title, description, coverUrl, mode: video|episode,
                                         episodeOrder, episodeTitle, seriesWorkId, seriesTitle,
                                         seriesDescription, seriesCoverUrl}
+                                        署名跟东家走，不要传 authorName
   get-comiclaw-listing <projectId>      读取当前上架快照（默认值 + 已上架作品）
   youtube-status <projectId>            看项目主人是否已绑 YouTube;未绑定时响应里有 ownerAction.url,发给主人去确认
   publish-youtube <projectId> '<json>'  把最新成片上传到项目主人的 YouTube;成功后写 Release

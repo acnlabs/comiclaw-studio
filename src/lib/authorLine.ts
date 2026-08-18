@@ -8,3 +8,17 @@ export function authorLine(args: {
   const name = args.authorName?.trim();
   return name || null;
 }
+
+/** 上架署名只认东家此刻的名字,手填的字不当真。 */
+export function pickListingAuthorName(
+  liveName: string | null | undefined,
+  ...fallbacks: (string | null | undefined)[]
+): string | null {
+  const live = liveName?.trim();
+  if (live) return live;
+  for (const fallback of fallbacks) {
+    const name = fallback?.trim();
+    if (name) return name;
+  }
+  return null;
+}

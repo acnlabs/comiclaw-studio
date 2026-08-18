@@ -10,7 +10,7 @@ import {
   ownersMatch,
   resolveCreateOwner,
 } from "../src/lib/owner";
-import { authorLine } from "../src/lib/authorLine";
+import { authorLine, pickListingAuthorName } from "../src/lib/authorLine";
 
 function ok(label: string) {
   console.log(`✓ ${label}`);
@@ -153,5 +153,11 @@ ok("a display name without a profile is not prefixed with @");
 
 assert.equal(authorLine({ handle: null, authorName: "Comiclaw" }), "Comiclaw");
 ok("an agent or org owner line is the live name, not an @");
+
+assert.equal(pickListingAuthorName("Comiclaw", "手填的作者"), "Comiclaw");
+ok("listing author name prefers the owner's live name over free text");
+
+assert.equal(pickListingAuthorName("  ", "项目客户名"), "项目客户名");
+ok("listing author name falls back when the live name is empty");
 
 console.log("\nAll owner checks passed.");

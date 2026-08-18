@@ -167,6 +167,7 @@ export interface SeriesOption {
 export interface ComiclawPublishSnapshot {
   hasFilm: boolean;
   canChooseSeries: boolean;
+  ownerHandle: string | null;
   video: {
     id: string;
     title: string;

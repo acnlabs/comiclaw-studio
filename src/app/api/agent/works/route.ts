@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { withAgentAuth, parseBody } from "@/lib/api";
 import { publishWorkSchema } from "@/lib/schemas";
 import { ownerFields, resolveCreateOwner } from "@/lib/owner";
+import { listingAuthorName } from "@/lib/profile";
 import {
   appearancesFromCharacterIds,
   replaceWorkAppearances,
@@ -31,7 +32,7 @@ export const POST = withAgentAuth(async (req) => {
       description: body.description ?? null,
       coverUrl: body.coverUrl ?? null,
       videoUrl: body.videoUrl ?? null,
-      authorName: body.authorName ?? null,
+      authorName: await listingAuthorName(owner),
       ...ownerFields(owner),
       cast: body.characterIds
         ? { create: body.characterIds.map((characterId) => ({ characterId })) }
