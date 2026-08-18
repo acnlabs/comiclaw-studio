@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { fetchOrgDisplayName } from "@/lib/acnOrg";
 import { agentPlanetProfileUrl } from "@/lib/agentLinks";
 import { fetchAgentDisplayName } from "@/lib/agentplanet";
 import { isOwnerKind, type OwnerKind } from "@/lib/owner";
@@ -99,13 +100,14 @@ export async function loadAgentProfile(agentId: string): Promise<PublicProfile> 
   };
 }
 
-export function loadOrgProfile(orgId: string): PublicProfile {
+export async function loadOrgProfile(orgId: string): Promise<PublicProfile> {
   const id = orgId.trim();
+  const name = await fetchOrgDisplayName(id);
   return {
     kind: "org",
     id,
     handle: null,
-    displayName: id,
+    displayName: name || id,
     href: `/orgs/${encodeURIComponent(id)}`,
     externalHref: null,
   };

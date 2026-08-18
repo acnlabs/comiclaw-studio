@@ -10,7 +10,7 @@ export default async function OrgProfilePage(props: {
   const { id } = await props.params;
   const orgId = decodeURIComponent(id).trim();
   if (!orgId) notFound();
-  const profile = loadOrgProfile(orgId);
+  const profile = await loadOrgProfile(orgId);
   const works = await listOwnedWorks({ kind: "org", id: orgId });
   return <ProfileView profile={profile} works={works} />;
 }
