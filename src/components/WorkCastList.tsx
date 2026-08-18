@@ -9,7 +9,7 @@ export default function WorkCastList({ credits }: { credits: CreditRow[] }) {
   const { t } = useT();
   if (credits.length === 0) return null;
   return (
-    <section className="mt-6">
+    <section>
       <h2 className="text-sm font-medium text-zinc-400">{t("series.credits")}</h2>
       <ul className="mt-2 flex flex-wrap gap-2">
         {credits.map((row) => (
