@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getLocale } from "@/lib/locale";
 import { translate, type MessageKey } from "@/lib/i18n";
 import WorkCard from "@/components/WorkCard";
-import type { PublicProfile } from "@/lib/profile";
+import { authorLinksForWorks, type PublicProfile } from "@/lib/profile";
 import type { CreditKind } from "@/lib/workCredit";
 
 type WorkRow = {
@@ -14,7 +14,9 @@ type WorkRow = {
   authorName: string | null;
   publishedAt: Date;
   ownerKind: string | null;
+  ownerUserId: string | null;
   ownerAgentId: string | null;
+  ownerOrgId: string | null;
   appearingAgentId: string | null;
   appearances?: { agentId: string }[];
   credits?: { kind: string; role: string | null }[];
@@ -60,6 +62,7 @@ export default async function ProfileView({
   works: WorkRow[];
 }) {
   const locale = await getLocale();
+  const authors = await authorLinksForWorks(works);
   const kindLabel =
     profile.kind === "user"
       ? translate(locale, "profile.kindUser")
@@ -98,7 +101,7 @@ export default async function ProfileView({
         <p className="mt-4 text-sm text-zinc-500">{translate(locale, "profile.empty")}</p>
       ) : (
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-          {works.map((w) => {
+          {works.map((w, i) => {
             const badges = workBadgeKeys(profile, w);
             return (
               <div key={w.id} className="relative">
@@ -109,13 +112,9 @@ export default async function ProfileView({
                     category: w.category,
                     title: w.title,
                     coverUrl: w.coverUrl,
-                    authorName: w.authorName,
-                    authorHandle: profile.kind === "user" ? profile.handle : null,
-                    authorHref:
-                      profile.kind === "agent" &&
-                      !(w.ownerKind === "agent" && w.ownerAgentId === profile.id)
-                        ? undefined
-                        : profile.href,
+                    authorName: authors[i]?.displayName ?? w.authorName,
+                    authorHandle: authors[i]?.handle ?? null,
+                    authorHref: authors[i]?.href ?? null,
                     publishedAt: w.publishedAt.toISOString(),
                     episodeCount: w._count.episodes,
                   }}

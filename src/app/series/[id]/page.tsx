@@ -42,7 +42,7 @@ export default async function WorkPage(props: {
   }
   const creatorLine = authorLine({
     handle: author?.handle,
-    authorName: work.authorName,
+    authorName: author?.displayName ?? work.authorName,
   });
 
   return (

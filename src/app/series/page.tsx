@@ -78,7 +78,7 @@ export default async function SeriesPage(props: {
                 category: w.category,
                 title: w.title,
                 coverUrl: w.coverUrl,
-                authorName: w.authorName,
+                authorName: authors[i]?.displayName ?? w.authorName,
                 authorHandle: authors[i]?.handle ?? null,
                 authorHref: authors[i]?.href ?? null,
                 publishedAt: w.publishedAt.toISOString(),

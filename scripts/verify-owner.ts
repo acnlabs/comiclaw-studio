@@ -151,4 +151,7 @@ ok("a profile handle is shown as @handle, not the display name");
 assert.equal(authorLine({ handle: null, authorName: "漫剧大虾官方" }), "漫剧大虾官方");
 ok("a display name without a profile is not prefixed with @");
 
+assert.equal(authorLine({ handle: null, authorName: "Comiclaw" }), "Comiclaw");
+ok("an agent or org owner line is the live name, not an @");
+
 console.log("\nAll owner checks passed.");

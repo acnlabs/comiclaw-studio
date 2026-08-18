@@ -149,7 +149,9 @@ export async function listOwnedWorks(args: {
       authorName: true,
       publishedAt: true,
       ownerKind: true,
+      ownerUserId: true,
       ownerAgentId: true,
+      ownerOrgId: true,
       appearingAgentId: true,
       ...(args.includeAppearing
         ? {
@@ -176,9 +178,14 @@ export async function ensureHandleForUser(userId: string, displayName?: string |
 export type WorkAuthorLink = {
   href: string | null;
   handle: string | null;
+  displayName: string | null;
 };
 
 export { authorLine } from "@/lib/authorLine";
+
+function uniqueIds(ids: (string | null | undefined)[]): string[] {
+  return [...new Set(ids.map((id) => id?.trim()).filter(Boolean) as string[])];
+}
 
 export async function authorLinksForWorks(
   works: {
@@ -188,35 +195,57 @@ export async function authorLinksForWorks(
     ownerOrgId: string | null;
   }[],
 ): Promise<WorkAuthorLink[]> {
-  const userIds = [
-    ...new Set(
-      works
-        .filter((w) => w.ownerKind === "user" && w.ownerUserId)
-        .map((w) => w.ownerUserId as string),
+  const userIds = uniqueIds(
+    works.filter((w) => w.ownerKind === "user").map((w) => w.ownerUserId),
+  );
+  const agentIds = uniqueIds(
+    works.filter((w) => w.ownerKind === "agent").map((w) => w.ownerAgentId),
+  );
+  const orgIds = uniqueIds(
+    works.filter((w) => w.ownerKind === "org").map((w) => w.ownerOrgId),
+  );
+
+  const [users, agentNames, orgNames] = await Promise.all([
+    userIds.length
+      ? prisma.userProfile.findMany({
+          where: { userId: { in: userIds } },
+          select: { userId: true, handle: true, displayName: true },
+        })
+      : Promise.resolve([]),
+    Promise.all(
+      agentIds.map(async (id) => [id, await fetchAgentDisplayName(id)] as const),
     ),
-  ];
-  const handles = userIds.length
-    ? await prisma.userProfile.findMany({
-        where: { userId: { in: userIds } },
-        select: { userId: true, handle: true },
-      })
-    : [];
-  const handleByUser = new Map(handles.map((h) => [h.userId, h.handle]));
+    Promise.all(orgIds.map(async (id) => [id, await fetchOrgDisplayName(id)] as const)),
+  ]);
+  const userById = new Map(users.map((row) => [row.userId, row]));
+  const nameByAgent = new Map(agentNames);
+  const nameByOrg = new Map(orgNames);
+
   return works.map((w) => {
-    const raw =
+    const user =
       w.ownerKind === "user" && w.ownerUserId
-        ? handleByUser.get(w.ownerUserId) ?? null
+        ? userById.get(w.ownerUserId) ?? null
         : null;
-    const handle = raw && !isFallbackHandle(raw) ? raw : null;
+    const rawHandle = user?.handle ?? null;
+    const handle = rawHandle && !isFallbackHandle(rawHandle) ? rawHandle : null;
+    const displayName =
+      w.ownerKind === "user"
+        ? user?.displayName?.trim() || null
+        : w.ownerKind === "agent" && w.ownerAgentId
+          ? nameByAgent.get(w.ownerAgentId) ?? null
+          : w.ownerKind === "org" && w.ownerOrgId
+            ? nameByOrg.get(w.ownerOrgId) ?? null
+            : null;
     return {
       href: profileHref({
         kind: w.ownerKind,
         userId: w.ownerUserId,
         agentId: w.ownerAgentId,
         orgId: w.ownerOrgId,
-        handle,
+        handle: rawHandle,
       }),
       handle,
+      displayName,
     };
   });
 }
