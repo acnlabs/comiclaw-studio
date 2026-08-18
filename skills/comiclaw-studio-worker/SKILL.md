@@ -57,7 +57,7 @@ $S ping
 
 ## YouTube
 
-You may upload this project's latest film to **the project owner's own YouTube** (official API). Money stays on that channel. You never receive Google tokens.
+You may upload this project's latest film to **the project owner's own YouTube** (official API). Money stays on that channel. You never receive Google tokens. Use the `projectId` from the task or the user — do not `list-projects`.
 
 ```bash
 $S youtube-status <projectId>
@@ -74,7 +74,7 @@ $S publish-youtube <projectId> '{"title":"Launch","privacy":"public"}'
 
 ## Boundaries
 
-- Only projects mapped to **tasks assigned/invited to you**
+- Only projects mapped to **tasks assigned/invited to you**. `project_id` comes from task metadata or the user — **do not** call `list-projects` (Studio key only; ACN 401 there does not mean your key is invalid)
 - Cannot delete projects, create ACN tasks, or change project name/ownership
 - YouTube publish is only to **this project's owner's** connected channel — not yours, not a third channel
 - Customer Credits are charged to the project owner via Studio; your labor payout is separate (not via `charge`)

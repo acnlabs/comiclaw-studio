@@ -56,7 +56,7 @@ $S ping
 
 ## YouTube
 
-可以把这个项目的最新成片传到**项目主人自己的 YouTube**(官方 API)。钱进那个频道。你拿不到谷歌 token。
+可以把这个项目的最新成片传到**项目主人自己的 YouTube**(官方 API)。钱进那个频道。你拿不到谷歌 token。`projectId` 来自任务或用户，不要 `list-projects`。
 
 ```bash
 $S youtube-status <projectId>
@@ -73,7 +73,7 @@ $S publish-youtube <projectId> '{"title":"上线片","privacy":"public"}'
 
 ## 边界
 
-- 只能操作**指派/邀请给你的**任务所映射的项目
+- 只能操作**指派/邀请给你的**任务所映射的项目。`project_id` 来自任务 metadata 或用户——**不要**调 `list-projects`（仅官方 Key；那里的 ACN 401 不代表你的 Key 无效）
 - 不能删项目、不能建 ACN 单、不能改项目名/归属
 - YouTube 只能发到**这个项目主人**已绑定的频道,不是你的,也不是别的频道
 - 客户 Credits 由 Studio 向项目 owner 扣款;你的劳务分成另议,不走 `charge`

@@ -244,7 +244,7 @@ curl -sS -X DELETE "$STUDIO_BASE_URL/api/user/assets/<assetId>/publish" \
 3.6. **分镜多候选让客户选(抽卡)**:同一个分镜生成多个候选视频时,全部用 `shot-version`(mediaType=VIDEO)推上去,客户会在页面上点「选用此版本」;合成成片前用 `get-project` 检查各分镜的 `selectedVersion` 字段,**优先使用客户选定的版本**,客户没选的用你认为最好的。
 3.7. **角色资产带音色**:角色的声音样本(TTS 试听)先 `upload-file` 上传音频,把返回 URL 填入 `add-asset` / `asset-version` 的 `audioUrl` 字段,客户可以在资产卡上直接试听,声音方向不对能早期纠正。
 4. **阶段完成后推进流水线**:用 `set-stage` 依次推进 SCRIPT → ASSETS → STORYBOARD → FILM → RELEASE → DONE,客户页面的进度条以此为准。
-5. **发行如实登记**:站外平台用 `add-release` / `update-release`。上架到 ComicLaw 本身（观众看到的标题 / 封面 / 简介，可选成一集）用 `publish-comiclaw`，不要靠站外记录顺带抄项目工作名。这次调用同时把成片登记为出镜智能体的 `video` 资产，供 Agent 上新选用（不上 Store）。项目里没有角色/智能体绑定时传 `boundAgentId`。发到**项目主人自己的 YouTube**（官方 API，分成进该频道）前，先 `youtube-status`。若返回 `ownerAction`，把 `ownerAction.url` 发给主人：`claim` 是请他认领项目，`connect` 是请他登录后绑定 YouTube（链接会带去谷歌同意页）。**不要自己去点谷歌，也不要编授权链接。** 主人完成后再次 `youtube-status`，`canPublish=true` 再用 `publish-youtube`。上传不等于合作伙伴分成。
+5. **发行如实登记**:站外平台用 `add-release` / `update-release`。上架到 ComicLaw 本身（观众看到的标题 / 封面 / 简介，可选成一集）用 `publish-comiclaw`，不要靠站外记录顺带抄项目工作名。这次调用同时把成片登记为出镜智能体的 `video` 资产，供 Agent 上新选用（不上 Store）。项目里没有角色/智能体绑定时传 `boundAgentId`。发到**项目主人自己的 YouTube**（官方 API，分成进该频道）需要该 `projectId`（来自任务或用户，不要用 ACN key 去 `list-projects`）。先 `youtube-status`。若返回 `ownerAction`，把 `ownerAction.url` 发给主人：`claim` 是请他认领项目，`connect` 是请他登录后绑定 YouTube（链接会带去谷歌同意页）。**不要自己去点谷歌，也不要编授权链接。** 主人完成后再次 `youtube-status`，`canPublish=true` 再用 `publish-youtube`。上传不等于合作伙伴分成。
 5.5. **返工前先看批注**:客户会在成片播放器上留时间码批注(如"00:23 转场太硬")。每次准备修改成片前、以及客户说"我提了意见"时,先 `list-comments <projectId>` 读取未处理的批注,按时间码精确定位修改;每处理完一条,`resolve-comment <commentId>` 标记已解决,客户页面会实时看到「已处理」标记。
 6. **媒体一律先上传**:即梦 / Seedance 等工具产出的图片和视频,先用 `upload-file` 上传到 Studio,再把返回的 URL 填入 `imageUrl` / `mediaUrl` / `videoUrl` 字段。
 7. **消耗真实生成成本前必须先扣款**:出图/出视频/后期等,调用前先 `charge`,只传 `action`+`units`(+`provider`/`idempotencyKey`),**不要传 amount**(价目在 Studio)。成功后把响应里的 `submitHint`/`consumption` 写进 ACN `submit` 与必要时的 `set-status`。**402 不得继续上游**;同 `idempotencyKey` 重试。写剧本草稿等单价为 0 的动作可跳过,或 charge 后会返回 `charged=0`。
@@ -386,7 +386,7 @@ $S update-character <characterId> '{"licensePoints":0}'
 ## 其他能力
 
 - `get-project <projectId>`:读取项目全量数据(各阶段交付物与版本),恢复上下文或核对进度时使用。
-- `list-projects`:列出全部项目。
+- `list-projects`:列出全部项目（**仅 `STUDIO_API_KEY`**；ACN 模式会被脚本拒绝——用任务或用户给的 `projectId`）。
 - `publish-work '<json>'`:不经项目流程直接发布平台作品,用于整部短剧上架(kind=SERIES 时必须携带 `episodes` 分集数组,`category` 默认「漫剧」)。
 - `publish-comiclaw <projectId> '<json>'`:把项目最新成片上架到 ComicLaw，填写观众看到的标题 / 封面 / 简介（`mode=video|episode`）。同时把成片登记为该智能体的 `asset_kind=video`（上新 Video 槽可用，不上 Store）。出镜智能体无法从项目推断时，可带 `boundAgentId`。
 - `youtube-status <projectId>`:项目主人是否已绑定 YouTube。未认领/未绑定时带 `ownerAction.url`，把这条链接发给主人。
@@ -396,9 +396,10 @@ $S update-character <characterId> '{"licensePoints":0}'
 
 1. **先跑 `studio.sh ping` 自检**,它会告诉你问题在哪:
    - `404` → `STUDIO_BASE_URL` 指向了旧部署快照或错误地址。正确地址是 `https://studio.comiclaw.acnlabs.org`,不要使用形如 `comiclaw-studio-xxxxx-*.vercel.app` 的部署快照 URL(那是冻结的历史版本,缺少新接口);
-   - `401` → `STUDIO_API_KEY` 配置错误,提醒运营者核对;
+   - **ping 返回 `401`** → Bearer 无效(`STUDIO_API_KEY` 或 `ACN_API_KEY`),提醒运营者核对;
    - 网络不可达 → 沙箱出站白名单未放行该域名,提醒运营者处理。
-2. **文档里列出的命令就是全部能力**。如果某个文档中存在的接口返回 404,那一定是第 1 条的地址问题,不要自行猜测其他端点路径。
+2. **后面某条命令 401 不等于 Key 无效。** `list-projects` 只接受 `STUDIO_API_KEY`——已经 `ping` 通过的 ACN key 也列不出全部项目(`studio.sh` 在 ACN 模式会直接拒绝)。用任务或用户给的 `projectId`,不要索取 `STUDIO_API_KEY`。
+3. **文档里列出的命令就是全部能力**。如果某个文档中存在的接口返回 404,那一定是第 1 条的地址问题,不要自行猜测其他端点路径。
 
 另外:你只通过 API 操作 Studio,不需要也不应索取 `ADMIN_KEY` 或管理后台链接——那是运营者的人类入口,与你无关。
 
@@ -410,8 +411,8 @@ $S update-character <characterId> '{"licensePoints":0}'
 - 分镜引用的 `assetIds` 必须属于**当前项目**,否则返回 400(不能跨项目引用资产)。
 - `duration` 必须为正数;`publishedAt` 需为合法日期(如 `2026-07-13T08:00:00Z`)。
 - 枚举值区分大小写:阶段 SCRIPT|ASSETS|STORYBOARD|FILM|RELEASE|DONE;资产 CHARACTER|SCENE|PROP;媒体 IMAGE|VIDEO;发行 PENDING|PUBLISHED;作品 VIDEO|SERIES。传错返回 400。
-- 接口返回:400=输入校验失败(错误信息会指出具体字段);401=`STUDIO_API_KEY` 错误;404=资源不存在;409=唯一约束冲突。
-- 返回 401 时提醒运营者检查技能配置的 `STUDIO_API_KEY`。
+- 接口返回:400=输入校验失败(错误信息会指出具体字段);401=鉴权失败(ping 401 才是 Key 无效;部分路由仅官方 Key);404=资源不存在;409=唯一约束冲突。
+- **ping** 返回 401 时提醒运营者检查技能配置的 `STUDIO_API_KEY` / ACN key。其他 401 可能是该路由只接受官方 Key。
 
 ## Invite 后实时叫醒（ACN ≥ 0.15.6）
 

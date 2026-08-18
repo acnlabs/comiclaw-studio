@@ -246,7 +246,7 @@ Prefer teaching agents via skill + playbook; keep UI copy brief.
 3.6. **Multiple video candidates** — push all with `shot-version` (mediaType=VIDEO); client picks on site. Before final film, `get-project` and honor `selectedVersion` per shot.
 3.7. **Character voice samples** — upload audio via `upload-file`, set `audioUrl` on `add-asset` / `asset-version`.
 4. **Advance pipeline** — `set-stage`: SCRIPT → ASSETS → STORYBOARD → FILM → RELEASE → DONE.
-5. **Release registry** — `add-release` when an off-site platform is chosen; `update-release` to PUBLISHED with URL. To list on ComicLaw itself (title / cover / synopsis, optionally as an episode), use `publish-comiclaw` — do not rely on the off-site record to copy the working project name. That call also registers the film as the appearing agent's `video` asset for Agent Launch (not Store). Pass `boundAgentId` when the project has no character/agent binding. To upload the latest film to the **project owner's own YouTube** (official API; revenue stays on that channel), call `youtube-status` first. If it returns `ownerAction`, send `ownerAction.url` to the owner: `claim` means they should claim the project, `connect` means they should sign in and bind YouTube (the link takes them to Google consent). **Do not click Google yourself and do not invent an authorize URL.** After they finish, call `youtube-status` again and only then `publish-youtube` when `canPublish=true`. Upload ≠ Partner Program payout.
+5. **Release registry** — `add-release` when an off-site platform is chosen; `update-release` to PUBLISHED with URL. To list on ComicLaw itself (title / cover / synopsis, optionally as an episode), use `publish-comiclaw` — do not rely on the off-site record to copy the working project name. That call also registers the film as the appearing agent's `video` asset for Agent Launch (not Store). Pass `boundAgentId` when the project has no character/agent binding. To upload the latest film to the **project owner's own YouTube** (official API; revenue stays on that channel), you need that `projectId` (from the task or the user — do not `list-projects` on an ACN key). Call `youtube-status` first. If it returns `ownerAction`, send `ownerAction.url` to the owner: `claim` means they should claim the project, `connect` means they should sign in and bind YouTube (the link takes them to Google consent). **Do not click Google yourself and do not invent an authorize URL.** After they finish, call `youtube-status` again and only then `publish-youtube` when `canPublish=true`. Upload ≠ Partner Program payout.
 5.5. **Read comments before rework** — `list-comments <projectId>` for timecoded notes; fix; `resolve-comment <commentId>` when done.
 6. **Media upload first** — Jimeng/Seedance outputs → `upload-file` → fill `imageUrl` / `mediaUrl` / `videoUrl`.
 7. **Charge before real upstream cost** — `charge` with `action`+`units` (+ `provider` / `idempotencyKey`); **do not send `amount`**. Put `submitHint` / `consumption` in ACN submit. **402 = stop upstream**; retry same `idempotencyKey`. Free actions (e.g. script draft) may skip or get `charged=0`.
@@ -379,7 +379,7 @@ $S update-character <characterId> '{"licensePoints":0}'
 ## Other capabilities
 
 - `get-project <projectId>` — full project snapshot (all stages/versions); resume context or verify progress
-- `list-projects` — all projects
+- `list-projects` — all projects (**`STUDIO_API_KEY` only**; ACN mode is refused — use the `projectId` from the task or the user)
 - `publish-work '<json>'` — publish to platform feed without full project flow; `kind=SERIES` requires `episodes`; default `category` is drama-style series
 - `publish-comiclaw <projectId> '<json>'` — list the project's latest film on ComicLaw with audience-facing title / cover / synopsis (`mode=video|episode`). Also registers it as `asset_kind=video` on the agent's AgentPlanet registry (Launch Video slot; not Store). Optional `boundAgentId` if the appearing agent is not already on the project.
 - `youtube-status <projectId>` — whether the owner has connected YouTube. If not claimed/connected, includes `ownerAction.url` to send back to the owner.
@@ -389,9 +389,10 @@ $S update-character <characterId> '{"licensePoints":0}'
 
 1. Run `studio.sh ping` first:
    - `404` → wrong `STUDIO_BASE_URL`. Use `https://studio.comiclaw.acnlabs.org` — **not** frozen Vercel preview URLs like `comiclaw-studio-xxxxx-*.vercel.app` (missing new routes)
-   - `401` → wrong `STUDIO_API_KEY` or ACN key — ask ops to verify
+   - `401` on **ping** → Bearer is invalid (`STUDIO_API_KEY` or `ACN_API_KEY`) — ask ops to verify
    - Network unreachable → sandbox/host egress whitelist
-2. Commands in this skill + `studio.sh usage` are the full API. Documented route returning 404 = URL problem (step 1), don’t guess paths.
+2. A later `401` is not always a bad key. `list-projects` is `STUDIO_API_KEY` only — an ACN key that already passed `ping` cannot list all projects (`studio.sh` refuses in ACN mode). Use the `projectId` from the task or the user; do not ask for `STUDIO_API_KEY`.
+3. Commands in this skill + `studio.sh usage` are the full API. Documented route returning 404 = URL problem (step 1), don’t guess paths.
 
 You never need `ADMIN_KEY` or admin UI — human ops only.
 
@@ -404,7 +405,7 @@ You never need `ADMIN_KEY` or admin UI — human ops only.
 - `duration` positive; `publishedAt` valid ISO date (e.g. `2026-07-13T08:00:00Z`)
 - Enums case-sensitive: SCRIPT|ASSETS|STORYBOARD|FILM|RELEASE|DONE; CHARACTER|SCENE|PROP; IMAGE|VIDEO; PENDING|PUBLISHED; VIDEO|SERIES
 - HTTP: 400 validation (field hints in body); 401 auth; 404 missing; 409 conflict
-- On 401, remind ops to check skill config `STUDIO_API_KEY` / ACN key
+- On **ping** 401, remind ops to check skill config `STUDIO_API_KEY` / ACN key. Other 401s may mean the route is Studio-key-only.
 
 ## Wake bridge (production Mode B + Interfaze chat)
 

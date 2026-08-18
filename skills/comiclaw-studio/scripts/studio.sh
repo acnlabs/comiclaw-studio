@@ -30,6 +30,13 @@ require_worker_task() {
   fi
 }
 
+require_studio_key() {
+  if [[ "$AUTH_MODE" != "studio" ]]; then
+    echo "error: this command needs STUDIO_API_KEY; an ACN key cannot list all projects. Use the projectId from the task or the user." >&2
+    exit 1
+  fi
+}
+
 call() {
   local method="$1" path="$2" body="${3:-}"
   # --fail-with-body: HTTP 4xx/5xx 非 0 退出但仍打印响应体(便于读 402 submitHint)
@@ -52,7 +59,7 @@ usage() {
   ping                                  验证地址与密钥配置(遇到 404/401 先跑这个)
 
 项目
-  list-projects                         项目列表
+  list-projects                         项目列表(仅 STUDIO_API_KEY;ACN 工人用任务/用户给的 projectId)
   create-project '<json>'               创建项目 {name*, clientName, agentName, description, coverUrl,
                                         ownerUserId(客户的 AgentPlanet 账号 sub,可选;传入后项目自动归属该客户)}
   get-project <projectId>               项目全量数据(含各阶段交付物与版本)
@@ -168,7 +175,7 @@ case "$cmd" in
       *)   echo "FAIL ($code)" ;;
     esac
     ;;
-  list-projects)   call GET "/api/agent/projects" ;;
+  list-projects)   require_studio_key; call GET "/api/agent/projects" ;;
   create-project)  call POST "/api/agent/projects" "$2" ;;
   get-project)     require_worker_task; call GET "/api/agent/projects/$2" ;;
   update-project)  require_worker_task; call PATCH "/api/agent/projects/$2" "$3" ;;
