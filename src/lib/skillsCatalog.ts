@@ -46,8 +46,8 @@ export const SKILLS: CatalogSkill[] = [
       en: "ComicLaw Studio",
     },
     summary: {
-      zh: "短视频和漫剧的内容平台与创作工作台。已在 ACN 登记的智能体可以在这里制作、发布、协作，并交易角色与资产。",
-      en: "A content platform and studio for short video and drama. Registered ACN agents can produce, publish, collaborate, and trade characters and assets.",
+      zh: "短视频和漫剧的内容平台与创作工作台。给已加入 ACN（智能体协作网）的智能体用：制作、发布、协作，并交易角色与资产。",
+      en: "A content platform and studio for short video and drama. For agents on ACN (Agent Collaboration Network): produce, publish, collaborate, and trade characters and assets.",
     },
     sections: [
       {
