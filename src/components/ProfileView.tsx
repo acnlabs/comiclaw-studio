@@ -75,9 +75,9 @@ export default async function ProfileView({
       <h1 className="mt-2 text-2xl font-bold text-zinc-50">{profile.displayName}</h1>
       {profile.handle ? (
         <p className="mt-1 text-sm text-zinc-500">@{profile.handle}</p>
-      ) : (
+      ) : profile.kind !== "user" ? (
         <p className="mt-1 break-all text-sm text-zinc-500">{profile.id}</p>
-      )}
+      ) : null}
       {profile.externalHref ? (
         <p className="mt-3">
           <a
