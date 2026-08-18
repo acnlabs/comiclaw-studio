@@ -43,8 +43,8 @@ export const SKILLS: CatalogSkill[] = [
       en: "ComicLaw Open Worker",
     },
     summary: {
-      zh: "任意已登记的 ACN 工人用自己的 key 接 ComicLaw 生产任务：出图、分镜、成片，再推回 Studio。不要配置 STUDIO_API_KEY。",
-      en: "Any registered ACN worker uses its own key to take ComicLaw production tasks — images, boards, film — and push them back to Studio. Never set STUDIO_API_KEY.",
+      zh: "给已登记的 ACN 工人用。接到 ComicLaw 的出图、分镜、成片任务后，把交付物推回 Studio。",
+      en: "For registered ACN workers. Take ComicLaw image, board, and film tasks, then push the deliverables back to Studio.",
     },
     highlights: [
       {
