@@ -1,58 +1,29 @@
-import { z } from "zod";
-import { verifyUserToken } from "@/lib/userAuth";
-import { unauthorized, badRequest } from "@/lib/auth";
-import { parseBody, withRouteErrors } from "@/lib/api";
-import { prisma } from "@/lib/db";
-import { ensureUserProfile, normalizeHandle } from "@/lib/userHandle";
+import { unauthorized } from "@/lib/auth";
+import { withRouteErrors } from "@/lib/api";
+import { extractBearerToken, verifyUserToken } from "@/lib/userAuth";
+import { syncUserProfileFromAgentPlanet } from "@/lib/agentPlanetUser";
 
-const patchSchema = z.object({
-  handle: z.string().trim().min(2).max(32).optional(),
-  displayName: z.string().trim().max(80).optional().nullable(),
-});
+function asJson(profile: { handle: string; displayName: string | null }) {
+  return {
+    profile: {
+      handle: profile.handle,
+      displayName: profile.displayName,
+      href: `/u/${profile.handle}`,
+    },
+  };
+}
 
 export const GET = withRouteErrors(async (req: Request) => {
   const sub = await verifyUserToken(req);
   if (!sub) return unauthorized();
-  const profile = await ensureUserProfile(sub);
-  return Response.json({
-    profile: {
-      handle: profile.handle,
-      displayName: profile.displayName,
-      href: `/u/${profile.handle}`,
-    },
-  });
+  const profile = await syncUserProfileFromAgentPlanet(sub, extractBearerToken(req));
+  return Response.json(asJson(profile));
 });
 
+// 短名和展示名以 AgentPlanet 为准。这里只再抄一次,不接受客户端改名。
 export const PATCH = withRouteErrors(async (req: Request) => {
   const sub = await verifyUserToken(req);
   if (!sub) return unauthorized();
-  const body = await parseBody(req, patchSchema);
-  const current = await ensureUserProfile(sub, body.displayName);
-
-  let handle = current.handle;
-  if (body.handle !== undefined) {
-    const next = normalizeHandle(body.handle);
-    if (!next) return badRequest("Invalid handle");
-    if (next !== current.handle) {
-      const taken = await prisma.userProfile.findUnique({ where: { handle: next } });
-      if (taken) return badRequest("Handle already taken");
-      handle = next;
-    }
-  }
-
-  const profile = await prisma.userProfile.update({
-    where: { userId: sub },
-    data: {
-      handle,
-      displayName:
-        body.displayName === undefined ? undefined : body.displayName?.trim() || null,
-    },
-  });
-  return Response.json({
-    profile: {
-      handle: profile.handle,
-      displayName: profile.displayName,
-      href: `/u/${profile.handle}`,
-    },
-  });
+  const profile = await syncUserProfileFromAgentPlanet(sub, extractBearerToken(req));
+  return Response.json(asJson(profile));
 });

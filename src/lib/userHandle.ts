@@ -36,6 +36,15 @@ export function normalizeHandle(raw: string): string | null {
   return handle;
 }
 
+export function isSeedUserId(userId: string): boolean {
+  return userId.trim().toLowerCase().startsWith("seed:");
+}
+
+/** Studio 自动生成的短名,可以被 AgentPlanet 的真短名盖掉。 */
+export function isFallbackHandle(handle: string): boolean {
+  return /^u-[a-z0-9]+$/i.test(handle.trim());
+}
+
 function fallbackHandle(userId: string): string {
   const compact = userId.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
   const tail = (compact.slice(-8) || "user").padEnd(4, "0");

@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { agentPlanetProfileUrl } from "@/lib/agentLinks";
 import { fetchAgentDisplayName } from "@/lib/agentplanet";
 import { isOwnerKind, type OwnerKind } from "@/lib/owner";
-import { ensureUserProfile, isReservedHandle } from "@/lib/userHandle";
+import { ensureUserProfile, isFallbackHandle, isReservedHandle } from "@/lib/userHandle";
 
 export type ProfileKind = OwnerKind;
 
@@ -64,8 +64,8 @@ export async function loadUserProfile(handle: string): Promise<PublicProfile | n
   return {
     kind: "user",
     id: row.userId,
-    handle: row.handle,
-    displayName: row.displayName?.trim() || `@${row.handle}`,
+    handle: isFallbackHandle(row.handle) ? null : row.handle,
+    displayName: row.displayName?.trim() || (isFallbackHandle(row.handle) ? row.handle : `@${row.handle}`),
     href: `/u/${row.handle}`,
     externalHref: null,
   };
@@ -201,10 +201,11 @@ export async function authorLinksForWorks(
     : [];
   const handleByUser = new Map(handles.map((h) => [h.userId, h.handle]));
   return works.map((w) => {
-    const handle =
+    const raw =
       w.ownerKind === "user" && w.ownerUserId
         ? handleByUser.get(w.ownerUserId) ?? null
         : null;
+    const handle = raw && !isFallbackHandle(raw) ? raw : null;
     return {
       href: profileHref({
         kind: w.ownerKind,
