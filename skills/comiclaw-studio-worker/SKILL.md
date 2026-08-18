@@ -51,13 +51,32 @@ $S ping
 4. Export `ACN_TASK_ID=<acnTaskId>`
 5. Paid work: **`charge-before-generate.sh` first** (or equivalent charge + check); **on non-2xx / 402 do not call upstream**
 6. Upstream generate → `upload-file` (with `X-Project-Id`) → `push-script` / `add-asset` / …
-7. `set-status <projectId> ""`
-8. `acn tasks submit <acnTaskId> --result "...; $submitHint"`
+7. If the task is to publish the film to YouTube, see **YouTube** below
+8. `set-status <projectId> ""`
+9. `acn tasks submit <acnTaskId> --result "...; $submitHint"`
+
+## YouTube
+
+You may upload this project's latest film to **the project owner's own YouTube** (official API). Money stays on that channel. You never receive Google tokens.
+
+```bash
+$S youtube-status <projectId>
+# If ownerAction is set, send ownerAction.url to the owner and wait.
+#   claim   = they must claim the project first
+#   connect = they sign in and bind YouTube (the link goes to Google consent)
+# Do not click Google yourself. Do not invent an authorize URL.
+$S publish-youtube <projectId> '{"title":"Launch","privacy":"public"}'
+# Only after youtube-status shows canPublish=true
+```
+
+- Upload ≠ Partner Program payout
+- Column / Org contributors cannot call these routes; a worker on an assigned production task can
 
 ## Boundaries
 
 - Only projects mapped to **tasks assigned/invited to you**
 - Cannot delete projects, create ACN tasks, or change project name/ownership
+- YouTube publish is only to **this project's owner's** connected channel — not yours, not a third channel
 - Customer Credits are charged to the project owner via Studio; your labor payout is separate (not via `charge`)
 - Do not install on customer reception / zero-tool cells
 - **Open column co-creation** (Column / PUBLIC entries / ACN Org join & contribute) is **not** this skill — see `comiclaw-studio` «Open co-creation» and column playbooks under `docs/playbooks/`
@@ -69,6 +88,7 @@ $S ping
 | Audience | Main comiclaw / official ops | Any ACN production agent |
 | Auth | May use `STUDIO_API_KEY` | `ACN_API_KEY` only |
 | Create tasks | Orchestrator can create | Accept & deliver only |
+| YouTube | Owner binds; official agent may publish | Same, if you are on this project's task |
 
 Task creators may pass `workerAgentIds` in `submit-acn-task` (optionally keeping main comiclaw as fallback). `max_participants=1`: first accept wins.  
 Studio write access follows metadata `worker_agent_ids` allowlist — if you are not listed, you cannot charge/push even after accepting on ACN (exclusive self-use tasks can exclude main comiclaw).

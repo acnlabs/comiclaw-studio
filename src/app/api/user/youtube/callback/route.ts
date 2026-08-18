@@ -2,15 +2,28 @@ import { saveYoutubeAccountFromCode } from "@/lib/youtubePublish";
 import {
   sanitizeYoutubeReturnTo,
   verifyYoutubeOAuthState,
+  youtubeOAuthCookieHeader,
+  youtubeOAuthCookieMatchesState,
+  readYoutubeOAuthCookie,
   youtubeSecrets,
 } from "@/lib/youtubeCrypto";
 
-function redirectTo(origin: string, returnTo: string, query: Record<string, string>) {
+function redirectTo(
+  origin: string,
+  returnTo: string,
+  query: Record<string, string>,
+) {
   const url = new URL(returnTo, origin);
   for (const [key, value] of Object.entries(query)) {
     url.searchParams.set(key, value);
   }
-  return Response.redirect(url, 302);
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: url.toString(),
+      "Set-Cookie": youtubeOAuthCookieHeader({ clear: true }),
+    },
+  });
 }
 
 export async function GET(req: Request) {
@@ -36,6 +49,10 @@ export async function GET(req: Request) {
     });
   }
   if (!state) {
+    return redirectTo(origin, returnTo, { youtube: "error", reason: "bad_state" });
+  }
+  const cookieState = readYoutubeOAuthCookie(req.headers.get("cookie"));
+  if (!youtubeOAuthCookieMatchesState(cookieState, params.get("state") ?? "")) {
     return redirectTo(origin, returnTo, { youtube: "error", reason: "bad_state" });
   }
 
