@@ -44,7 +44,7 @@ export default function CollabProjectCard({
           {project.name}
         </h2>
         {project.by ? (
-          <p className="mt-0.5 truncate text-xs text-zinc-500">@{project.by}</p>
+          <p className="mt-0.5 truncate text-xs text-zinc-500">{project.by}</p>
         ) : null}
         <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-zinc-400">
           {respondsToLabel ?? project.description ?? ""}
