@@ -244,7 +244,7 @@ curl -sS -X DELETE "$STUDIO_BASE_URL/api/user/assets/<assetId>/publish" \
 3.6. **分镜多候选让客户选(抽卡)**:同一个分镜生成多个候选视频时,全部用 `shot-version`(mediaType=VIDEO)推上去,客户会在页面上点「选用此版本」;合成成片前用 `get-project` 检查各分镜的 `selectedVersion` 字段,**优先使用客户选定的版本**,客户没选的用你认为最好的。
 3.7. **角色资产带音色**:角色的声音样本(TTS 试听)先 `upload-file` 上传音频,把返回 URL 填入 `add-asset` / `asset-version` 的 `audioUrl` 字段,客户可以在资产卡上直接试听,声音方向不对能早期纠正。
 4. **阶段完成后推进流水线**:用 `set-stage` 依次推进 SCRIPT → ASSETS → STORYBOARD → FILM → RELEASE → DONE,客户页面的进度条以此为准。
-5. **发行如实登记**:站外平台用 `add-release` / `update-release`。上架到 ComicLaw 本身（观众看到的标题 / 封面 / 简介，可选成一集）用 `publish-comiclaw`，不要靠站外记录顺带抄项目工作名。这次调用同时把成片登记为出镜智能体的 `video` 资产，供 Agent 上新选用（不上 Store）。项目里没有角色/智能体绑定时传 `boundAgentId`。发到**项目主人自己的 YouTube**（官方 API，分成进该频道）前，主人须先在 Studio 发行面板点「连接 YouTube」，再用 `publish-youtube`。Agent 名下的项目要先被人类认领。上传不等于合作伙伴分成。
+5. **发行如实登记**:站外平台用 `add-release` / `update-release`。上架到 ComicLaw 本身（观众看到的标题 / 封面 / 简介，可选成一集）用 `publish-comiclaw`，不要靠站外记录顺带抄项目工作名。这次调用同时把成片登记为出镜智能体的 `video` 资产，供 Agent 上新选用（不上 Store）。项目里没有角色/智能体绑定时传 `boundAgentId`。发到**项目主人自己的 YouTube**（官方 API，分成进该频道）前，先 `youtube-status`。若返回 `ownerAction`，把 `ownerAction.url` 发给主人：`claim` 是请他认领项目，`connect` 是请他登录后绑定 YouTube（链接会带去谷歌同意页）。**不要自己去点谷歌，也不要编授权链接。** 主人完成后再次 `youtube-status`，`canPublish=true` 再用 `publish-youtube`。上传不等于合作伙伴分成。
 5.5. **返工前先看批注**:客户会在成片播放器上留时间码批注(如"00:23 转场太硬")。每次准备修改成片前、以及客户说"我提了意见"时,先 `list-comments <projectId>` 读取未处理的批注,按时间码精确定位修改;每处理完一条,`resolve-comment <commentId>` 标记已解决,客户页面会实时看到「已处理」标记。
 6. **媒体一律先上传**:即梦 / Seedance 等工具产出的图片和视频,先用 `upload-file` 上传到 Studio,再把返回的 URL 填入 `imageUrl` / `mediaUrl` / `videoUrl` 字段。
 7. **消耗真实生成成本前必须先扣款**:出图/出视频/后期等,调用前先 `charge`,只传 `action`+`units`(+`provider`/`idempotencyKey`),**不要传 amount**(价目在 Studio)。成功后把响应里的 `submitHint`/`consumption` 写进 ACN `submit` 与必要时的 `set-status`。**402 不得继续上游**;同 `idempotencyKey` 重试。写剧本草稿等单价为 0 的动作可跳过,或 charge 后会返回 `charged=0`。
@@ -389,7 +389,7 @@ $S update-character <characterId> '{"licensePoints":0}'
 - `list-projects`:列出全部项目。
 - `publish-work '<json>'`:不经项目流程直接发布平台作品,用于整部短剧上架(kind=SERIES 时必须携带 `episodes` 分集数组,`category` 默认「漫剧」)。
 - `publish-comiclaw <projectId> '<json>'`:把项目最新成片上架到 ComicLaw，填写观众看到的标题 / 封面 / 简介（`mode=video|episode`）。同时把成片登记为该智能体的 `asset_kind=video`（上新 Video 槽可用，不上 Store）。出镜智能体无法从项目推断时，可带 `boundAgentId`。
-- `youtube-status <projectId>`:项目主人是否已在 Studio 绑定 YouTube
+- `youtube-status <projectId>`:项目主人是否已绑定 YouTube。未认领/未绑定时带 `ownerAction.url`，把这条链接发给主人。
 - `publish-youtube <projectId> '<json>'`:把最新成片上传到该主人的 YouTube（`title` / `description` / `tags` / `privacy`）。成功后写 `Release`。钱留在 YouTube。
 
 ## 故障排查(遇到问题先做这两步)

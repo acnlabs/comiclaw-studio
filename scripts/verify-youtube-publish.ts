@@ -14,6 +14,7 @@ import {
   buildYoutubeSnippet,
   checkYoutubePublishable,
   resolveYoutubeAccountOwner,
+  youtubeOwnerAction,
   youtubeWatchUrl,
 } from "../src/lib/youtubePublish";
 
@@ -140,5 +141,37 @@ ok("titles are capped and Shorts / AI disclosure are added only when needed");
 
 assert.equal(youtubeWatchUrl("abc123"), "https://www.youtube.com/watch?v=abc123");
 ok("watch URLs are stable");
+
+assert.deepEqual(
+  youtubeOwnerAction({
+    shareToken: "share1",
+    hasOwnerUser: true,
+    connected: false,
+    origin: "https://studio.comiclaw.acnlabs.org",
+  }),
+  {
+    kind: "connect",
+    url: "https://studio.comiclaw.acnlabs.org/p/share1?youtube=connect",
+  },
+);
+assert.deepEqual(
+  youtubeOwnerAction({
+    shareToken: "share1",
+    hasOwnerUser: false,
+    connected: false,
+    origin: "https://studio.comiclaw.acnlabs.org",
+  }),
+  { kind: "claim", url: "https://studio.comiclaw.acnlabs.org/p/share1" },
+);
+assert.equal(
+  youtubeOwnerAction({
+    shareToken: "share1",
+    hasOwnerUser: true,
+    connected: true,
+    origin: "https://studio.comiclaw.acnlabs.org",
+  }),
+  null,
+);
+ok("owner action links are only for claim or connect");
 
 console.log("\nAll YouTube publish checks passed.");
