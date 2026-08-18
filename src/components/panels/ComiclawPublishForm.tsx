@@ -7,6 +7,7 @@ import { useAuth0 } from "@auth0/auth0-react";
 import { useT } from "@/components/LocaleProvider";
 import { AUTH0_AUDIENCE } from "@/lib/auth0";
 import { Badge } from "@/components/ui";
+import { authorLine } from "@/lib/authorLine";
 import type { ComiclawPublishSnapshot, SeriesOption } from "@/lib/types";
 
 const inputClass =
@@ -61,7 +62,6 @@ export default function ComiclawPublishForm({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [coverUrl, setCoverUrl] = useState("");
-  const [authorName, setAuthorName] = useState("");
   const [mode, setMode] = useState<"video" | "episode">("video");
   const [episodeOrder, setEpisodeOrder] = useState(1);
   const [episodeTitle, setEpisodeTitle] = useState("");
@@ -87,7 +87,6 @@ export default function ComiclawPublishForm({
     setTitle(data.defaults.title);
     setDescription(data.defaults.description);
     setCoverUrl(data.defaults.coverUrl);
-    setAuthorName(data.defaults.authorName);
     setMode(data.defaults.mode);
     setEpisodeOrder(data.defaults.episodeOrder);
     setEpisodeTitle(data.defaults.episodeTitle);
@@ -153,7 +152,6 @@ export default function ComiclawPublishForm({
           title: title.trim(),
           description: description.trim() || null,
           coverUrl: coverUrl.trim() || null,
-          authorName: authorName.trim() || null,
           mode,
           ...(mode === "episode"
             ? {
@@ -192,7 +190,6 @@ export default function ComiclawPublishForm({
                   title: data.video!.title,
                   description: description.trim() || null,
                   coverUrl: coverUrl.trim() || null,
-                  authorName: authorName.trim() || null,
                 },
                 series: data.series
                   ? {
@@ -337,14 +334,18 @@ export default function ComiclawPublishForm({
               className={inputClass}
             />
           </label>
-          <label className="block text-sm text-zinc-400">
-            {t("panel.comiclaw.fieldAuthor")}
-            <input
-              value={authorName}
-              onChange={(e) => setAuthorName(e.target.value)}
-              className={inputClass}
-            />
-          </label>
+          <div className="block text-sm text-zinc-400">
+            <p>{t("panel.comiclaw.fieldAuthor")}</p>
+            <p className="mt-1 text-sm text-zinc-100">
+              {authorLine({
+                handle: state.ownerHandle,
+                authorName: state.defaults.authorName,
+              }) ?? "—"}
+            </p>
+            <p className="mt-1 text-xs text-zinc-500">
+              {t("panel.comiclaw.authorHint")}
+            </p>
+          </div>
 
           <div className="space-y-2">
             <p className="text-sm text-zinc-400">{t("panel.comiclaw.fieldMode")}</p>

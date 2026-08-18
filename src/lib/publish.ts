@@ -19,6 +19,8 @@ import {
   replaceWorkAppearances,
 } from "@/lib/workAppearance";
 import { notifyCreditedAgents } from "@/lib/creditNotify";
+import { pickListingAuthorName } from "@/lib/authorLine";
+import { authorLinksForWorks, listingAuthorName } from "@/lib/profile";
 import {
   collectProjectCredits,
   creditsFromAppearances,
@@ -29,6 +31,7 @@ export type ComiclawListing = {
   title: string;
   description?: string | null;
   coverUrl?: string | null;
+  /** Ignored on write. Byline is always the owner's live name. */
   authorName?: string | null;
   mode: "video" | "episode";
   episodeOrder?: number;
@@ -42,7 +45,7 @@ export type ComiclawListing = {
 };
 
 type ListingOverrides = Partial<
-  Pick<ComiclawListing, "title" | "description" | "coverUrl" | "authorName">
+  Pick<ComiclawListing, "title" | "description" | "coverUrl">
 >;
 
 // 项目发行上架后,把最新成片同步发布为平台作品(出现在「推荐」流)。
@@ -72,10 +75,11 @@ export async function syncProjectToWork(
     coverUrl:
       listing?.coverUrl === undefined ? project.coverUrl : listing.coverUrl,
     videoUrl: film.videoUrl,
-    authorName:
-      listing?.authorName === undefined
-        ? (project.clientName ?? project.agentName)
-        : listing.authorName,
+    authorName: await listingAuthorName(
+      owner,
+      project.clientName,
+      project.agentName,
+    ),
     ...ownerFields(owner),
   };
 
@@ -301,7 +305,11 @@ export async function publishProjectToComiclaw(
         title: seriesTitle,
         description: listing.seriesDescription ?? null,
         coverUrl: listing.seriesCoverUrl ?? listing.coverUrl ?? project.coverUrl,
-        authorName: listing.authorName ?? project.clientName ?? project.agentName,
+        authorName: await listingAuthorName(
+          ownerFromRecord(project),
+          project.clientName,
+          project.agentName,
+        ),
         videoUrl: null,
         ...ownerFields(ownerFromRecord(project)),
       },
@@ -403,7 +411,8 @@ export async function getComiclawPublishSnapshot(
     }
   }
 
-  const seriesOptions = await listSeriesForPublisher(ownerFromRecord(project));
+  const owner = ownerFromRecord(project);
+  const seriesOptions = await listSeriesForPublisher(owner);
   if (series && !seriesOptions.some((s) => s.id === series.id)) {
     seriesOptions.unshift({
       id: series.id,
@@ -413,16 +422,26 @@ export async function getComiclawPublishSnapshot(
     });
   }
 
+  const [author] = await authorLinksForWorks([owner]);
+  const authorName =
+    pickListingAuthorName(
+      author?.displayName,
+      video?.authorName,
+      project.clientName,
+      project.agentName,
+    ) ?? "";
+
   return {
     hasFilm: Boolean(project.filmVersions[0]),
     canChooseSeries: !project.columnId,
+    ownerHandle: author?.handle ?? null,
     video: video
       ? {
           id: video.id,
           title: video.title,
           description: video.description,
           coverUrl: video.coverUrl,
-          authorName: video.authorName,
+          authorName,
         }
       : null,
     series: series
@@ -437,8 +456,7 @@ export async function getComiclawPublishSnapshot(
       title: video?.title || project.name,
       description: video?.description ?? project.description ?? "",
       coverUrl: video?.coverUrl ?? project.coverUrl ?? "",
-      authorName:
-        video?.authorName ?? project.clientName ?? project.agentName ?? "",
+      authorName,
       mode,
       episodeOrder,
       episodeTitle: episodeTitle || video?.title || project.name,
@@ -497,7 +515,11 @@ export async function syncColumnToSeries(columnId: string) {
     coverUrl: column.coverUrl ?? aired[0].coverUrl,
     // 系列的正片由选集承载,不设单片地址
     videoUrl: null,
-    authorName: aired[0].agentName ?? aired[0].clientName,
+    authorName: await listingAuthorName(
+      ownerFromRecord(aired[0]),
+      aired[0].clientName,
+      aired[0].agentName,
+    ),
     ...ownerFields(ownerFromRecord(aired[0])),
   };
 

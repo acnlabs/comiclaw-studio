@@ -181,7 +181,20 @@ export type WorkAuthorLink = {
   displayName: string | null;
 };
 
-export { authorLine } from "@/lib/authorLine";
+export { authorLine, pickListingAuthorName } from "@/lib/authorLine";
+
+export async function listingAuthorName(
+  owner: {
+    ownerKind: string | null;
+    ownerUserId: string | null;
+    ownerAgentId: string | null;
+    ownerOrgId: string | null;
+  },
+  ...fallbacks: (string | null | undefined)[]
+): Promise<string | null> {
+  const [link] = await authorLinksForWorks([owner]);
+  return pickListingAuthorName(link?.displayName, ...fallbacks);
+}
 
 function uniqueIds(ids: (string | null | undefined)[]): string[] {
   return [...new Set(ids.map((id) => id?.trim()).filter(Boolean) as string[])];

@@ -208,7 +208,7 @@ export const comiclawListingSchema = z.object({
   title: nonEmpty.max(200),
   description: optionalStr,
   coverUrl: optionalStr,
-  authorName: optionalStr,
+  authorName: optionalStr, // ignored; byline comes from the owner
   mode: ComiclawPublishModeEnum,
   episodeOrder: z.number().int().positive().max(999).optional(),
   episodeTitle: optionalStr,
@@ -283,7 +283,7 @@ export const publishWorkSchema = z
     description: optionalStr,
     coverUrl: optionalStr,
     videoUrl: optionalStr,
-    authorName: optionalStr,
+    authorName: optionalStr, // ignored; byline comes from the owner
     ownerKind: OwnerKindEnum.optional(),
     ownerUserId: optionalStr,
     ownerAgentId: optionalStr,
