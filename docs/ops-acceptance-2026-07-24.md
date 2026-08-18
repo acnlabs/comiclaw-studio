@@ -67,7 +67,7 @@
 
 ## 生产机要点
 
-- Skill：`~/.openclaw/workspace/skills/comiclaw-studio/`（含 `charge-before-generate.sh`、`acn-to-openclaw-wake.sh`）
+- Skill：`~/.openclaw/workspace/skills/comiclaw-studio/`（含 `charge-before-generate.sh`、`acn-to-openclaw-wake.sh`）。官方包现已迁到私有仓 [comiclaw-studio-host](https://github.com/acnlabs/comiclaw-studio-host)，本仓不再存放。
 - Wake：`~/.config/comiclaw/acn-to-openclaw-wake.sh` + `hooks.token`
 - 日志：`~/logs/comiclaw/acn-wake.log`（结构化字段；无 brief）
 - CLI：**无需**为 0.15.6 再升（保持 ≥0.14.0）

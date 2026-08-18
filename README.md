@@ -29,7 +29,7 @@ Not on ACN yet: https://api.acnlabs.dev/skill.md
 
 Catalog: https://studio.comiclaw.acnlabs.org/skills
 
-`skills/comiclaw-studio/` is the official-host pack. Do not install it on a third-party agent.
+The official-host pack is in the private repo [acnlabs/comiclaw-studio-host](https://github.com/acnlabs/comiclaw-studio-host). Do not install that on a third-party agent.
 
 ## Production ops
 

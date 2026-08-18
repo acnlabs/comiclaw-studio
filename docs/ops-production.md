@@ -1,12 +1,12 @@
 # ComicLaw 生产运维收口
 
-面向**主 comiclaw 生产机**与 Studio 服务端。技能行为以 [`skills/comiclaw-studio/SKILL.md`](../skills/comiclaw-studio/SKILL.md) 为准；本文只收口部署、常驻进程、对账与验收。
+面向**主 comiclaw 生产机**与 Studio 服务端。技能行为以私有仓 [comiclaw-studio-host](https://github.com/acnlabs/comiclaw-studio-host) 的 `SKILL.md` 为准；本文只收口部署、常驻进程、对账与验收。
 
 ## Invite → Wake → Handle（生产 ACN ≥ 0.15.6）
 
 Studio 以 **`comiclaw-studio`** agent（`ACN_CHAT_*`）建单并 `invite` 后，ACN 会 **best-effort** 推 A2A `task_request`；工人 `acn listen --runtime …` 应在数秒内 wake，Agent 再 `handle` → `accept` → 干活 → `submit`。**不应**把 `comiclaw reconcile` 当作主路径。ACN 已废止 `system:task-invite`。
 
-生产机 wake 桥接脚本：[`skills/comiclaw-studio/scripts/acn-to-openclaw-wake.sh`](../skills/comiclaw-studio/scripts/acn-to-openclaw-wake.sh)（安装到 `~/.config/comiclaw/`，供 `--wake-exec` 使用）。需 `~/.config/comiclaw/hooks.token`（或 `COMICLAW_HOOKS_TOKEN_FILE`）。**禁止** `printf … | python3 <<'PY'`——heredoc 会吞掉 stdin，导致 `task_id=unknown`，Agent 误用 OpenClaw Job ID。仅接受 UUID `task_id`；`acn-wake.log` 只记结构化字段（无 brief / 响应体）。
+生产机 wake 桥接脚本：私有仓 `scripts/acn-to-openclaw-wake.sh`（安装到 `~/.config/comiclaw/`，供 `--wake-exec` 使用）。需 `~/.config/comiclaw/hooks.token`（或 `COMICLAW_HOOKS_TOKEN_FILE`）。**禁止** `printf … | python3 <<'PY'`——heredoc 会吞掉 stdin，导致 `task_id=unknown`，Agent 误用 OpenClaw Job ID。仅接受 UUID `task_id`；`acn-wake.log` 只记结构化字段（无 brief / 响应体）。
 
 闭环验收（2026-07-24）：task `5b6642fa-…` invite `10:48:47Z` → wake `10:48:48Z`（`parsed_task_id` 正确）→ ~2min 内 `completed` + `push-script`。invite→A2A 缺陷见 [`acn-invite-no-a2a-defect.md`](./acn-invite-no-a2a-defect.md)。
 
@@ -39,7 +39,7 @@ GENERATE_IMAGE 闭环（2026-07-24）：task `2b94a6b0-…` wake 后约 6min `co
 
 主 comiclaw 上确认：
 
-1. **Skill 已同步**：`skills/comiclaw-studio/` 含 `SKILL.md`、`SKILL.zh-CN.md`、`scripts/studio.sh`、`scripts/production-worker.sh`、`scripts/charge-before-generate.sh`、`scripts/acn-to-openclaw-wake.sh`（与仓库一致；wake 脚本另装到 `~/.config/comiclaw/`）。
+1. **Skill 已同步**：工作区 `skills/comiclaw-studio/` 来自私有仓 [comiclaw-studio-host](https://github.com/acnlabs/comiclaw-studio-host)，含 `SKILL.md`、`SKILL.zh-CN.md`、`scripts/studio.sh`、`scripts/production-worker.sh`、`scripts/charge-before-generate.sh`、`scripts/acn-to-openclaw-wake.sh`（与 host 仓一致；wake 脚本另装到 `~/.config/comiclaw/`）。
 2. **`acn` CLI 已登录为生产 Agent**（`ACN_PROD` / `ACN_PROD_AGENT_ID` 对应身份）。
 3. **常驻 `acn listen --runtime …`**（CLI ≥ 0.14.0；首选实时路径；无需公网入站端口）。切换说明见 [`acn-listen-runtime-cutover.md`](./acn-listen-runtime-cutover.md)。
 4. **环境变量**（skill / shell profile / OpenClaw skill config）：
@@ -315,14 +315,19 @@ BASE_URL=https://studio.comiclaw.acnlabs.org STUDIO_API_KEY=… \
 
 ## Skill 同步
 
-官方机只同步 `skills/comiclaw-studio/` **整目录**：
+官方机从私有仓 [comiclaw-studio-host](https://github.com/acnlabs/comiclaw-studio-host) 同步到 `~/.openclaw/workspace/skills/comiclaw-studio/` **整目录**：
 
 - `SKILL.md` / `SKILL.zh-CN.md`
 - `scripts/studio.sh`
 - `scripts/production-worker.sh`
 - `scripts/acn-to-openclaw-wake.sh`（另装到 `~/.config/comiclaw/`）
 
-只拷 `SKILL.md`、空着 `scripts/` = **未完成同步**（`handle` / `reconcile` / `ping` 都不可用）。对外只发 `comiclaw-studio-worker`。同步后建议再跑一次 `$S ping` 与 `$W listen-hint`。
+```bash
+git clone git@github.com:acnlabs/comiclaw-studio-host.git ~/.openclaw/workspace/skills/comiclaw-studio
+# 之后: git -C ~/.openclaw/workspace/skills/comiclaw-studio pull
+```
+
+只拷 `SKILL.md`、空着 `scripts/` = **未完成同步**（`handle` / `reconcile` / `ping` 都不可用）。对外只发本仓的 `comiclaw-studio-worker`。同步后建议再跑一次 `$S ping` 与 `$W listen-hint`。
 
 ## 生产机实测摘录（comiclaw OpenClaw 主机）
 

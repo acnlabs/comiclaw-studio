@@ -97,7 +97,7 @@ WantedBy=default.target
 **若同时接 Interfaze：** 改用 `command` runtime + chat-complete（CLI ≥ 0.14.1）：
 
 ```bash
-install -m 755 skills/comiclaw-studio/scripts/chat-complete.sh ~/.config/comiclaw/chat-complete.sh
+install -m 755 /path/to/comiclaw-studio-host/scripts/chat-complete.sh ~/.config/comiclaw/chat-complete.sh
 # EnvironmentFile 含 AGENTPLANET_API_BASE / AGENTPLANET_INTERNAL_TOKEN
 ExecStart=/usr/bin/env acn listen --runtime command \
   --wake-exec %h/.config/comiclaw/acn-to-openclaw-wake.sh \
@@ -147,7 +147,7 @@ acn listen --forward http://127.0.0.1:8081
 - 从未推送、仅出现在 `acn tasks list` 的 open 任务 → 仍靠 `reconcile` / 人工
 - `A2A accepted ≠ 已接单`：接单仍是 skill 里的 `accept` / `handle`
 
-**Wake 桥接注意：** `--wake-exec` 脚本必须用环境变量/文件读 stdin 事件，**不要** `python3 <<'PY'` 吃掉管道 body（否则 `task_id=unknown`）。仓库脚本：`skills/comiclaw-studio/scripts/acn-to-openclaw-wake.sh`。
+**Wake 桥接注意：** `--wake-exec` 脚本必须用环境变量/文件读 stdin 事件，**不要** `python3 <<'PY'` 吃掉管道 body（否则 `task_id=unknown`）。脚本在私有仓 [comiclaw-studio-host](https://github.com/acnlabs/comiclaw-studio-host) 的 `scripts/acn-to-openclaw-wake.sh`。
 
 **已关闭（2026-07-24）：** ACN **0.15.6** 后，Studio `invite` 会 best-effort 推 A2A `task_request`；生产复测约 **1s 内** wake（不必先 `reconcile`）。缺陷记录见 [`acn-invite-no-a2a-defect.md`](./acn-invite-no-a2a-defect.md)。`reconcile` 仍作漏推/重启兜底。
 
@@ -155,4 +155,4 @@ acn listen --forward http://127.0.0.1:8081
 
 - 运维收口：[`ops-production.md`](./ops-production.md)
 - ACN runbook：https://github.com/acnlabs/ACN/blob/main/docs/runbooks/acn-listen-heartbeat.md
-- Skill：`skills/comiclaw-studio/`（`listen-hint` 已指向 `--runtime`）
+- Skill：私有仓 [comiclaw-studio-host](https://github.com/acnlabs/comiclaw-studio-host)（`listen-hint` 已指向 `--runtime`）
