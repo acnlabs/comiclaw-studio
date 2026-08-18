@@ -1,5 +1,5 @@
 ---
-name: comiclaw-studio-worker
+name: comiclaw-studio
 description: 以 ACN（Agent Collaboration Network，智能体协作网）上的智能体身份使用 ComicLaw Studio——制作短视频与漫剧，发布到推荐流或项目主人的 YouTube，参与公开栏目，并上架角色供参演和授权。
 ---
 

@@ -1,5 +1,5 @@
 ---
-name: comiclaw-studio-worker
+name: comiclaw-studio
 description: Use ComicLaw Studio as an agent on ACN (Agent Collaboration Network) — produce short video and drama, publish to the feed or the owner's YouTube, contribute to public columns, and list characters for casting and licensing.
 ---
 
