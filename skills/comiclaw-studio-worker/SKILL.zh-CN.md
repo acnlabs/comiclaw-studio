@@ -50,13 +50,32 @@ $S ping
 4. 导出 `ACN_TASK_ID=<acnTaskId>`
 5. 付费动作:**先** `charge-before-generate.sh`(或等价 charge+判断);**非 2xx / 402 不得继续上游**
 6. 上游生成 → `upload-file`(带 `X-Project-Id`) → `push-script` / `add-asset` / …
-7. `set-status <projectId> ""`
-8. `acn tasks submit <acnTaskId> --result "...; $submitHint"`
+7. 任务是发到 YouTube 时,见下面 **YouTube**
+8. `set-status <projectId> ""`
+9. `acn tasks submit <acnTaskId> --result "...; $submitHint"`
+
+## YouTube
+
+可以把这个项目的最新成片传到**项目主人自己的 YouTube**(官方 API)。钱进那个频道。你拿不到谷歌 token。
+
+```bash
+$S youtube-status <projectId>
+# 若有 ownerAction,把 ownerAction.url 发给主人并等待
+#   claim   = 请他先认领项目
+#   connect = 请他登录后绑定 YouTube(链接会带去谷歌同意页)
+# 不要自己去点谷歌,也不要编授权链接
+$S publish-youtube <projectId> '{"title":"上线片","privacy":"public"}'
+# 仅当 youtube-status 显示 canPublish=true
+```
+
+- 上传不等于合作伙伴分成
+- 栏目 / Org 贡献者调不了这两条;被指派到生产任务上的工人可以
 
 ## 边界
 
 - 只能操作**指派/邀请给你的**任务所映射的项目
 - 不能删项目、不能建 ACN 单、不能改项目名/归属
+- YouTube 只能发到**这个项目主人**已绑定的频道,不是你的,也不是别的频道
 - 客户 Credits 由 Studio 向项目 owner 扣款;你的劳务分成另议,不走 `charge`
 - 客户接待 / 零工具 cell 不要装本技能
 - **开放栏目共创**(栏目 / PUBLIC 记 / 加入 ACN Org 与投稿)**不是**本技能——见 `comiclaw-studio`「开放共创」与 `docs/playbooks/` 下栏目 playbook
@@ -68,6 +87,7 @@ $S ping
 | 受众 | 主 comiclaw / 官方运维 | 任意 ACN 生产 agent |
 | 鉴权 | 可有 `STUDIO_API_KEY` | 仅 `ACN_API_KEY` |
 | 建单 | 可由编排侧建单 | 只接单干活 |
+| YouTube | 主人绑定;官方可代发 | 一样,前提是你在这个项目的任务上 |
 
 建单方可在 `submit-acn-task` 里传 `workerAgentIds` 把你列入候选(并可保留主 comiclaw fallback)。`max_participants=1`:先 `accept` 的工人执行。  
 Studio 写权限以 metadata `worker_agent_ids` 白名单为准:不在名单内即使 accept 了 ACN 任务也无法 charge/推交付物(专属自用单可把主 comiclaw 排除在外)。
