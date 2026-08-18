@@ -8,7 +8,7 @@ import WorkWatch from "@/components/WorkWatch";
 import { liveAgentNames } from "@/lib/agentplanet";
 import { applyLiveCreditNames, authorLine } from "@/lib/authorLine";
 import { authorLinksForWorks } from "@/lib/profile";
-import { toAppearanceCredits } from "@/lib/workAppearance";
+import { listedCredits } from "@/lib/workCredit";
 
 export const dynamic = "force-dynamic";
 
@@ -24,29 +24,41 @@ export default async function WorkPage(props: {
     where: { id },
     include: {
       appearances: true,
+      credits: true,
       episodes: {
         orderBy: { order: "asc" },
-        include: { sourceWork: { select: { id: true, appearances: true } } },
+        include: {
+          sourceWork: {
+            select: {
+              id: true,
+              ownerKind: true,
+              ownerAgentId: true,
+              appearances: true,
+              credits: true,
+            },
+          },
+        },
       },
     },
   });
   if (!work) notFound();
   const [author] = await authorLinksForWorks([work]);
-  const rawCast: Record<string, ReturnType<typeof toAppearanceCredits>> = {
-    [work.id]: toAppearanceCredits(work.appearances),
+  const rawCredits: Record<string, ReturnType<typeof listedCredits>> = {
+    [work.id]: listedCredits(work),
   };
   for (const episode of work.episodes) {
     if (episode.sourceWork) {
-      rawCast[episode.sourceWork.id] = toAppearanceCredits(
-        episode.sourceWork.appearances,
-      );
+      rawCredits[episode.sourceWork.id] = listedCredits(episode.sourceWork);
     }
   }
   const live = await liveAgentNames(
-    Object.values(rawCast).flatMap((rows) => rows.map((row) => row.agentId)),
+    Object.values(rawCredits).flatMap((rows) => rows.map((row) => row.agentId)),
   );
-  const castByWorkId = Object.fromEntries(
-    Object.entries(rawCast).map(([id, rows]) => [id, applyLiveCreditNames(rows, live)]),
+  const creditsByWorkId = Object.fromEntries(
+    Object.entries(rawCredits).map(([id, rows]) => [
+      id,
+      applyLiveCreditNames(rows, live),
+    ]),
   );
   const creatorLine = authorLine({
     handle: author?.handle,
@@ -95,7 +107,7 @@ export default async function WorkPage(props: {
           coverUrl={work.coverUrl}
           episodes={work.episodes}
           initialEpisodeId={ep}
-          castByWorkId={castByWorkId}
+          creditsByWorkId={creditsByWorkId}
         />
       </div>
     </div>
