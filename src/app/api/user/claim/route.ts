@@ -2,11 +2,11 @@ import { prisma } from "@/lib/db";
 import { verifyUserToken } from "@/lib/userAuth";
 import { unauthorized, badRequest, notFoundJson, forbidden } from "@/lib/auth";
 import { ensureUserProfile } from "@/lib/userHandle";
-import { hasSettledOwner } from "@/lib/owner";
+import { decideClaimViaShareLink } from "@/lib/owner";
 
 // 登录用户认领项目:持有 shareToken 即视为所有权凭证。
-// 仅无主的 PRIVATE 客户单可认领。已有人 / agent / 组织东家的不能抢。
-// PUBLIC 共创项目禁止认领。
+// 无主私有单、以及官方/agent 代建还没有人东家的私有单可以认领。
+// 已有别人或组织东家、PUBLIC 共创，不能抢。
 export async function POST(req: Request) {
   const sub = await verifyUserToken(req);
   if (!sub) return unauthorized();
@@ -30,14 +30,14 @@ export async function POST(req: Request) {
   });
   if (!project) return notFoundJson();
 
-  if (project.visibility === "PUBLIC") {
-    return forbidden("PUBLIC projects cannot be claimed via share link");
-  }
-
-  if (project.ownerUserId === sub) {
-    return Response.json({ claimed: false, alreadyOwned: true });
-  }
-  if (hasSettledOwner(project)) {
+  const decision = decideClaimViaShareLink(project, project.visibility, sub);
+  if (!decision.ok) {
+    if ("alreadyOwned" in decision) {
+      return Response.json({ claimed: false, alreadyOwned: true });
+    }
+    if (decision.reason === "public") {
+      return forbidden("PUBLIC projects cannot be claimed via share link");
+    }
     return Response.json({ claimed: false, ownedByOther: true });
   }
 

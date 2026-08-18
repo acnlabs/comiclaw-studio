@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth0 } from "@auth0/auth0-react";
 import { useT } from "@/components/LocaleProvider";
 import { AUTH0_AUDIENCE } from "@/lib/auth0";
 
 // 项目自动认领:
-// - 已登录且项目无主 → 自动绑定到当前用户,轻提示
+// - 已登录且还没有人东家（无主，或官方/agent 代建）→ 收到当前用户名下,轻提示
 // - 未登录 → 显示提示条,引导登录(登录回来后自动完成绑定)
 export default function AutoClaim({
   shareToken,
@@ -18,6 +18,7 @@ export default function AutoClaim({
 }) {
   const { isAuthenticated, isLoading, getAccessTokenSilently, loginWithRedirect } = useAuth0();
   const pathname = usePathname();
+  const router = useRouter();
   const { t } = useT();
   const [saved, setSaved] = useState(false);
   const attempted = useRef(false);
@@ -41,13 +42,14 @@ export default function AutoClaim({
         const data = await res.json().catch(() => null);
         if (data?.claimed) {
           setSaved(true);
+          router.refresh();
           setTimeout(() => setSaved(false), 5000);
         }
       } catch {
         // 静默失败:认领失败不影响查看
       }
     })();
-  }, [hasOwner, isAuthenticated, isLoading, getAccessTokenSilently, shareToken]);
+  }, [hasOwner, isAuthenticated, isLoading, getAccessTokenSilently, shareToken, router]);
 
   if (saved) {
     return (

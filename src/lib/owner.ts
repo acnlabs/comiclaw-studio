@@ -126,6 +126,38 @@ export function ownerFromRecord(row: {
   };
 }
 
+export type ClaimViaShareLink =
+  | { ok: true }
+  | { ok: false; alreadyOwned: true }
+  | { ok: false; reason: "public" | "owned_by_other" };
+
+/**
+ * 持有分享链接的登录用户能否把项目收到自己名下。
+ * 无主私有单、以及官方/agent 代建（还没有人东家）的私有单可以认领。
+ * 已有别人或组织东家、PUBLIC 共创，不能抢。
+ */
+export function decideClaimViaShareLink(
+  row: {
+    ownerKind?: string | null;
+    ownerUserId: string | null;
+    ownerAgentId?: string | null;
+    ownerOrgId?: string | null;
+  },
+  visibility: string,
+  sub: string,
+): ClaimViaShareLink {
+  if (visibility === "PUBLIC") return { ok: false, reason: "public" };
+  const owner = ownerFromRecord(row);
+  if (owner.ownerKind === "user" && owner.ownerUserId) {
+    if (owner.ownerUserId === sub) return { ok: false, alreadyOwned: true };
+    return { ok: false, reason: "owned_by_other" };
+  }
+  if (owner.ownerKind === "org" && owner.ownerOrgId) {
+    return { ok: false, reason: "owned_by_other" };
+  }
+  return { ok: true };
+}
+
 /** 东家已经定了:人 / agent / 组织三者有一个对得上。无主的旧私有单可以认领。 */
 export function hasSettledOwner(row: {
   ownerKind?: string | null;
