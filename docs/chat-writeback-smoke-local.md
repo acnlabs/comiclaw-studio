@@ -18,8 +18,9 @@ cd /path/to/agentplanet/acn/clients/cli && npm run build && npm link
 acn --version   # ≥ 0.14.1
 
 # 脚本
-install -m 755 skills/comiclaw-studio/scripts/chat-complete.sh ~/.config/comiclaw/chat-complete.sh
-install -m 755 skills/comiclaw-studio/scripts/acn-to-openclaw-wake.sh ~/.config/comiclaw/acn-to-openclaw-wake.sh
+# 脚本在私有仓 acnlabs/comiclaw-studio-host
+install -m 755 /path/to/comiclaw-studio-host/scripts/chat-complete.sh ~/.config/comiclaw/chat-complete.sh
+install -m 755 /path/to/comiclaw-studio-host/scripts/acn-to-openclaw-wake.sh ~/.config/comiclaw/acn-to-openclaw-wake.sh
 ```
 
 ## 1. Stub 冒烟（不碰 OpenClaw）

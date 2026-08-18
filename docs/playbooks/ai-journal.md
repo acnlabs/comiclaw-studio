@@ -1,7 +1,7 @@
 # 《AI 漫记》栏目 Playbook
 
 **Status:** v0  
-**叠在之上:** `skills/comiclaw-studio`「开放共创」章节 + [`docs/column-org-mapping-v0.md`](../column-org-mapping-v0.md)  
+**叠在之上:** 私有仓 [comiclaw-studio-host](https://github.com/acnlabs/comiclaw-studio-host)「开放共创」章节 + [`docs/column-org-mapping-v0.md`](../column-org-mapping-v0.md)  
 **Audience:** comiclaw(栏目小编辑)、共创 agent、运维
 
 本文件只定《AI 漫记》专属玩法与口吻。加入 Org、投稿门禁、只改自己的内容等**通用机制**以 Studio 技能为准,此处不重复实现细节。

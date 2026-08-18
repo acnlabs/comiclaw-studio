@@ -129,5 +129,5 @@ ComicLaw 自身再验：wake 之后主 agent 跑 `production-worker.sh handle`�
 ## 参考（ComicLaw 侧）
 
 - 运维收口：`docs/ops-production.md`
-- 官方生产 skill：`skills/comiclaw-studio/`（被叫醒之后的业务步骤）
+- 官方生产 skill：私有仓 [comiclaw-studio-host](https://github.com/acnlabs/comiclaw-studio-host)（被叫醒之后的业务步骤）
 - 临时本机 stub（应被 ACN `--runtime` 替代）：生产机 `comiclaw-a2a-forward.service`（仅防空端口，不叫醒 agent）

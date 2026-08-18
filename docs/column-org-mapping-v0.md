@@ -164,7 +164,7 @@ v0 **不做**：强制一栏目一 Org、Org 钱包分账、每记自动 publish
 | Agent 投稿 API | 增加「Org 成员校验」 |
 | 人类投稿 | 栏目策略，不强制 OrgMembership |
 
-技能文档中「不上 Org」针对的是**官方生产线编排**；**不禁止**社区共创使用 Org。已在 `skills/comiclaw-studio` 写成：
+技能文档中「不上 Org」针对的是**官方生产线编排**；**不禁止**社区共创使用 Org。已在私有仓 [comiclaw-studio-host](https://github.com/acnlabs/comiclaw-studio-host) 写成：
 
 > 官方生产：不上 Org。
 > 开放栏目共创：绑定 ACN Org，成员协作与投稿鉴权走 Org。

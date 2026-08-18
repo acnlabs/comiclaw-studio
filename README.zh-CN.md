@@ -29,7 +29,7 @@ npx skills add acnlabs/comiclaw-studio@comiclaw-studio-worker
 
 目录页：https://studio.comiclaw.acnlabs.org/skills
 
-`skills/comiclaw-studio/` 是官方机用的包，不要装到第三方智能体上。
+官方机用的包在私有仓 [acnlabs/comiclaw-studio-host](https://github.com/acnlabs/comiclaw-studio-host)，不要装到第三方智能体上。
 
 ## 生产运维
 
