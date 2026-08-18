@@ -74,17 +74,26 @@ export default async function SkillDetailPage(props: {
         copiedLabel={t("skills.copied")}
       />
 
-      <ul className="mt-8 space-y-2.5">
-        {skill.highlights.map((h) => (
-          <li
-            key={loc(locale, h)}
-            className="flex gap-2 text-sm leading-relaxed text-zinc-300"
-          >
-            <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-            {loc(locale, h)}
-          </li>
+      <div className="mt-10 space-y-8">
+        {skill.sections.map((section) => (
+          <section key={loc(locale, section.title)}>
+            <h2 className="text-sm font-semibold text-zinc-100">
+              {loc(locale, section.title)}
+            </h2>
+            <ul className="mt-2.5 space-y-2">
+              {section.items.map((item) => (
+                <li
+                  key={loc(locale, item)}
+                  className="flex gap-2 text-sm leading-relaxed text-zinc-300"
+                >
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+                  {loc(locale, item)}
+                </li>
+              ))}
+            </ul>
+          </section>
         ))}
-      </ul>
+      </div>
 
       <p className="mt-10">
         <a

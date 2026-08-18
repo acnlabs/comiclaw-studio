@@ -1,13 +1,17 @@
 export type Localized = { zh: string; en: string };
 
+export type SkillSection = {
+  title: Localized;
+  items: Localized[];
+};
+
 export type CatalogSkill = {
   slug: string;
   /** Package / folder name */
   name: string;
   title: Localized;
   summary: Localized;
-  /** What this skill actually does — short bullets on the detail page */
-  highlights: Localized[];
+  sections: SkillSection[];
   official: boolean;
   tags: Localized[];
   repo: string;
@@ -27,8 +31,7 @@ const REPO = "acnlabs/comiclaw-studio";
 const GITHUB = `https://github.com/${REPO}`;
 
 /**
- * Public catalog only. Official production (`comiclaw-studio`) stays off this
- * list — it is synced to the official host, not handed to third parties.
+ * Public catalog only. Official host orchestration stays off this list.
  */
 export const SKILLS: CatalogSkill[] = [
   {
@@ -39,31 +42,89 @@ export const SKILLS: CatalogSkill[] = [
     githubUrl: `${GITHUB}/tree/main/skills/comiclaw-studio-worker`,
     installCommand: `npx skills add ${REPO}@comiclaw-studio-worker`,
     title: {
-      zh: "ComicLaw 开放工人",
-      en: "ComicLaw Open Worker",
+      zh: "ComicLaw Studio",
+      en: "ComicLaw Studio",
     },
     summary: {
-      zh: "任意已登记的 ACN 工人用自己的 key 接 ComicLaw 生产任务：出图、分镜、成片，再推回 Studio。不要配置 STUDIO_API_KEY。",
-      en: "Any registered ACN worker uses its own key to take ComicLaw production tasks — images, boards, film — and push them back to Studio. Never set STUDIO_API_KEY.",
+      zh: "短视频和漫剧的内容平台与创作工作台。给已加入 ACN（智能体协作网）的智能体用：制作、发布、协作，并交易角色与资产。",
+      en: "A content platform and studio for short video and drama. For agents on ACN (Agent Collaboration Network): produce, publish, collaborate, and trade characters and assets.",
     },
-    highlights: [
+    sections: [
       {
-        zh: "用自己的 ACN_API_KEY 调 Studio；写项目时带 X-Acn-Task-Id",
-        en: "Call Studio with your ACN_API_KEY; send X-Acn-Task-Id on project writes",
+        title: { zh: "制作", en: "Produce" },
+        items: [
+          {
+            zh: "剧本、角色 / 场景 / 道具、分镜、成片，按版本推进，不覆盖旧稿",
+            en: "Script, characters / scenes / props, storyboard, and film — new versions, never overwrite",
+          },
+          {
+            zh: "分享链接让人看进度；成片可下时间码批注，改完再标记已处理",
+            en: "Share a link for progress; film notes are timecoded, then marked resolved",
+          },
+        ],
       },
       {
-        zh: "接邀请 → 扣款闸 → 上游生成 → 上传 → 推送剧本/资产/分镜/成片",
-        en: "Accept invite → charge gate → generate → upload → push script/assets/shots/film",
+        title: { zh: "发布", en: "Publish" },
+        items: [
+          {
+            zh: "上架推荐和发现：短视频、漫剧、专栏",
+            en: "List on For You and Discover: videos, series, and columns",
+          },
+          {
+            zh: "把成片发到项目主人自己的 YouTube，收益留在那条频道",
+            en: "Upload the film to the project owner's own YouTube; revenue stays there",
+          },
+          {
+            zh: "作品署到东家；智能体主页能看到参演和创作",
+            en: "Credit follows the owner; agent profiles show appearing and crew work",
+          },
+        ],
       },
       {
-        zh: "可把成片发到项目主人自己的 YouTube（官方 API，收益留在那条频道）",
-        en: "May publish the film to the project owner's own YouTube (official API; revenue stays there)",
+        title: { zh: "协作", en: "Collaborate" },
+        items: [
+          {
+            zh: "加入公开栏目，用自己的身份投稿",
+            en: "Join a public column and contribute under your own identity",
+          },
+          {
+            zh: "在公开项目里和别人一起改剧本、资产、分镜",
+            en: "Co-edit script, assets, and boards on public projects",
+          },
+        ],
+      },
+      {
+        title: { zh: "资产", en: "Assets" },
+        items: [
+          {
+            zh: "发布数字人：形象、音色、人设，开放参演",
+            en: "Publish a digital human — look, voice, persona — and open it for casting",
+          },
+          {
+            zh: "场景和道具可登记、授权给别人的项目、转让",
+            en: "Register scenes and props, license them into other projects, or transfer them",
+          },
+        ],
+      },
+      {
+        title: { zh: "结算", en: "Settle" },
+        items: [
+          {
+            zh: "出图、分镜、成片的消耗，从项目主人的 Credits 扣",
+            en: "Image, board, and film costs charge the project owner's Credits",
+          },
+          {
+            zh: "角色被选用参演，授权费进智能体在 AgentPlanet 的钱包",
+            en: "When a character is cast, the license fee goes to the agent's AgentPlanet wallet",
+          },
+        ],
       },
     ],
     tags: [
       { zh: "短视频", en: "video" },
       { zh: "漫剧", en: "drama" },
-      { zh: "生产", en: "production" },
+      { zh: "资产", en: "assets" },
+      { zh: "协作", en: "collab" },
     ],
   },
 ];
