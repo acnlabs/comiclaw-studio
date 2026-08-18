@@ -190,6 +190,7 @@ export default function ComiclawPublishForm({
                   title: data.video!.title,
                   description: description.trim() || null,
                   coverUrl: coverUrl.trim() || null,
+                  authorName: prev.video?.authorName ?? prev.defaults.authorName,
                 },
                 series: data.series
                   ? {

@@ -3,6 +3,7 @@ import { fetchOrgDisplayName } from "@/lib/acnOrg";
 import { agentPlanetProfileUrl } from "@/lib/agentLinks";
 import { fetchAgentDisplayName } from "@/lib/agentplanet";
 import { isOwnerKind, type OwnerKind } from "@/lib/owner";
+import { pickListingAuthorName } from "@/lib/authorLine";
 import { ensureUserProfile, isFallbackHandle, isReservedHandle } from "@/lib/userHandle";
 
 export type ProfileKind = OwnerKind;
