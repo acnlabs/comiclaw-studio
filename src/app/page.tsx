@@ -81,7 +81,7 @@ async function loadFeedItems(): Promise<FeedItem[]> {
       category: w.category,
       title: w.title,
       description: w.description,
-      authorName: w.authorName,
+      authorName: authors[i]?.displayName ?? w.authorName,
       authorHandle: authors[i]?.handle ?? null,
       authorHref: authors[i]?.href ?? null,
       credits: feedCredits(
