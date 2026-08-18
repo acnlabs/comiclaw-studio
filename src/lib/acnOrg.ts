@@ -120,6 +120,18 @@ export async function getAcnOrg(
   return (await res.json()) as AcnOrg;
 }
 
+/** 公开主页用的组织名。查不到或网络失败时返回 null,页面退回 id。 */
+export async function fetchOrgDisplayName(orgId: string): Promise<string | null> {
+  const id = orgId.trim();
+  if (!id) return null;
+  try {
+    const org = await getAcnOrg(id);
+    return org?.display_name?.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function listAcnOrgMembers(
   orgId: string,
   bearer?: string
