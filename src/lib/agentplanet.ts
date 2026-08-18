@@ -190,6 +190,16 @@ export async function fetchAgentDisplayName(agentId: string): Promise<string | n
   return null;
 }
 
+export async function liveAgentNames(ids: string[]): Promise<Map<string, string>> {
+  const unique = [...new Set(ids.map((id) => id.trim()).filter(Boolean))];
+  const pairs = await Promise.all(
+    unique.map(async (id) => [id, await fetchAgentDisplayName(id)] as const),
+  );
+  return new Map(
+    pairs.filter((entry): entry is readonly [string, string] => Boolean(entry[1])),
+  );
+}
+
 export async function verifyAgentExists(agentId: string): Promise<boolean | null> {
   try {
     const res = await fetch(`${BASE()}/api/agents/${encodeURIComponent(agentId)}`, {

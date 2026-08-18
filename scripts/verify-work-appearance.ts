@@ -3,6 +3,7 @@
  * Run: npx tsx scripts/verify-work-appearance.ts
  */
 import assert from "node:assert/strict";
+import { applyLiveCreditNames } from "../src/lib/authorLine";
 import { feedCastCredits, toAppearanceCredits } from "../src/lib/workAppearance";
 import { feedCredits, mergeCredits } from "../src/lib/workCredit";
 
@@ -48,5 +49,17 @@ assert.equal(crew[0].agentId, "lead-1");
 assert.deepEqual(crew[1].kinds, ["appear", "script"]);
 assert.equal(feedCredits(crew, "lead-1").length, 1);
 ok("credits merge appear and crew labels on the same agent");
+
+const live = applyLiveCreditNames(
+  [
+    { agentId: "a1", displayName: "上架时的字" },
+    { agentId: "a2", displayName: "a2" },
+  ],
+  new Map([["a1", "Comiclaw"]]),
+);
+assert.equal(live[0].displayName, "Comiclaw");
+assert.equal(live[1].displayName, "a2");
+assert.ok(!live[0].displayName.startsWith("@"));
+ok("credit names prefer the live ACN name and do not invent an @");
 
 console.log("\nAll appearance checks passed.");

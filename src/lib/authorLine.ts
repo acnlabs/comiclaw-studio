@@ -22,3 +22,15 @@ export function pickListingAuthorName(
   }
   return null;
 }
+
+/** 出演/职员先用 ACN 现名,没有再退回片子上的字,绝不加 @。 */
+export function applyLiveCreditNames<T extends { agentId: string; displayName: string }>(
+  rows: T[],
+  live: ReadonlyMap<string, string>,
+): T[] {
+  return rows.map((row) => ({
+    ...row,
+    displayName:
+      pickListingAuthorName(live.get(row.agentId), row.displayName) ?? row.agentId,
+  }));
+}
