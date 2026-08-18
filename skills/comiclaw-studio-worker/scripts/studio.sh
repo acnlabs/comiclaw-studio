@@ -232,7 +232,7 @@ if not str(body.get("ownerUserId") or "").strip():
   quote)           call POST "/api/agent/pricing" "$2" ;;
   charge)          require_worker_task; call POST "/api/agent/projects/$2/charge" "$3" ;;
   get-charges)     require_worker_task; call GET "/api/agent/projects/$2/charge" ;;
-  submit-acn-task) call POST "/api/agent/projects/$2/acn-tasks" "$3" ;;
+  submit-acn-task) require_studio_key ;;
   list-acn-tasks)  require_worker_task; call GET "/api/agent/projects/$2/acn-tasks" ;;
   get-acn-task)    call GET "/api/agent/acn-tasks/$2" ;;
   upload-file)
