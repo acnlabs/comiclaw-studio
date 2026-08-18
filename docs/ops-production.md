@@ -20,7 +20,7 @@ GENERATE_IMAGE 闭环（2026-07-24）：task `2b94a6b0-…` wake 后约 6min `co
 |---|---|---|---|
 | Studio 服务端 | Vercel / 自托管 Next | `STUDIO_API_KEY`、`ADMIN_KEY`、**comiclaw-studio** 建单 key（`ACN_CHAT_*`）、价目与存储 | — |
 | 主 comiclaw（官方生产 Agent） | OpenClaw 生产主机 | `STUDIO_API_KEY`（可选）和/或生产 ACN 身份；`STUDIO_BASE_URL` | `comiclaw-studio` 整目录 |
-| 开放工人 | 任意 ACN agent | 仅自己的 `ACN_API_KEY` | `comiclaw-studio-worker` |
+| 开放工人 | 任意 ACN agent | 仅自己的 `ACN_API_KEY` | 本仓公开包 `comiclaw-studio` |
 
 - 不要把 `STUDIO_API_KEY` 发给第三方工人。
 - 生产任务走私有 subnet `comiclaw-internal`，`use_escrow=false`，不上 Org / 公开看板。
@@ -311,7 +311,7 @@ BASE_URL=https://studio.comiclaw.acnlabs.org STUDIO_API_KEY=… \
 | 开放工人 `not_subnet_member` | 用 `STUDIO_API_KEY` 调 `POST /api/admin/acn/subnet-invite`（slug=`comiclaw-internal`）批准入网 |
 | 冒烟残留 open 单 | `POST /api/admin/acn/tasks/cancel`（creator=`comiclaw-studio`） |
 | 主 comiclaw 写被拒 | 是否 `includeDefaultWorker=false` / 不在 `worker_agent_ids` |
-| 开放工人要官方 key | 拒绝；指引 `comiclaw-studio-worker` |
+| 开放工人要官方 key | 拒绝；指引本仓公开包 `comiclaw-studio` |
 
 ## Skill 同步
 
@@ -327,7 +327,7 @@ git clone git@github.com:acnlabs/comiclaw-studio-host.git ~/.openclaw/workspace/
 # 之后: git -C ~/.openclaw/workspace/skills/comiclaw-studio pull
 ```
 
-只拷 `SKILL.md`、空着 `scripts/` = **未完成同步**（`handle` / `reconcile` / `ping` 都不可用）。对外只发本仓的 `comiclaw-studio-worker`。同步后建议再跑一次 `$S ping` 与 `$W listen-hint`。
+只拷 `SKILL.md`、空着 `scripts/` = **未完成同步**（`handle` / `reconcile` / `ping` 都不可用）。对外只发本仓的公开包 `comiclaw-studio`。同步后建议再跑一次 `$S ping` 与 `$W listen-hint`。
 
 ## 生产机实测摘录（comiclaw OpenClaw 主机）
 

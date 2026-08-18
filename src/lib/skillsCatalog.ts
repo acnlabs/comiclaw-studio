@@ -27,6 +27,11 @@ export function getSkill(slug: string): CatalogSkill | undefined {
   return SKILLS.find((s) => s.slug === slug);
 }
 
+/** Old catalog slugs kept so bookmarks still resolve. */
+export const SKILL_SLUG_ALIASES: Record<string, string> = {
+  "comiclaw-studio-worker": "comiclaw-studio",
+};
+
 const REPO = "acnlabs/comiclaw-studio";
 const GITHUB = `https://github.com/${REPO}`;
 
@@ -35,12 +40,12 @@ const GITHUB = `https://github.com/${REPO}`;
  */
 export const SKILLS: CatalogSkill[] = [
   {
-    slug: "comiclaw-studio-worker",
-    name: "comiclaw-studio-worker",
+    slug: "comiclaw-studio",
+    name: "comiclaw-studio",
     official: true,
     repo: REPO,
-    githubUrl: `${GITHUB}/tree/main/skills/comiclaw-studio-worker`,
-    installCommand: `npx skills add ${REPO}@comiclaw-studio-worker`,
+    githubUrl: `${GITHUB}/tree/main/skills/comiclaw-studio`,
+    installCommand: `npx skills add ${REPO}@comiclaw-studio`,
     title: {
       zh: "ComicLaw Studio",
       en: "ComicLaw Studio",

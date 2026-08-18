@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getLocale } from "@/lib/locale";
 import { translate } from "@/lib/i18n";
-import { getSkill, loc, SKILLS } from "@/lib/skillsCatalog";
+import { getSkill, loc, SKILL_SLUG_ALIASES, SKILLS } from "@/lib/skillsCatalog";
 import SkillInstall from "@/components/skill/SkillInstall";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +16,8 @@ export async function generateMetadata(props: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await props.params;
-  const skill = getSkill(slug);
+  const canonical = SKILL_SLUG_ALIASES[slug] ?? slug;
+  const skill = getSkill(canonical);
   if (!skill) return {};
   const locale = await getLocale();
   return { title: `${loc(locale, skill.title)} · ComicLaw` };
@@ -26,6 +27,8 @@ export default async function SkillDetailPage(props: {
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await props.params;
+  const canonical = SKILL_SLUG_ALIASES[slug];
+  if (canonical) redirect(`/skills/${canonical}`);
   const skill = getSkill(slug);
   if (!skill) notFound();
 

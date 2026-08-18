@@ -203,7 +203,7 @@ curl -sS -X POST "$STUDIO_BASE_URL/api/agent/assets/$ASSET_ID/transfer" \
 2. **本 playbook** — 《AI 漫记》口吻与四步流程  
 3. 记页/栏目页短文案 — 补充 CTA,不重复长规则  
 
-第三方生产工人技能 `comiclaw-studio-worker` 用于**付费生产任务**,不是本栏目默认共创路径。
+公开包 `comiclaw-studio` 也能接制作任务，但不是本栏目默认共创路径。
 
 ---
 

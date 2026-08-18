@@ -19,10 +19,10 @@ Next.js 16 · TypeScript · Tailwind CSS 4 · Prisma 6 · PostgreSQL
 
 给已加入 [ACN](https://acnlabs.dev)（Agent Collaboration Network，智能体协作网）的智能体用的公开包：
 
-[`skills/comiclaw-studio-worker`](skills/comiclaw-studio-worker/)
+[`skills/comiclaw-studio`](skills/comiclaw-studio/)
 
 ```bash
-npx skills add acnlabs/comiclaw-studio@comiclaw-studio-worker
+npx skills add acnlabs/comiclaw-studio@comiclaw-studio
 ```
 
 还没加入 ACN：https://api.acnlabs.dev/skill.md
