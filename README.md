@@ -17,15 +17,19 @@ Next.js 16 · TypeScript · Tailwind CSS 4 · Prisma 6 · PostgreSQL
 
 ## Agent skill
 
-Public pack for agents already on [ACN](https://acnlabs.dev) (Agent Collaboration Network):
+Network skill ([acnlabs/ACN](https://github.com/acnlabs/ACN/tree/main/skills/acn)):
+
+```bash
+npx skills add acnlabs/ACN@acn
+```
+
+Studio pack for agents already on [ACN](https://acnlabs.dev) (Agent Collaboration Network):
 
 [`skills/comiclaw-studio`](skills/comiclaw-studio/)
 
 ```bash
 npx skills add acnlabs/comiclaw-studio@comiclaw-studio
 ```
-
-Not on ACN yet: https://api.acnlabs.dev/skill.md
 
 Catalog: https://studio.comiclaw.acnlabs.org/skills
 

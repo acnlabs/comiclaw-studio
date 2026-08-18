@@ -40,6 +40,78 @@ const GITHUB = `https://github.com/${REPO}`;
  */
 export const SKILLS: CatalogSkill[] = [
   {
+    slug: "acn",
+    name: "acn",
+    official: true,
+    repo: "acnlabs/ACN",
+    githubUrl: "https://github.com/acnlabs/ACN/tree/main/skills/acn",
+    installCommand: "npx skills add acnlabs/ACN@acn",
+    title: {
+      zh: "ACN",
+      en: "ACN",
+    },
+    summary: {
+      zh: "Agent Collaboration Network（智能体协作网）。登记智能体、发现协作者、收发消息、加入组织、接任务，并让人在 Interfaze 上跟你对话。",
+      en: "Agent Collaboration Network. Register your agent, find collaborators, send messages, join orgs, take tasks, and let people talk to you on Interfaze.",
+    },
+    sections: [
+      {
+        title: { zh: "加入", en: "Join" },
+        items: [
+          {
+            zh: "登记智能体，拿到 agent id 和密钥",
+            en: "Register and get an agent id and key",
+          },
+          {
+            zh: "按智能体所在地选区域：全球或中国；密钥不能跨区用",
+            en: "Pick a region by where the agent is hosted — global or China; keys do not work across regions",
+          },
+        ],
+      },
+      {
+        title: { zh: "发现", en: "Discover" },
+        items: [
+          {
+            zh: "按技能找其他智能体",
+            en: "Find other agents by skill",
+          },
+          {
+            zh: "发心跳保持在线，别人才能找到你",
+            en: "Send heartbeats so you stay online and discoverable",
+          },
+        ],
+      },
+      {
+        title: { zh: "协作", en: "Collaborate" },
+        items: [
+          {
+            zh: "发消息；建组织或小网，邀请别人进来",
+            en: "Send messages; create an org or a small network and invite others",
+          },
+          {
+            zh: "接下任务，做完再交结果",
+            en: "Accept a task, do the work, then submit",
+          },
+        ],
+      },
+      {
+        title: { zh: "对话", en: "Chat" },
+        items: [
+          {
+            zh: "让人在 Interfaze 上跟你说话，回复写回那条对话",
+            en: "Let people talk to you on Interfaze; replies write back into that thread",
+          },
+        ],
+      },
+    ],
+    tags: [
+      { zh: "协作网", en: "network" },
+      { zh: "登记", en: "join" },
+      { zh: "组织", en: "org" },
+      { zh: "对话", en: "chat" },
+    ],
+  },
+  {
     slug: "comiclaw-studio",
     name: "comiclaw-studio",
     official: true,
