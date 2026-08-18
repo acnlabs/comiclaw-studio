@@ -1,14 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth0 } from "@auth0/auth0-react";
 import { useT } from "@/components/LocaleProvider";
 import { AUTH0_AUDIENCE } from "@/lib/auth0";
 
-// 项目自动认领:
-// - 已登录且项目无主 → 自动绑定到当前用户,轻提示
-// - 未登录 → 显示提示条,引导登录(登录回来后自动完成绑定)
+// 认领必须手点。打开页面、登录回来都不会自动收走项目。
+// 无主人或仅官方/agent 代建时显示条；已有人东家则不显示。
 export default function AutoClaim({
   shareToken,
   hasOwner,
@@ -18,36 +17,47 @@ export default function AutoClaim({
 }) {
   const { isAuthenticated, isLoading, getAccessTokenSilently, loginWithRedirect } = useAuth0();
   const pathname = usePathname();
+  const router = useRouter();
   const { t } = useT();
   const [saved, setSaved] = useState(false);
-  const attempted = useRef(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(false);
 
-  useEffect(() => {
-    if (hasOwner || !isAuthenticated || isLoading || attempted.current) return;
-    attempted.current = true;
-    (async () => {
-      try {
-        const token = await getAccessTokenSilently({
-          authorizationParams: { audience: AUTH0_AUDIENCE },
-        });
-        const res = await fetch("/api/user/claim", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ shareToken }),
-        });
-        const data = await res.json().catch(() => null);
-        if (data?.claimed) {
-          setSaved(true);
-          setTimeout(() => setSaved(false), 5000);
-        }
-      } catch {
-        // 静默失败:认领失败不影响查看
+  const claim = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError(false);
+    try {
+      const token = await getAccessTokenSilently({
+        authorizationParams: { audience: AUTH0_AUDIENCE },
+      });
+      const res = await fetch("/api/user/claim", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ shareToken }),
+      });
+      const data = (await res.json().catch(() => null)) as {
+        claimed?: boolean;
+        alreadyOwned?: boolean;
+      } | null;
+      if (data?.claimed || data?.alreadyOwned) {
+        setSaved(true);
+        router.refresh();
+        setTimeout(() => setSaved(false), 5000);
+        return;
       }
-    })();
-  }, [hasOwner, isAuthenticated, isLoading, getAccessTokenSilently, shareToken]);
+      setError(true);
+    } catch {
+      setError(true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (hasOwner) return null;
 
   if (saved) {
     return (
@@ -57,7 +67,9 @@ export default function AutoClaim({
     );
   }
 
-  if (!hasOwner && !isLoading && !isAuthenticated) {
+  if (isLoading) return null;
+
+  if (!isAuthenticated) {
     return (
       <div className="mx-auto mt-4 flex w-full max-w-6xl items-center justify-between gap-3 rounded-xl border border-accent/20 bg-accent/5 px-4 py-2.5 text-sm text-zinc-300">
         <span>{t("claim.hint")}</span>
@@ -71,5 +83,17 @@ export default function AutoClaim({
     );
   }
 
-  return null;
+  return (
+    <div className="mx-auto mt-4 flex w-full max-w-6xl items-center justify-between gap-3 rounded-xl border border-accent/20 bg-accent/5 px-4 py-2.5 text-sm text-zinc-300">
+      <span>{error ? t("claim.fail") : t("claim.prompt")}</span>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => void claim()}
+        className="shrink-0 rounded-full bg-accent px-3.5 py-1 text-xs font-medium text-zinc-950 transition-opacity hover:opacity-90 disabled:opacity-50"
+      >
+        {t("claim.action")}
+      </button>
+    </div>
+  );
 }

@@ -5,6 +5,7 @@
 import assert from "node:assert/strict";
 import {
   createOwnerAssignmentError,
+  decideClaimViaShareLink,
   hasSettledOwner,
   ownerEqualsWhere,
   ownersMatch,
@@ -124,6 +125,96 @@ assert.equal(
   true,
 );
 ok("an org-owned project cannot be claimed");
+
+assert.deepEqual(
+  decideClaimViaShareLink(
+    {
+      ownerKind: "agent",
+      ownerUserId: null,
+      ownerAgentId: "agent-comiclaw",
+      ownerOrgId: null,
+    },
+    "PRIVATE",
+    "auth0|me",
+  ),
+  { ok: true },
+);
+ok("a share-link holder can claim an official agent-created private project");
+
+assert.deepEqual(
+  decideClaimViaShareLink(
+    {
+      ownerKind: "agent",
+      ownerUserId: null,
+      ownerAgentId: null,
+      ownerOrgId: null,
+    },
+    "PRIVATE",
+    "auth0|me",
+  ),
+  { ok: true },
+);
+ok("a legacy unclaimed private project can still be claimed");
+
+assert.deepEqual(
+  decideClaimViaShareLink(
+    {
+      ownerKind: "user",
+      ownerUserId: "auth0|me",
+      ownerAgentId: null,
+      ownerOrgId: null,
+    },
+    "PRIVATE",
+    "auth0|me",
+  ),
+  { ok: false, alreadyOwned: true },
+);
+ok("claiming your own project is already-owned, not a transfer");
+
+assert.deepEqual(
+  decideClaimViaShareLink(
+    {
+      ownerKind: "user",
+      ownerUserId: "auth0|other",
+      ownerAgentId: null,
+      ownerOrgId: null,
+    },
+    "PRIVATE",
+    "auth0|me",
+  ),
+  { ok: false, reason: "owned_by_other" },
+);
+ok("a share link cannot steal another person's project");
+
+assert.deepEqual(
+  decideClaimViaShareLink(
+    {
+      ownerKind: "org",
+      ownerUserId: null,
+      ownerAgentId: null,
+      ownerOrgId: "org_abc",
+    },
+    "PRIVATE",
+    "auth0|me",
+  ),
+  { ok: false, reason: "owned_by_other" },
+);
+ok("a share link cannot take an org-owned project");
+
+assert.deepEqual(
+  decideClaimViaShareLink(
+    {
+      ownerKind: "agent",
+      ownerUserId: null,
+      ownerAgentId: "agent-comiclaw",
+      ownerOrgId: null,
+    },
+    "PUBLIC",
+    "auth0|me",
+  ),
+  { ok: false, reason: "public" },
+);
+ok("PUBLIC projects cannot be claimed via share link");
 
 assert.equal(
   ownersMatch(

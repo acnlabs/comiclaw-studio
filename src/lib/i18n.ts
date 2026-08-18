@@ -272,8 +272,11 @@ const zh = {
   "myChar.notPublic": "未公开",
   "myChar.licensedCount": "已授权 {n} 个项目",
   "my.loginPrompt": "登录后查看你的项目",
-  "claim.hint": "登录后可随时在「我的项目」中找到该项目",
-  "claim.login": "登录保存",
+  "claim.hint": "登录后可认领到「我的项目」。打开页面不会自动拿走。",
+  "claim.login": "登录",
+  "claim.prompt": "这是官方代建或还没有主人的项目。只有你点认领，才会出现在「我的项目」。",
+  "claim.action": "认领到我的项目",
+  "claim.fail": "认领失败，请重试",
   "claim.saved": "已加入我的项目",
 
   // 私密模式
@@ -836,8 +839,11 @@ const en: Record<MessageKey, string> = {
   "myChar.notPublic": "Not public",
   "myChar.licensedCount": "Licensed to {n} project(s)",
   "my.loginPrompt": "Sign in to see your projects",
-  "claim.hint": "Sign in to keep this project in My Projects",
-  "claim.login": "Sign in to save",
+  "claim.hint": "Sign in to claim this project. Opening the page does not take it.",
+  "claim.login": "Sign in",
+  "claim.prompt": "This project has no human owner yet. It is added to My Projects only if you claim it.",
+  "claim.action": "Add to My Projects",
+  "claim.fail": "Could not claim this project. Try again.",
   "claim.saved": "Added to My Projects",
 
   "privacy.locked": "This project is private",
