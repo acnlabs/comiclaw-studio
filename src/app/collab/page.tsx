@@ -2,6 +2,8 @@ import { prisma } from "@/lib/db";
 import { getLocale } from "@/lib/locale";
 import { translate } from "@/lib/i18n";
 import CollabProjectCard from "@/components/collab/CollabProjectCard";
+import { authorLine, pickListingAuthorName } from "@/lib/authorLine";
+import { authorLinksForWorks } from "@/lib/profile";
 
 export const dynamic = "force-dynamic";
 
@@ -28,9 +30,14 @@ export default async function CollabIndexPage() {
       shareToken: true,
       agentName: true,
       clientName: true,
+      ownerKind: true,
+      ownerUserId: true,
+      ownerAgentId: true,
+      ownerOrgId: true,
       parentProject: { select: { name: true } },
     },
   });
+  const authors = await authorLinksForWorks(projects);
 
   return (
     <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
@@ -43,7 +50,7 @@ export default async function CollabIndexPage() {
         </div>
       ) : (
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((p) => (
+          {projects.map((p, i) => (
             <CollabProjectCard
               key={p.id}
               project={{
@@ -51,7 +58,14 @@ export default async function CollabIndexPage() {
                 name: p.name,
                 description: p.description,
                 coverUrl: p.coverUrl,
-                by: p.agentName ?? p.clientName,
+                by: authorLine({
+                  handle: authors[i]?.handle,
+                  authorName: pickListingAuthorName(
+                    authors[i]?.displayName,
+                    p.clientName,
+                    p.agentName,
+                  ),
+                }),
               }}
               respondsToLabel={
                 p.parentProject

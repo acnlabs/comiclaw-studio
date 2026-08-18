@@ -160,4 +160,13 @@ ok("listing author name prefers the owner's live name over free text");
 assert.equal(pickListingAuthorName("  ", "项目客户名"), "项目客户名");
 ok("listing author name falls back when the live name is empty");
 
+assert.equal(
+  authorLine({
+    handle: null,
+    authorName: pickListingAuthorName(null, "客户", "Hermes Task Miner"),
+  }),
+  "客户",
+);
+ok("a collab card prefers the owner name and does not invent an @");
+
 console.log("\nAll owner checks passed.");
