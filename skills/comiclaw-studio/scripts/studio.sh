@@ -120,7 +120,7 @@ usage() {
                                         episodeOrder, episodeTitle, seriesWorkId, seriesTitle,
                                         seriesDescription, seriesCoverUrl}
   get-comiclaw-listing <projectId>      读取当前上架快照（默认值 + 已上架作品）
-  youtube-status <projectId>            看项目主人是否已在 Studio 绑了 YouTube(人必须先在发行面板点连接)
+  youtube-status <projectId>            看项目主人是否已绑 YouTube;未绑定时响应里有 ownerAction.url,发给主人去确认
   publish-youtube <projectId> '<json>'  把最新成片上传到项目主人的 YouTube;成功后写 Release
                                         {title, description, tags, privacy: public|unlisted|private}
                                         钱进主人自己的 YouTube,Studio 不经手;上传≠分成(仍要过 YPP 门槛)

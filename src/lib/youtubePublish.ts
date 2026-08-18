@@ -14,6 +14,7 @@ import {
   uploadYoutubeVideo,
   type YoutubePrivacy,
 } from "@/lib/youtubeApi";
+import { studioPublicOrigin } from "@/lib/creditNotifyText";
 
 export const YOUTUBE_PLATFORM = "YouTube";
 export const YOUTUBE_OWNER_TYPE = "user";
@@ -96,6 +97,31 @@ export function youtubeWatchUrl(videoId: string): string {
   return `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
 }
 
+export type YoutubeOwnerAction = {
+  kind: "connect" | "claim";
+  url: string;
+};
+
+/** Link comiclaw can send the human. Google consent still has to be clicked by them. */
+export function youtubeOwnerAction(args: {
+  shareToken: string;
+  hasOwnerUser: boolean;
+  connected: boolean;
+  origin?: string;
+}): YoutubeOwnerAction | null {
+  const token = args.shareToken.trim();
+  if (!token) return null;
+  const origin = (args.origin ?? studioPublicOrigin()).replace(/\/+$/, "");
+  const projectUrl = `${origin}/p/${encodeURIComponent(token)}`;
+  if (!args.hasOwnerUser) {
+    return { kind: "claim", url: projectUrl };
+  }
+  if (!args.connected) {
+    return { kind: "connect", url: `${projectUrl}?youtube=connect` };
+  }
+  return null;
+}
+
 async function findYoutubeAccount(ownerUserId: string) {
   return prisma.externalAccount.findUnique({
     where: {
@@ -161,6 +187,11 @@ export async function getYoutubePublishSnapshot(projectId: string) {
     channelTitle: account.channelTitle,
     canPublish: check.ok,
     blockedReason: check.ok ? null : check.reason,
+    ownerAction: youtubeOwnerAction({
+      shareToken: project.shareToken,
+      hasOwnerUser: Boolean(ownerUserId),
+      connected: account.connected,
+    }),
     defaults: {
       title: project.name,
       description: project.description ?? "",

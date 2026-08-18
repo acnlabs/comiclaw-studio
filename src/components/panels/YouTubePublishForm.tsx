@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth0 } from "@auth0/auth0-react";
 import { useT } from "@/components/LocaleProvider";
@@ -39,6 +39,7 @@ export default function YouTubePublishForm({
   const [privacy, setPrivacy] = useState<"public" | "unlisted" | "private">("public");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const autoConnect = useRef(false);
   const [oauthQuery] = useState(() => {
     if (typeof window === "undefined") {
       return { youtube: null as string | null, reason: null as string | null };
@@ -89,7 +90,7 @@ export default function YouTubePublishForm({
     };
   }, [isAuthenticated, isLoading, authHeaders, shareToken, t]);
 
-  const connect = async () => {
+  const connect = useCallback(async () => {
     setBusy(true);
     setError(null);
     try {
@@ -113,7 +114,15 @@ export default function YouTubePublishForm({
     } finally {
       setBusy(false);
     }
-  };
+  }, [authHeaders, shareToken, t]);
+
+  useEffect(() => {
+    if (autoConnect.current) return;
+    if (oauthQuery.youtube !== "connect") return;
+    if (!state?.configured || !state.isOwner || state.connected) return;
+    autoConnect.current = true;
+    void connect();
+  }, [connect, oauthQuery.youtube, state]);
 
   const disconnect = async () => {
     if (busy) return;
@@ -203,7 +212,11 @@ export default function YouTubePublishForm({
         <p className="mt-2 text-sm text-zinc-500">{t("panel.youtube.loginHint")}</p>
         <button
           type="button"
-          onClick={() => loginWithRedirect()}
+          onClick={() =>
+            loginWithRedirect({
+              appState: { returnTo: `/p/${shareToken}?youtube=connect` },
+            })
+          }
           className="mt-4 rounded-full bg-accent px-4 py-1.5 text-sm font-medium text-zinc-950"
         >
           {t("nav.login")}
