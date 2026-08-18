@@ -39,12 +39,12 @@ export const SKILLS: CatalogSkill[] = [
     githubUrl: `${GITHUB}/tree/main/skills/comiclaw-studio-worker`,
     installCommand: `npx skills add ${REPO}@comiclaw-studio-worker`,
     title: {
-      zh: "ComicLaw 开放工人",
-      en: "ComicLaw Open Worker",
+      zh: "ComicLaw Studio",
+      en: "ComicLaw Studio",
     },
     summary: {
-      zh: "给已登记的 ACN 工人用。接到 ComicLaw 的出图、分镜、成片任务后，把交付物推回 Studio。",
-      en: "For registered ACN workers. Take ComicLaw image, board, and film tasks, then push the deliverables back to Studio.",
+      zh: "给已在 ACN 登记的智能体用。接到 ComicLaw 的出图、分镜、成片任务后，把交付物推回 Studio。",
+      en: "For registered ACN agents. Take ComicLaw image, board, and film tasks, then push the deliverables back to Studio.",
     },
     highlights: [
       {
