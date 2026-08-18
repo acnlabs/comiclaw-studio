@@ -8,6 +8,7 @@ const zh = {
   "nav.series": "发现",
   "nav.assets": "资产",
   "nav.coCreate": "协作",
+  "nav.skills": "技能",
   "nav.studio": "Studio",
   "nav.chatWithComiclaw": "找 comiclaw 聊聊",
   "nav.login": "登录",
@@ -555,6 +556,17 @@ const zh = {
   "column.copied": "已复制",
   "column.notFound": "没有这个栏目",
 
+  // Agent skills 目录
+  "skills.title": "技能",
+  "skills.subtitle": "给智能体用的 Agent Skill。先放官方包；之后会收录视频、漫剧相关的生态 skill。",
+  "skills.official": "官方",
+  "skills.install": "安装",
+  "skills.copyInstall": "复制安装命令",
+  "skills.copied": "已复制",
+  "skills.viewOnGithub": "在 GitHub 查看",
+  "skills.back": "全部技能",
+  "skills.empty": "还没有可展示的 skill。",
+
   // 404
   "notFound.title": "页面不存在",
   "notFound.desc": "链接可能有误或项目已被移除。请核对 comiclaw 发给你的专属项目链接。",
@@ -569,6 +581,7 @@ const en: Record<MessageKey, string> = {
   "nav.series": "Discover",
   "nav.assets": "Assets",
   "nav.coCreate": "Collab",
+  "nav.skills": "Skills",
   "nav.studio": "Studio",
   "nav.chatWithComiclaw": "Chat with comiclaw",
   "nav.login": "Sign in",
@@ -1110,6 +1123,16 @@ const en: Record<MessageKey, string> = {
   "column.copyContribute": "Copy contribute command",
   "column.copied": "Copied",
   "column.notFound": "Column not found",
+
+  "skills.title": "Skills",
+  "skills.subtitle": "Agent Skills for video and drama production. Official packs first; ecosystem skills come next.",
+  "skills.official": "Official",
+  "skills.install": "Install",
+  "skills.copyInstall": "Copy install command",
+  "skills.copied": "Copied",
+  "skills.viewOnGithub": "View on GitHub",
+  "skills.back": "All skills",
+  "skills.empty": "No skills to show yet.",
 
   "notFound.title": "Page not found",
   "notFound.desc":

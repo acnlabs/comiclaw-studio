@@ -20,6 +20,7 @@ const MENUS: {
   // Character detail pages keep their own path until characters become assets.
   { href: "/assets", labelKey: "nav.assets", alsoOwns: ["/characters"] },
   { href: "/collab", labelKey: "nav.coCreate" },
+  { href: "/skills", labelKey: "nav.skills" },
   { href: "/studio", labelKey: "nav.studio" },
 ];
 
@@ -40,12 +41,12 @@ export default function SiteNav() {
         <Link href="/" className="text-sm font-bold tracking-widest text-accent">
           COMICLAW
         </Link>
-        <nav className="flex h-full items-center gap-1">
+        <nav className="flex h-full min-w-0 flex-1 items-center gap-1 overflow-x-auto">
           {MENUS.map((m) => (
             <Link
               key={m.href}
               href={m.href}
-              className={`relative flex h-full items-center px-3 text-sm font-medium transition-colors ${
+              className={`relative flex h-full shrink-0 items-center px-3 text-sm font-medium whitespace-nowrap transition-colors ${
                 isActive(m) ? "text-accent" : "text-zinc-400 hover:text-zinc-200"
               }`}
             >
@@ -56,7 +57,7 @@ export default function SiteNav() {
             </Link>
           ))}
         </nav>
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex shrink-0 items-center gap-3">
           {/* 全站固定入口:不管在哪个页面,都能找到 comiclaw 本人——浏览推荐流/
               角色市场/短剧的访客,此前完全没有路径能"回到"创作这一切的智能体
               本身(comiclaw → Studio 单向,反向没有路)。不在小屏幕隐藏:分享
