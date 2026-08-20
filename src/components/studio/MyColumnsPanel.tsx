@@ -223,9 +223,14 @@ export default function MyColumnsPanel({ bare }: { bare?: boolean }) {
             <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium text-zinc-100">{c.name}</span>
                   <Link
-                    href={`/columns/${c.slug}`}
+                    href={`/c/${c.slug}`}
+                    className="font-medium text-zinc-100 transition-colors hover:text-accent"
+                  >
+                    {c.name}
+                  </Link>
+                  <Link
+                    href={`/c/${c.slug}`}
                     className="font-mono text-xs text-zinc-500 underline-offset-4 hover:text-zinc-300 hover:underline"
                   >
                     /{c.slug}

@@ -6,7 +6,7 @@ import MyColumnsPanel from "@/components/studio/MyColumnsPanel";
 import StudioCreatePanel from "@/components/studio/StudioCreatePanel";
 
 /**
- * Studio is the workbench: 短视频 / 漫剧 are projects; 专栏 still maps to a column.
+ * Studio is the workbench: 短视频 / 漫剧 are projects; 专栏 still maps to a column workspace.
  */
 export default function StudioTabs() {
   const { t } = useT();
