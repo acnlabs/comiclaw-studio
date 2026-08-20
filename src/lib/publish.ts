@@ -8,6 +8,7 @@ import {
   ownersMatch,
   type ProjectOwner,
 } from "@/lib/owner";
+import { isDramaShell, PROJECT_FORMAT_DRAMA } from "@/lib/dramaProject";
 import {
   findAppearingAgentId,
   registerPublishedVideo,
@@ -228,6 +229,9 @@ export async function publishProjectToComiclaw(
     },
   });
   if (!project) throw new PublishError(404, "Project not found");
+  if (isDramaShell(project.format)) {
+    throw new PublishError(400, "Publish an episode of this drama, not the show itself");
+  }
   const film = project.filmVersions[0];
   if (!film) throw new PublishError(400, "Add a final film before publishing");
 
@@ -270,6 +274,10 @@ export async function publishProjectToComiclaw(
     if (project.columnId) {
       await syncColumnToSeries(project.columnId);
     }
+    if (project.dramaProjectId) {
+      const series = await syncDramaToSeries(project.dramaProjectId);
+      return { video, series, videoRegistry };
+    }
     return { video, series: null as null, videoRegistry };
   }
 
@@ -291,6 +299,15 @@ export async function publishProjectToComiclaw(
   if (project.columnId) {
     const columnSeries = await syncColumnToSeries(project.columnId);
     seriesId = columnSeries?.id ?? seriesId;
+  } else if (project.dramaProjectId) {
+    const series = await syncDramaToSeries(project.dramaProjectId);
+    if (series) {
+      await prisma.project.update({
+        where: { id: project.id },
+        data: { seriesWorkId: series.id },
+      });
+    }
+    return { video, series, videoRegistry };
   } else if (seriesId) {
     await assertSeriesUsable(seriesId, project);
   } else {
@@ -384,15 +401,21 @@ export async function getComiclawPublishSnapshot(
       work: true,
       seriesWork: true,
       column: { select: { name: true, seriesWork: true } },
+      dramaProject: { select: { name: true, work: true } },
     },
   });
   if (!project) return null;
+  if (isDramaShell(project.format)) return null;
 
   const video = project.work;
-  const series = project.seriesWork ?? project.column?.seriesWork ?? null;
-  const mode: "video" | "episode" = series ? "episode" : "video";
+  const series =
+    project.seriesWork ??
+    project.column?.seriesWork ??
+    (project.dramaProject?.work?.kind === "SERIES" ? project.dramaProject.work : null);
+  const mode: "video" | "episode" =
+    series || project.dramaProjectId || project.columnId ? "episode" : "video";
 
-  let episodeOrder = project.entryOrder ?? 1;
+  let episodeOrder = project.dramaOrder ?? project.entryOrder ?? 1;
   let episodeTitle = "";
   if (series && video) {
     const ep = await prisma.episode.findFirst({
@@ -433,7 +456,7 @@ export async function getComiclawPublishSnapshot(
 
   return {
     hasFilm: Boolean(project.filmVersions[0]),
-    canChooseSeries: !project.columnId,
+    canChooseSeries: !project.columnId && !project.dramaProjectId,
     ownerHandle: author?.handle ?? null,
     video: video
       ? {
@@ -461,7 +484,7 @@ export async function getComiclawPublishSnapshot(
       episodeOrder,
       episodeTitle: episodeTitle || video?.title || project.name,
       seriesWorkId: series?.id ?? "",
-      seriesTitle: series?.title ?? "",
+      seriesTitle: series?.title ?? project.dramaProject?.name ?? "",
       seriesDescription: series?.description ?? "",
       seriesCoverUrl: series?.coverUrl ?? "",
     },
@@ -541,6 +564,75 @@ export async function syncColumnToSeries(columnId: string) {
         videoUrl: p.filmVersions[0].videoUrl,
         duration: p.filmVersions[0].duration,
       })),
+    });
+
+    return work;
+  });
+}
+
+// 把一部漫剧已出片的各集合成发现里的漫剧系列。
+// 每一集自己仍是推荐流里的短视频;系列不进推荐,避免同一支片子出现两次。
+export async function syncDramaToSeries(dramaProjectId: string) {
+  const shell = await prisma.project.findUnique({
+    where: { id: dramaProjectId },
+    include: {
+      dramaEpisodes: {
+        where: { parentProjectId: null },
+        orderBy: [{ dramaOrder: "asc" }, { createdAt: "asc" }],
+        include: {
+          filmVersions: { orderBy: { createdAt: "desc" }, take: 1 },
+          work: true,
+        },
+      },
+    },
+  });
+  if (!shell || shell.format !== PROJECT_FORMAT_DRAMA) return null;
+
+  const aired = shell.dramaEpisodes.filter((p) => p.filmVersions[0]);
+  if (aired.length === 0) {
+    await prisma.work.deleteMany({
+      where: { projectId: dramaProjectId, kind: "SERIES" },
+    });
+    return null;
+  }
+
+  const data = {
+    kind: "SERIES" as const,
+    category: "漫剧",
+    title: shell.name,
+    description: shell.description,
+    coverUrl: shell.coverUrl ?? aired[0].coverUrl,
+    videoUrl: null as string | null,
+    authorName: await listingAuthorName(
+      ownerFromRecord(shell),
+      shell.clientName,
+      shell.agentName,
+    ),
+    ...ownerFields(ownerFromRecord(shell)),
+  };
+
+  return prisma.$transaction(async (tx) => {
+    const work = await tx.work.upsert({
+      where: { projectId: dramaProjectId },
+      update: data,
+      create: { ...data, projectId: dramaProjectId },
+    });
+
+    await tx.episode.deleteMany({ where: { workId: work.id } });
+    await tx.episode.createMany({
+      data: aired.map((p, i) => ({
+        workId: work.id,
+        sourceWorkId: p.work?.id ?? null,
+        order: i + 1,
+        title: p.name,
+        videoUrl: p.filmVersions[0].videoUrl,
+        duration: p.filmVersions[0].duration,
+      })),
+    });
+
+    await tx.project.updateMany({
+      where: { id: { in: aired.map((p) => p.id) } },
+      data: { seriesWorkId: work.id },
     });
 
     return work;

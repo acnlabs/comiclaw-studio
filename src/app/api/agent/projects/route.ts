@@ -8,8 +8,16 @@ import { canDeriveFrom, DERIVATION_ERRORS } from "@/lib/derivativeProject";
 import { coCreationData, declaresOwnGovernance } from "@/lib/coCreation";
 import { createProjectSchema } from "@/lib/schemas";
 import { assertAgentCanContribute, resolveOrgBindOnCreate } from "@/lib/orgBinding";
-import { ownerFields, resolveCreateOwner } from "@/lib/owner";
+import { ownerFields, ownerFromRecord, resolveCreateOwner } from "@/lib/owner";
 import { assertCreateOwnerAllowed } from "@/lib/ownerAuth";
+import {
+  dramaEpisodeCreateData,
+  invalidDramaCreate,
+  loadDramaShell,
+  nextDramaOrder,
+  parseProjectFormat,
+  PROJECT_FORMAT_DRAMA,
+} from "@/lib/dramaProject";
 
 async function nextEntryOrder(columnId: string): Promise<number> {
   const latest = await prisma.project.findFirst({
@@ -134,6 +142,80 @@ export async function POST(req: Request) {
 
   const visibility = body.visibility ?? "PRIVATE";
   const columnId = body.columnId?.trim() || null;
+  const dramaProjectId = body.dramaProjectId?.trim() || null;
+  const format = parseProjectFormat(body.format);
+
+  const dramaError = invalidDramaCreate({
+    format,
+    dramaProjectId,
+    columnId,
+    parentProjectId,
+  });
+  if (dramaError) return badRequest(dramaError);
+
+  if (dramaProjectId) {
+    const shell = await loadDramaShell(dramaProjectId);
+    if (!shell) return notFoundJson("Drama project not found");
+    if (declaresOwnGovernance(body)) {
+      return badRequest("A drama episode inherits the show's Org and policy");
+    }
+    if (identity.kind !== "studio_key") {
+      const owner = ownerFromRecord(shell);
+      if (owner.ownerKind !== "agent" || owner.ownerAgentId !== identity.agentId) {
+        return forbidden("You can only add episodes to a drama you own");
+      }
+    }
+    const actor =
+      identity.kind === "studio_key"
+        ? ({ kind: "studio_key" } as const)
+        : ({ kind: "agent", agentId: identity.agentId } as const);
+    const owner = resolveCreateOwner({
+      requested: {
+        kind: body.ownerKind,
+        userId: body.ownerUserId,
+        agentId: body.ownerAgentId,
+        orgId: body.ownerOrgId,
+      },
+      actor,
+    });
+    const denied = await assertCreateOwnerAllowed({
+      owner,
+      actor,
+      bearer: extractBearer(req) ?? undefined,
+    });
+    if (denied) return denied;
+    const project = await withRetry(async () => {
+      const dramaOrder = await nextDramaOrder(dramaProjectId);
+      return prisma.project.create({
+        data: {
+          ...dramaEpisodeCreateData(
+            shell,
+            {
+              name: body.name,
+              description: body.description,
+            },
+            dramaOrder,
+          ),
+          clientName: body.clientName ?? null,
+          agentName: body.agentName ?? null,
+          coverUrl: body.coverUrl ?? null,
+          ...ownerFields(owner),
+        },
+      });
+    });
+    return Response.json(
+      {
+        id: project.id,
+        shareToken: project.shareToken,
+        sharePath: `/p/${project.shareToken}`,
+        visibility: project.visibility,
+        format: project.format,
+        dramaProjectId: project.dramaProjectId,
+        dramaOrder: project.dramaOrder,
+      },
+      { status: 201 },
+    );
+  }
 
   let column: { editorAgentId: string | null } | null = null;
   if (columnId) {
@@ -218,8 +300,9 @@ export async function POST(req: Request) {
         coverUrl: body.coverUrl ?? null,
         ...ownerFields(owner),
         visibility,
-        columnId,
-        entryOrder,
+        format,
+        columnId: format === PROJECT_FORMAT_DRAMA ? null : columnId,
+        entryOrder: format === PROJECT_FORMAT_DRAMA ? null : entryOrder,
         acnOrgId,
         contributePolicy: body.contributePolicy ?? null,
         ...(visibility === "PUBLIC" ? { isPrivate: false } : {}),
@@ -233,6 +316,7 @@ export async function POST(req: Request) {
       shareToken: project.shareToken,
       sharePath: `/p/${project.shareToken}`,
       visibility: project.visibility,
+      format: project.format,
       columnId: project.columnId,
       entryOrder: project.entryOrder,
       acnOrgId: project.acnOrgId,

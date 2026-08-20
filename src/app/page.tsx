@@ -12,8 +12,8 @@ export const dynamic = "force-dynamic";
 // 取「现在」是不纯的,所以整段放在渲染之外
 async function loadFeedItems(): Promise<FeedItem[]> {
   const works = await prisma.work.findMany({
-    // 专栏系列是各记的聚合视图,各记本身已在流中;放它进来只会重复同一支视频
-    where: { columnId: null },
+    // 专栏系列是各记的聚合视图,各记本身已在流中;漫剧系列同理。推荐只放单集短视频。
+    where: { kind: "VIDEO" },
     include: {
       appearances: true,
       credits: true,

@@ -16,6 +16,8 @@ interface MyProject {
   currentStage: string;
   shareToken: string;
   visibility?: string;
+  format?: string;
+  episodeCount?: number;
   updatedAt: string;
 }
 
@@ -84,6 +86,11 @@ export default function MyProjects({ bare }: { bare?: boolean }) {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <div className="truncate font-medium text-zinc-100">{p.name}</div>
+                    {p.format === "DRAMA" ? (
+                      <span className="shrink-0 rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] font-medium text-zinc-300">
+                        {t("studioCreate.formatDrama")}
+                      </span>
+                    ) : null}
                     {p.visibility === "PUBLIC" ? (
                       <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent">
                         {t("studioCreate.kindCocreate")}
@@ -95,7 +102,9 @@ export default function MyProjects({ bare }: { bare?: boolean }) {
                   </div>
                 </div>
                 <span className="shrink-0 rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
-                  {t(`stage.${p.currentStage}` as MessageKey)}
+                  {p.format === "DRAMA"
+                    ? t("common.episodes", { n: p.episodeCount ?? 0 })
+                    : t(`stage.${p.currentStage}` as MessageKey)}
                 </span>
               </Link>
             </li>

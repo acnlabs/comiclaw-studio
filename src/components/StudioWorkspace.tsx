@@ -75,6 +75,21 @@ export default function StudioWorkspace({ project }: { project: ProjectData }) {
               </>
             ) : null}
           </p>
+        ) : project.dramaProject ? (
+          <p className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-zinc-500">
+            <Link
+              href={`/p/${project.dramaProject.shareToken}`}
+              className="transition-colors hover:text-accent"
+            >
+              {t("drama.backToShow", { name: project.dramaProject.name })}
+            </Link>
+            {project.dramaOrder != null ? (
+              <>
+                <span aria-hidden>·</span>
+                <span>{t("drama.episodeN", { n: project.dramaOrder })}</span>
+              </>
+            ) : null}
+          </p>
         ) : null}
         <h1 className="mt-2 text-2xl font-bold text-zinc-50 sm:text-3xl">{project.name}</h1>
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-zinc-500">

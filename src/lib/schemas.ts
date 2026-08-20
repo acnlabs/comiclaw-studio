@@ -37,6 +37,7 @@ export const AssetTypeEnum = z.enum(["CHARACTER", "SCENE", "PROP"]);
 export const MediaTypeEnum = z.enum(["IMAGE", "VIDEO"]);
 export const ReleaseStatusEnum = z.enum(["PENDING", "PUBLISHED"]);
 export const WorkKindEnum = z.enum(["VIDEO", "SERIES"]);
+export const ProjectFormatEnum = z.enum(["VIDEO", "DRAMA"]);
 export const ProjectVisibilityEnum = z.enum(["PRIVATE", "PUBLIC"]);
 export const OwnerKindEnum = z.enum(["user", "agent", "org"]);
 
@@ -105,6 +106,9 @@ export const createProjectSchema = z.object({
   ownerAgentId: optionalStr,
   ownerOrgId: optionalStr,
   visibility: ProjectVisibilityEnum.optional(),
+  format: ProjectFormatEnum.optional(),
+  /** 挂到一部漫剧下面,成为第 N 集 */
+  dramaProjectId: optionalStr,
   columnId: optionalStr,
   entryOrder: z.number().int().positive().optional().nullable(),
   // 传入即表示这是某一记下的二创 / 共创项目,栏目与策略从那一记继承

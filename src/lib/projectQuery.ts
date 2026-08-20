@@ -46,6 +46,9 @@ export function findFullProjectByToken(shareToken: string) {
       parentProject: {
         select: { name: true, shareToken: true, entryOrder: true },
       },
+      dramaProject: {
+        select: { name: true, shareToken: true },
+      },
     },
   });
 }

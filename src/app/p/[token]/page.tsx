@@ -5,10 +5,13 @@ import { findFullProjectByToken } from "@/lib/projectQuery";
 import { checkAdminKey } from "@/lib/auth";
 import { ADMIN_COOKIE } from "@/app/api/admin/login/route";
 import StudioWorkspace from "@/components/StudioWorkspace";
+import DramaWorkspace from "@/components/DramaWorkspace";
 import LiveRefresh from "@/components/LiveRefresh";
 import AutoClaim from "@/components/AutoClaim";
 import PrivateProject from "@/components/PrivateProject";
 import PrivacyToggle from "@/components/PrivacyToggle";
+import { isDramaShell } from "@/lib/dramaProject";
+import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +50,38 @@ export default async function ProjectPage(props: {
           <PrivacyToggle shareToken={token} />
         )}
       </div>
-      <StudioWorkspace project={data} />
+      {isDramaShell(project.format) ? (
+        <DramaWorkspace
+          projectId={project.id}
+          name={project.name}
+          description={project.description}
+          episodes={(
+            await prisma.project.findMany({
+              where: { dramaProjectId: project.id },
+              orderBy: [{ dramaOrder: "asc" }, { createdAt: "asc" }],
+              select: {
+                id: true,
+                name: true,
+                shareToken: true,
+                dramaOrder: true,
+                currentStage: true,
+                coverUrl: true,
+                work: { select: { id: true } },
+              },
+            })
+          ).map((ep) => ({
+            id: ep.id,
+            name: ep.name,
+            shareToken: ep.shareToken,
+            dramaOrder: ep.dramaOrder,
+            currentStage: ep.currentStage,
+            coverUrl: ep.coverUrl,
+            workId: ep.work?.id ?? null,
+          }))}
+        />
+      ) : (
+        <StudioWorkspace project={data} />
+      )}
     </>
   );
 }

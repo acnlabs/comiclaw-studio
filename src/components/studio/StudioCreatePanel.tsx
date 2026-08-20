@@ -8,6 +8,7 @@ import { Modal } from "@/components/ui";
 import { AUTH0_AUDIENCE } from "@/lib/auth0";
 import type { MessageKey } from "@/lib/i18n";
 
+type Format = "VIDEO" | "DRAMA" | "COLUMN";
 type Kind = "private" | "cocreate";
 /** Self-serve: create or none only (attach needs Org stewardship proof). */
 type OrgMode = "none" | "create";
@@ -15,6 +16,12 @@ type OrgMode = "none" | "create";
 const ORG_LABEL: Record<OrgMode, MessageKey> = {
   create: "studioCreate.org.create",
   none: "studioCreate.org.none",
+};
+
+const FORMAT_HINT: Record<Format, MessageKey> = {
+  VIDEO: "studioCreate.hintVideo",
+  DRAMA: "studioCreate.hintDrama",
+  COLUMN: "studioCreate.hintColumn",
 };
 
 const inputClass =
@@ -56,6 +63,7 @@ export default function StudioCreatePanel() {
   const router = useRouter();
 
   const [open, setOpen] = useState(false);
+  const [format, setFormat] = useState<Format>("VIDEO");
   const [kind, setKind] = useState<Kind>("private");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -99,6 +107,33 @@ export default function StudioCreatePanel() {
         setError(data?.error || t("studioCreate.error"));
       };
 
+      if (format === "COLUMN") {
+        const res = await fetch("/api/user/columns", {
+          method: "POST",
+          headers,
+          body: JSON.stringify(
+            kind === "private"
+              ? {
+                  name: name.trim(),
+                  description: description.trim() || null,
+                  orgMode: "none",
+                  contributePolicy: "owner_only",
+                }
+              : {
+                  name: name.trim(),
+                  description: description.trim() || null,
+                  orgMode,
+                  orgJoinPolicy: orgMode === "create" ? "approval" : undefined,
+                  contributePolicy: orgMode === "create" ? "org_members" : "open",
+                },
+          ),
+        });
+        if (!res.ok) return fail(res);
+        close();
+        window.location.assign("/studio");
+        return;
+      }
+
       const res = await fetch("/api/user/projects", {
         method: "POST",
         headers,
@@ -108,15 +143,17 @@ export default function StudioCreatePanel() {
                 name: name.trim(),
                 description: description.trim() || null,
                 visibility: "PRIVATE",
+                format,
               }
             : {
                 name: name.trim(),
                 description: description.trim() || null,
                 visibility: "PUBLIC",
+                format,
                 orgMode,
                 orgJoinPolicy: orgMode === "create" ? "approval" : undefined,
                 contributePolicy: orgMode === "create" ? "org_members" : "open",
-              }
+              },
         ),
       });
       if (!res.ok) return fail(res);
@@ -145,19 +182,33 @@ export default function StudioCreatePanel() {
         </h2>
 
         <form onSubmit={submit} className="mt-5 space-y-4">
-          <Segmented<Kind>
-            value={kind}
-            onChange={setKind}
+          <Segmented<Format>
+            value={format}
+            onChange={setFormat}
             options={[
-              { value: "private", label: t("studioCreate.kindPrivate") },
-              { value: "cocreate", label: t("studioCreate.kindCocreate") },
+              { value: "VIDEO", label: t("studioCreate.formatVideo") },
+              { value: "DRAMA", label: t("studioCreate.formatDrama") },
+              { value: "COLUMN", label: t("studioCreate.formatColumn") },
             ]}
           />
-          <p className="text-xs leading-relaxed text-zinc-500">
-            {kind === "private"
-              ? t("studioCreate.hintPrivate")
-              : t("studioCreate.hintCocreate")}
-          </p>
+          <p className="text-xs leading-relaxed text-zinc-500">{t(FORMAT_HINT[format])}</p>
+
+          <div className="space-y-1.5">
+            <p className="text-sm text-zinc-400">{t("studioCreate.collabLabel")}</p>
+            <Segmented<Kind>
+              value={kind}
+              onChange={setKind}
+              options={[
+                { value: "private", label: t("studioCreate.kindPrivate") },
+                { value: "cocreate", label: t("studioCreate.kindCocreate") },
+              ]}
+            />
+            <p className="text-xs leading-relaxed text-zinc-500">
+              {kind === "private"
+                ? t("studioCreate.hintPrivate")
+                : t("studioCreate.hintCocreate")}
+            </p>
+          </div>
 
           <label className="block text-sm text-zinc-400">
             {t("studioCreate.name")}
