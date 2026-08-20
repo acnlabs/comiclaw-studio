@@ -52,7 +52,12 @@ export default function StudioWorkspace({ project }: { project: ProjectData }) {
         </Link>
         {project.column ? (
           <p className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-zinc-500">
-            <span>{project.column.name}</span>
+            <Link
+              href={`/c/${project.column.slug}`}
+              className="transition-colors hover:text-accent"
+            >
+              {t("columnWorkspace.backToShow", { name: project.column.name })}
+            </Link>
             {project.parentProject ? (
               <>
                 <span aria-hidden>·</span>

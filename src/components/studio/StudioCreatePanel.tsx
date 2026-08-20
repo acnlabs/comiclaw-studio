@@ -129,8 +129,9 @@ export default function StudioCreatePanel() {
           ),
         });
         if (!res.ok) return fail(res);
+        const data = (await res.json()) as { column?: { slug?: string } };
         close();
-        window.location.assign("/studio");
+        router.push(data.column?.slug ? `/c/${data.column.slug}` : "/studio");
         return;
       }
 

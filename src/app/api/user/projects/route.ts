@@ -62,7 +62,13 @@ export async function GET(req: Request) {
   if (!sub) return unauthorized();
 
   const projects = await prisma.project.findMany({
-    where: { ownerKind: "user", ownerUserId: sub, dramaProjectId: null },
+    where: {
+      ownerKind: "user",
+      ownerUserId: sub,
+      dramaProjectId: null,
+      // 专栏官方记和漫剧集一样，只出现在各自工作台
+      NOT: { AND: [{ columnId: { not: null } }, { parentProjectId: null }] },
+    },
     orderBy: { updatedAt: "desc" },
     select: {
       id: true,
