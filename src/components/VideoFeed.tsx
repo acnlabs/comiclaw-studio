@@ -9,6 +9,7 @@ import AuthorCredit from "@/components/AuthorCredit";
 import FeedCastLine from "@/components/FeedCastLine";
 import FeedCastSheet from "@/components/FeedCastSheet";
 import WorkDiscussion from "@/components/WorkDiscussion";
+import { isDiscoverColumnCategory } from "@/lib/discover";
 import type { CreditRow } from "@/lib/workCredit";
 
 export interface FeedItem {
@@ -258,7 +259,12 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
                     href={`/series/${item.id}`}
                     className="pointer-events-auto mt-2 inline-flex items-center gap-1 rounded-full bg-accent px-3.5 py-1.5 text-xs font-medium text-zinc-950 transition-opacity hover:opacity-90"
                   >
-                    {t("feed.watchAll", { n: item.episodeCount })}
+                    {t(
+                      isDiscoverColumnCategory(item.category)
+                        ? "feed.watchAllIssues"
+                        : "feed.watchAll",
+                      { n: item.episodeCount },
+                    )}
                   </Link>
                 )}
                 <FeedCastLine

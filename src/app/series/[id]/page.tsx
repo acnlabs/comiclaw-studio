@@ -87,6 +87,7 @@ export default async function WorkPage(props: {
         episodes={work.episodes}
         initialEpisodeId={ep}
         creditsByWorkId={creditsByWorkId}
+        category={work.category}
       />
     </div>
   );

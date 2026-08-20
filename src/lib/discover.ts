@@ -12,6 +12,13 @@ export function isDiscoverColumnCategory(category: string | null | undefined): b
   return category === DISCOVER_COLUMN_CAT || category === COLUMN_SERIES_CATEGORY;
 }
 
+/** 发现卡/播放页的数量文案:专栏是记,漫剧是集 */
+export function seriesCountKey(
+  category: string | null | undefined,
+): "column.issues" | "common.episodes" {
+  return isDiscoverColumnCategory(category) ? "column.issues" : "common.episodes";
+}
+
 export function storedCategoriesForDiscover(cat: string): string[] | null {
   if (cat === DISCOVER_ALL_CAT) return null;
   if (cat === DISCOVER_COLUMN_CAT || cat === COLUMN_SERIES_CATEGORY) {

@@ -256,6 +256,7 @@ export default function ComiclawPublishForm({
 
   const published = Boolean(state.video);
   const creatingSeries = mode === "episode" && state.canChooseSeries && !seriesWorkId;
+  const asIssue = state.isColumnEntry;
 
   return (
     <section className="rounded-2xl border border-zinc-800 bg-zinc-900/50 px-5 py-6">
@@ -437,13 +438,22 @@ export default function ComiclawPublishForm({
           ) : (
             <div className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
               <p className="text-xs text-zinc-500">
-                {t("panel.comiclaw.seriesLocked", {
-                  name: state.series?.title || seriesTitle || "—",
-                })}
+                {t(
+                  asIssue
+                    ? "panel.comiclaw.seriesLockedIssue"
+                    : "panel.comiclaw.seriesLocked",
+                  {
+                    name: state.series?.title || seriesTitle || "—",
+                  },
+                )}
               </p>
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block text-sm text-zinc-400">
-                  {t("panel.comiclaw.fieldEpisodeOrder")}
+                  {t(
+                    asIssue
+                      ? "panel.comiclaw.fieldIssueOrder"
+                      : "panel.comiclaw.fieldEpisodeOrder",
+                  )}
                   <input
                     type="number"
                     min={1}
@@ -454,7 +464,11 @@ export default function ComiclawPublishForm({
                   />
                 </label>
                 <label className="block text-sm text-zinc-400">
-                  {t("panel.comiclaw.fieldEpisodeTitle")}
+                  {t(
+                    asIssue
+                      ? "panel.comiclaw.fieldIssueTitle"
+                      : "panel.comiclaw.fieldEpisodeTitle",
+                  )}
                   <input
                     value={episodeTitle}
                     onChange={(e) => setEpisodeTitle(e.target.value)}
@@ -463,7 +477,11 @@ export default function ComiclawPublishForm({
                 </label>
               </div>
               <label className="block text-sm text-zinc-400">
-                {t("panel.comiclaw.fieldSeriesTitleEdit")}
+                {t(
+                  asIssue
+                    ? "panel.comiclaw.fieldColumnTitleEdit"
+                    : "panel.comiclaw.fieldSeriesTitleEdit",
+                )}
                 <input
                   value={seriesTitle}
                   onChange={(e) => setSeriesTitle(e.target.value)}
@@ -471,7 +489,11 @@ export default function ComiclawPublishForm({
                 />
               </label>
               <label className="block text-sm text-zinc-400">
-                {t("panel.comiclaw.fieldSeriesDesc")}
+                {t(
+                  asIssue
+                    ? "panel.comiclaw.fieldColumnDesc"
+                    : "panel.comiclaw.fieldSeriesDesc",
+                )}
                 <textarea
                   value={seriesDescription}
                   onChange={(e) => setSeriesDescription(e.target.value)}
@@ -480,7 +502,11 @@ export default function ComiclawPublishForm({
                 />
               </label>
               <label className="block text-sm text-zinc-400">
-                {t("panel.comiclaw.fieldSeriesCover")}
+                {t(
+                  asIssue
+                    ? "panel.comiclaw.fieldColumnCover"
+                    : "panel.comiclaw.fieldSeriesCover",
+                )}
                 <input
                   value={seriesCoverUrl}
                   onChange={(e) => setSeriesCoverUrl(e.target.value)}

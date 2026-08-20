@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useT } from "@/components/LocaleProvider";
 import AuthorCredit from "@/components/AuthorCredit";
 import { mastheadTint } from "@/lib/mastheadTint";
+import { seriesCountKey } from "@/lib/discover";
 
 export interface WorkCardData {
   id: string;
@@ -54,7 +55,7 @@ export default function WorkCard({ work }: { work: WorkCardData }) {
         </div>
         {work.kind === "SERIES" && work.episodeCount != null && (
           <span className="absolute bottom-2 right-2 rounded-md bg-zinc-950/80 px-2 py-0.5 text-xs text-zinc-300">
-            {t("common.episodes", { n: work.episodeCount })}
+            {t(seriesCountKey(work.category), { n: work.episodeCount })}
           </span>
         )}
       </div>

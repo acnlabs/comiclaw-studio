@@ -108,7 +108,7 @@ export default function ColumnWorkspace({
       <section className="mt-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-medium text-zinc-300">
-            {t("common.episodes", { n: episodes.length })}
+            {t("column.issues", { n: episodes.length })}
           </h2>
         </div>
 
