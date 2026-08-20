@@ -2,11 +2,11 @@
 
 import { useT } from "@/components/LocaleProvider";
 import MyProjects from "@/components/MyProjects";
+import MyColumnsPanel from "@/components/studio/MyColumnsPanel";
 import StudioCreatePanel from "@/components/studio/StudioCreatePanel";
 
 /**
- * Studio is the workbench: projects being made.
- * Official serials are a kind of project, not a separate "栏目" tab.
+ * Studio is the workbench: 短视频 / 漫剧 are projects; 专栏 still maps to a column.
  */
 export default function StudioTabs() {
   const { t } = useT();
@@ -19,6 +19,10 @@ export default function StudioTabs() {
       </div>
       <div className="mt-6">
         <MyProjects bare />
+      </div>
+      <div className="mt-12">
+        <h2 className="mb-4 text-sm font-medium text-zinc-300">{t("myColumns.title")}</h2>
+        <MyColumnsPanel bare />
       </div>
     </div>
   );

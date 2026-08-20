@@ -95,6 +95,11 @@ model Project {
   acnOrgId    String?
   // 空=继承栏目策略 / 默认 org_members
   contributePolicy String?
+  // VIDEO = 短视频(或漫剧里的一集);DRAMA = 漫剧壳,下面挂集,自己不走成片流水线
+  format String @default("VIDEO")
+  // 集所属的漫剧壳;dramaOrder = 第 N 集(与栏目 entryOrder 分开,两种容器不混)
+  dramaProjectId String?
+  dramaOrder     Int?
   statusNote  String? // 实时状态(agent 推送,如「正在生成分镜 3/9…」),阶段完成后清空
   currentStage String  @default("SCRIPT") // SCRIPT | ASSETS | STORYBOARD | FILM | RELEASE | DONE
   createdAt   DateTime @default(now())
@@ -104,6 +109,8 @@ model Project {
   // 删锚点会带走整记的二创,所以删除处显式拦截,不靠级联
   parentProject   Project?  @relation("EntryProjects", fields: [parentProjectId], references: [id], onDelete: Restrict)
   derivedProjects Project[] @relation("EntryProjects")
+  dramaProject    Project?  @relation("DramaEpisodes", fields: [dramaProjectId], references: [id], onDelete: Restrict)
+  dramaEpisodes   Project[] @relation("DramaEpisodes")
   scriptVersions ScriptVersion[]
   assets         Asset[]
   shots          Shot[]
@@ -127,6 +134,9 @@ model Project {
   @@index([parentProjectId])
   @@index([acnOrgId])
   @@index([seriesWorkId])
+  @@index([format])
+  @@index([dramaProjectId, dramaOrder])
+  @@unique([dramaProjectId, dramaOrder])
 }
 
 // ---------- ACN 生产任务映射(编排在 ACN,Studio 只记指针) ----------

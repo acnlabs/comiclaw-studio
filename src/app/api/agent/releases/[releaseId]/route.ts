@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { emitProjectUpdate } from "@/lib/events";
-import { syncProjectToWork, syncColumnToSeries } from "@/lib/publish";
+import { syncProjectToWork, syncColumnToSeries, syncDramaToSeries } from "@/lib/publish";
 import { withAgentAuth, withProjectWorkerAuth, parseBody } from "@/lib/api";
 import { notFoundJson } from "@/lib/auth";
 import { updateReleaseSchema } from "@/lib/schemas";
@@ -29,7 +29,7 @@ export const PATCH = withProjectWorkerAuth(
       select: {
         id: true,
         projectId: true,
-        project: { select: { visibility: true, columnId: true } },
+        project: { select: { visibility: true, columnId: true, dramaProjectId: true } },
       },
     });
     if (!release) return notFoundJson();
@@ -57,6 +57,9 @@ export const PATCH = withProjectWorkerAuth(
         await syncProjectToWork(release.projectId);
         const columnId = release.project.columnId;
         if (columnId) await syncColumnToSeries(columnId);
+        if (release.project.dramaProjectId) {
+          await syncDramaToSeries(release.project.dramaProjectId);
+        }
       } catch (err) {
         console.error("[releases] work sync failed:", err);
       }

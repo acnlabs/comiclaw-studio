@@ -8,6 +8,7 @@ import {
   ContributePolicyEnum,
   OrgBindModeEnum,
   OrgJoinPolicyEnum,
+  ProjectFormatEnum,
   ProjectVisibilityEnum,
 } from "@/lib/schemas";
 import { canDeriveFrom, DERIVATION_ERRORS } from "@/lib/derivativeProject";
@@ -15,8 +16,16 @@ import { coCreationData, declaresOwnGovernance } from "@/lib/coCreation";
 import { resolveOrgBindOnCreate } from "@/lib/orgBinding";
 import { reconcilePendingLicenses } from "@/lib/casting";
 import { maxOrgCreatesPerDay, startOfUtcDay } from "@/lib/columnQuota";
-import { ownerFields, resolveCreateOwner } from "@/lib/owner";
+import { ownerFields, ownerFromRecord, resolveCreateOwner } from "@/lib/owner";
 import { ensureUserProfile } from "@/lib/userHandle";
+import {
+  dramaEpisodeCreateData,
+  invalidDramaCreate,
+  loadDramaShell,
+  nextDramaOrder,
+  parseProjectFormat,
+  PROJECT_FORMAT_DRAMA,
+} from "@/lib/dramaProject";
 
 const optionalStr = z.string().trim().max(2000).optional().nullable();
 
@@ -25,8 +34,11 @@ const userCreateProjectSchema = z.object({
   description: optionalStr,
   /** PRIVATE delivery (default) or PUBLIC standalone collab project */
   visibility: ProjectVisibilityEnum.optional(),
+  format: ProjectFormatEnum.optional(),
   /** Official 记 only: attach to a column the user owns. Not required for collab. */
   columnId: optionalStr,
+  /** Belong to a 漫剧 the user owns. The new project is one episode. */
+  dramaProjectId: optionalStr,
   /** Set to build your own co-creation project under someone else's entry */
   parentProjectId: optionalStr,
   orgMode: OrgBindModeEnum.optional(),
@@ -50,7 +62,7 @@ export async function GET(req: Request) {
   if (!sub) return unauthorized();
 
   const projects = await prisma.project.findMany({
-    where: { ownerKind: "user", ownerUserId: sub },
+    where: { ownerKind: "user", ownerUserId: sub, dramaProjectId: null },
     orderBy: { updatedAt: "desc" },
     select: {
       id: true,
@@ -61,12 +73,19 @@ export async function GET(req: Request) {
       currentStage: true,
       shareToken: true,
       visibility: true,
+      format: true,
       columnId: true,
       updatedAt: true,
+      _count: { select: { dramaEpisodes: true } },
     },
   });
   after(() => reconcilePendingLicenses(sub));
-  return Response.json({ projects });
+  return Response.json({
+    projects: projects.map(({ _count, ...p }) => ({
+      ...p,
+      episodeCount: _count.dramaEpisodes,
+    })),
+  });
 }
 
 // 在别人开的一记下面开自己的共创项目。项目归本人所有,栏目与策略从那一记继承。
@@ -126,6 +145,8 @@ async function createDerivative(
  * Create a project owned by the signed-in user.
  * - PRIVATE: classic delivery cell
  * - PUBLIC: standalone collab project (own theme; optional ACN Org)
+ * - format=DRAMA: 漫剧壳,集另加
+ * - dramaProjectId: 一部漫剧下的一集
  * - columnId + PUBLIC: official 记 under a column the user owns
  * - parentProjectId: a co-creation project under someone else's entry
  */
@@ -145,6 +166,16 @@ export async function POST(req: Request) {
 
   const visibility = body.visibility ?? "PRIVATE";
   const columnId = body.columnId?.trim() || null;
+  const dramaProjectId = body.dramaProjectId?.trim() || null;
+  const format = parseProjectFormat(body.format);
+
+  const dramaError = invalidDramaCreate({
+    format,
+    dramaProjectId,
+    columnId,
+    parentProjectId,
+  });
+  if (dramaError) return badRequest(dramaError);
 
   if (visibility === "PRIVATE" && columnId) {
     return badRequest("PRIVATE projects cannot attach to a column");
@@ -152,6 +183,40 @@ export async function POST(req: Request) {
   if (body.orgMode === "attach" || body.acnOrgId?.trim()) {
     return badRequest(
       "orgMode=attach is not available for user-created projects; use create or none"
+    );
+  }
+
+  if (dramaProjectId) {
+    if (body.orgMode != null) {
+      return badRequest("A drama episode inherits the show's Org and policy");
+    }
+    const shell = await loadDramaShell(dramaProjectId);
+    if (!shell) return notFoundJson("Drama project not found");
+    if (ownerFromRecord(shell).ownerKind !== "user" || shell.ownerUserId !== sub) {
+      return forbidden("You can only add episodes to a drama you own");
+    }
+    await ensureUserProfile(sub);
+    const project = await withRetry(async () => {
+      const dramaOrder = await nextDramaOrder(dramaProjectId);
+      return prisma.project.create({
+        data: dramaEpisodeCreateData(
+          shell,
+          { name: body.name, description: body.description },
+          dramaOrder,
+        ),
+      });
+    });
+    return Response.json(
+      {
+        id: project.id,
+        shareToken: project.shareToken,
+        sharePath: `/p/${project.shareToken}`,
+        visibility: project.visibility,
+        format: project.format,
+        dramaProjectId: project.dramaProjectId,
+        dramaOrder: project.dramaOrder,
+      },
+      { status: 201 },
     );
   }
 
@@ -219,8 +284,9 @@ export async function POST(req: Request) {
         description: body.description ?? null,
         ...ownerFields(owner),
         visibility,
-        columnId,
-        entryOrder,
+        format,
+        columnId: format === PROJECT_FORMAT_DRAMA ? null : columnId,
+        entryOrder: format === PROJECT_FORMAT_DRAMA ? null : entryOrder,
         acnOrgId,
         contributePolicy,
         ...(visibility === "PUBLIC" ? { isPrivate: false } : {}),
@@ -234,6 +300,7 @@ export async function POST(req: Request) {
       shareToken: project.shareToken,
       sharePath: `/p/${project.shareToken}`,
       visibility: project.visibility,
+      format: project.format,
       columnId: project.columnId,
       entryOrder: project.entryOrder,
       acnOrgId: project.acnOrgId,
