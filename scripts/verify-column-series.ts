@@ -9,6 +9,7 @@
 import assert from "node:assert/strict";
 import { prisma } from "../src/lib/db";
 import { syncColumnToSeries, syncProjectToWork, COLUMN_SERIES_CATEGORY } from "../src/lib/publish";
+import { DISCOVER_COLUMN_CAT, storedCategoriesForDiscover } from "../src/lib/discover";
 
 const ok = (label: string) => console.log(`✓ ${label}`);
 
@@ -63,6 +64,20 @@ async function main() {
     orderBy: { order: "asc" },
   });
   assert.equal(firstEps[0]?.sourceWorkId, video1.id, "episode comments follow the feed work");
+  const stored = storedCategoriesForDiscover(DISCOVER_COLUMN_CAT);
+  assert.ok(stored);
+  assert.equal(
+    await prisma.work.count({
+      where: { kind: "SERIES", category: { in: stored }, id: first.id },
+    }),
+    1,
+  );
+  const permalink = await prisma.column.findUniqueOrThrow({
+    where: { id: column.id },
+    select: { seriesWork: { select: { id: true } } },
+  });
+  assert.equal(permalink.seriesWork?.id, first.id);
+  ok("Discover · 专栏 lists the series; /columns/slug opens the player");
   ok("the first aired hook creates the series and becomes episode 1");
 
   // The next entry appends rather than replacing, and keeps entry order.
