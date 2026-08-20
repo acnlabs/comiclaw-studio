@@ -454,6 +454,7 @@ export async function getComiclawPublishSnapshot(
   return {
     hasFilm: Boolean(project.filmVersions[0]),
     canChooseSeries: !project.columnId && !project.dramaProjectId,
+    isColumnEntry: Boolean(project.columnId),
     ownerHandle: author?.handle ?? null,
     video: video
       ? {

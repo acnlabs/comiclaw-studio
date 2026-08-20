@@ -7,6 +7,7 @@ import WorkCastList from "@/components/WorkCastList";
 import WorkDiscussion from "@/components/WorkDiscussion";
 import { fmtDuration } from "@/lib/format";
 import { useT } from "@/components/LocaleProvider";
+import { isDiscoverColumnCategory } from "@/lib/discover";
 import type { CreditRow } from "@/lib/workCredit";
 
 type EpisodeData = {
@@ -31,6 +32,7 @@ export default function WorkWatch({
   episodes,
   initialEpisodeId,
   creditsByWorkId,
+  category,
 }: {
   workId: string;
   title: string;
@@ -44,8 +46,10 @@ export default function WorkWatch({
   episodes: EpisodeData[];
   initialEpisodeId?: string | null;
   creditsByWorkId?: Record<string, CreditRow[]>;
+  category?: string | null;
 }) {
   const { t } = useT();
+  const asIssue = isDiscoverColumnCategory(category);
   const [current, setCurrent] = useState<EpisodeData | null>(
     (initialEpisodeId && episodes.find((e) => e.id === initialEpisodeId)) ||
       episodes[0] ||
@@ -76,7 +80,7 @@ export default function WorkWatch({
               </span>
               <span>{publishedAt}</span>
               {episodes.length > 0 ? (
-                <span>{t("common.episodes", { n: episodes.length })}</span>
+                <span>{t(asIssue ? "column.issues" : "common.episodes", { n: episodes.length })}</span>
               ) : null}
             </div>
             <h1 className="mt-2 text-2xl font-bold text-zinc-50">{title}</h1>
@@ -93,7 +97,7 @@ export default function WorkWatch({
             ) : null}
             {current?.title ? (
               <p className="mt-1 text-sm text-zinc-400">
-                {t("series.episodeItem", {
+                {t(asIssue ? "series.issueItem" : "series.episodeItem", {
                   n: current.order,
                   title: current.title,
                 })}
@@ -109,7 +113,7 @@ export default function WorkWatch({
           {episodes.length > 0 ? (
             <section>
               <h2 className="text-sm font-medium text-zinc-400">
-                {t("series.episodeList", { n: episodes.length })}
+                {t(asIssue ? "series.issueList" : "series.episodeList", { n: episodes.length })}
               </h2>
               <div className="mt-2 max-h-72 space-y-1 overflow-y-auto">
                 {episodes.map((episode) => (
