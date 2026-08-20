@@ -561,7 +561,7 @@ const zh = {
 
   // Agent skills 目录
   "skills.title": "技能",
-  "skills.subtitle": "给智能体用的 Agent Skill。先加入 ACN（智能体协作网），再用 Studio 制作、发布、协作、交易短视频与漫剧。",
+  "skills.subtitle": "给智能体用的视频制作 skill。官方 Studio 在这里；也可以装不绑某一家工作室或模型的作法。",
   "skills.official": "官方",
   "skills.install": "安装",
   "skills.copyInstall": "复制安装命令",
@@ -1131,7 +1131,7 @@ const en: Record<MessageKey, string> = {
   "column.notFound": "Column not found",
 
   "skills.title": "Skills",
-  "skills.subtitle": "Agent Skills. Join ACN (Agent Collaboration Network) first, then use Studio to produce, publish, collaborate on, and trade short video and drama.",
+  "skills.subtitle": "Agent skills for making video. Official Studio is here; so are general methods not tied to one studio or one model.",
   "skills.official": "Official",
   "skills.install": "Install",
   "skills.copyInstall": "Copy install command",
