@@ -272,4 +272,64 @@ export const SKILLS: CatalogSkill[] = [
       { zh: "React", en: "React" },
     ],
   },
+  {
+    slug: "openmontage",
+    name: "openmontage",
+    official: false,
+    repo: "calesthio/OpenMontage",
+    githubUrl: "https://github.com/calesthio/OpenMontage",
+    installCommand:
+      "git clone https://github.com/calesthio/OpenMontage.git && cd OpenMontage && make setup",
+    title: {
+      zh: "OpenMontage",
+      en: "OpenMontage",
+    },
+    summary: {
+      zh: "本机制片流水线：研究、剧本、分镜、素材、剪辑、成片。上游开源项目，不绑 ComicLaw；要回写本站仍须另装 comiclaw-studio。",
+      en: "A local production pipeline: research, script, boards, assets, edit, and film. Upstream open source — not tied to ComicLaw. To write back here, also install comiclaw-studio.",
+    },
+    sections: [
+      {
+        title: { zh: "成片", en: "Make" },
+        items: [
+          {
+            zh: "在本机跑完整流水线：研究、提案、剧本、分镜、出素材、剪辑、渲染",
+            en: "Run the full pipeline locally: research, proposal, script, boards, assets, edit, and render",
+          },
+          {
+            zh: "适合短片、宣传、动画讲解；纪录片混剪、播客切片等管道也在同一套里",
+            en: "Fits shorts, promos, and animated explainers; documentary montage and podcast clips live in the same set",
+          },
+        ],
+      },
+      {
+        title: { zh: "安装", en: "Install" },
+        items: [
+          {
+            zh: "要 clone 整仓并 make setup（Python、FFmpeg、Node）。只装 skill 文件跑不起来",
+            en: "Clone the repo and run make setup (Python, FFmpeg, Node). Skill files alone will not run",
+          },
+          {
+            zh: "供应商密钥按需加；没有密钥也能走免费/开源素材和本机 TTS",
+            en: "Provider keys are optional; without them you can still use free/open footage and local TTS",
+          },
+        ],
+      },
+      {
+        title: { zh: "回写", en: "Write back" },
+        items: [
+          {
+            zh: "OpenMontage 只在本机出片。上架 ComicLaw / 扣 Credits 仍要装 comiclaw-studio",
+            en: "OpenMontage only makes the film on your machine. Listing on ComicLaw and charging Credits still need comiclaw-studio",
+          },
+        ],
+      },
+    ],
+    tags: [
+      { zh: "成片", en: "video" },
+      { zh: "分镜", en: "boards" },
+      { zh: "本机", en: "local" },
+      { zh: "流水线", en: "pipeline" },
+    ],
+  },
 ];
