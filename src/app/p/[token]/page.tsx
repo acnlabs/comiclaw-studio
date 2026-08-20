@@ -55,6 +55,7 @@ export default async function ProjectPage(props: {
           projectId={project.id}
           name={project.name}
           description={project.description}
+          ownerUserId={project.ownerUserId}
           episodes={(
             await prisma.project.findMany({
               where: { dramaProjectId: project.id },

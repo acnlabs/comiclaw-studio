@@ -5,6 +5,7 @@ import { withAgentAuth, withProjectWorkerAuth, parseBody } from "@/lib/api";
 import { notFoundJson } from "@/lib/auth";
 import { updateReleaseSchema } from "@/lib/schemas";
 import { gateAgentProjectAction } from "@/lib/contributeGate";
+import { isDramaShell } from "@/lib/dramaProject";
 import type { ProductionAuth } from "@/lib/acnAuth";
 
 type Ctx = { params: Promise<{ releaseId: string }> };
@@ -29,7 +30,7 @@ export const PATCH = withProjectWorkerAuth(
       select: {
         id: true,
         projectId: true,
-        project: { select: { visibility: true, columnId: true, dramaProjectId: true } },
+        project: { select: { visibility: true, columnId: true, dramaProjectId: true, format: true } },
       },
     });
     if (!release) return notFoundJson();
@@ -54,7 +55,9 @@ export const PATCH = withProjectWorkerAuth(
 
     if (updated.status === "PUBLISHED") {
       try {
-        await syncProjectToWork(release.projectId);
+        if (!isDramaShell(release.project.format)) {
+          await syncProjectToWork(release.projectId);
+        }
         const columnId = release.project.columnId;
         if (columnId) await syncColumnToSeries(columnId);
         if (release.project.dramaProjectId) {

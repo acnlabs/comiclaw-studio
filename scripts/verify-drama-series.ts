@@ -47,11 +47,15 @@ async function air(projectId: string, videoUrl: string) {
   await syncProjectToWork(projectId);
 }
 
-async function episodes(dramaProjectId: string) {
-  const work = await prisma.work.findUnique({
-    where: { projectId: dramaProjectId },
+async function seriesOf(dramaProjectId: string) {
+  return prisma.work.findUnique({
+    where: { dramaProjectId },
     include: { episodes: { orderBy: { order: "asc" } } },
   });
+}
+
+async function episodes(dramaProjectId: string) {
+  const work = await seriesOf(dramaProjectId);
   return work?.episodes.map((e) => ({ order: e.order, title: e.title, videoUrl: e.videoUrl })) ?? [];
 }
 
@@ -70,8 +74,12 @@ async function main() {
   const e2 = await addEpisode(shell.id, 2, "第 2 集");
 
   await syncDramaToSeries(shell.id);
-  assert.equal(await prisma.work.count({ where: { projectId: shell.id } }), 0);
+  assert.equal(await prisma.work.count({ where: { dramaProjectId: shell.id } }), 0);
   ok("a drama with no aired episode gets no series");
+
+  assert.equal(await syncProjectToWork(shell.id), null);
+  assert.equal(await prisma.work.count({ where: { projectId: shell.id } }), 0);
+  ok("syncing a drama shell never creates a video work");
 
   await air(e1.id, "https://example.com/drama-1.mp4");
   const first = await syncDramaToSeries(shell.id);
@@ -80,6 +88,8 @@ async function main() {
   assert.equal(first.category, "漫剧");
   assert.equal(first.title, shell.name);
   assert.equal(first.videoUrl, null);
+  assert.equal(first.dramaProjectId, shell.id);
+  assert.equal(first.projectId, null);
   assert.deepEqual(await episodes(shell.id), [
     { order: 1, title: "第 1 集", videoUrl: "https://example.com/drama-1.mp4" },
   ]);
@@ -91,6 +101,13 @@ async function main() {
   assert.equal(firstEps[0]?.sourceWorkId, video1.id);
   ok("the first aired episode creates the 漫剧 series");
 
+  assert.equal(await syncProjectToWork(shell.id), null);
+  const seriesAfterShellSync = await seriesOf(shell.id);
+  assert.equal(seriesAfterShellSync?.id, first.id);
+  assert.equal(seriesAfterShellSync?.kind, "SERIES");
+  assert.equal(seriesAfterShellSync?.projectId, null);
+  ok("syncing a drama shell later does not overwrite the series");
+
   await air(e2.id, "https://example.com/drama-2.mp4");
   await syncDramaToSeries(shell.id);
   assert.deepEqual(await episodes(shell.id), [
@@ -99,10 +116,10 @@ async function main() {
   ]);
   ok("a later episode appends in drama order");
 
-  const before = await prisma.work.findUniqueOrThrow({ where: { projectId: shell.id } });
+  const before = await prisma.work.findUniqueOrThrow({ where: { dramaProjectId: shell.id } });
   await syncDramaToSeries(shell.id);
   await syncDramaToSeries(shell.id);
-  const after = await prisma.work.findUniqueOrThrow({ where: { projectId: shell.id } });
+  const after = await prisma.work.findUniqueOrThrow({ where: { dramaProjectId: shell.id } });
   assert.equal(after.id, before.id);
   assert.equal((await episodes(shell.id)).length, 2);
   ok("repeated syncs are idempotent");
@@ -119,11 +136,11 @@ async function main() {
 
   await prisma.filmVersion.deleteMany({ where: { projectId: { in: [e1.id, e2.id] } } });
   await syncDramaToSeries(shell.id);
-  assert.equal(await prisma.work.count({ where: { projectId: shell.id, kind: "SERIES" } }), 0);
+  assert.equal(await prisma.work.count({ where: { dramaProjectId: shell.id, kind: "SERIES" } }), 0);
   ok("the series is retracted once nothing is aired");
 
   await prisma.work.deleteMany({
-    where: { OR: [{ projectId: shell.id }, { project: { dramaProjectId: shell.id } }] },
+    where: { OR: [{ dramaProjectId: shell.id }, { project: { dramaProjectId: shell.id } }] },
   });
   await prisma.project.deleteMany({ where: { dramaProjectId: shell.id } });
   await prisma.project.delete({ where: { id: shell.id } });

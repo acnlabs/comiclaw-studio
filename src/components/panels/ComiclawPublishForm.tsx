@@ -422,15 +422,73 @@ export default function ComiclawPublishForm({
                       className={inputClass}
                     />
                   </label>
+                  <label className="block text-sm text-zinc-400">
+                    {t("panel.comiclaw.fieldSeriesCover")}
+                    <input
+                      value={seriesCoverUrl}
+                      onChange={(e) => setSeriesCoverUrl(e.target.value)}
+                      placeholder="https://"
+                      className={inputClass}
+                    />
+                  </label>
                 </div>
               ) : null}
             </>
           ) : (
-            <p className="text-sm text-zinc-500">
-              {t("panel.comiclaw.seriesLocked", {
-                name: state.series?.title || seriesTitle || "—",
-              })}
-            </p>
+            <div className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+              <p className="text-xs text-zinc-500">
+                {t("panel.comiclaw.seriesLocked", {
+                  name: state.series?.title || seriesTitle || "—",
+                })}
+              </p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block text-sm text-zinc-400">
+                  {t("panel.comiclaw.fieldEpisodeOrder")}
+                  <input
+                    type="number"
+                    min={1}
+                    max={999}
+                    value={episodeOrder}
+                    onChange={(e) => setEpisodeOrder(Number(e.target.value) || 1)}
+                    className={inputClass}
+                  />
+                </label>
+                <label className="block text-sm text-zinc-400">
+                  {t("panel.comiclaw.fieldEpisodeTitle")}
+                  <input
+                    value={episodeTitle}
+                    onChange={(e) => setEpisodeTitle(e.target.value)}
+                    className={inputClass}
+                  />
+                </label>
+              </div>
+              <label className="block text-sm text-zinc-400">
+                {t("panel.comiclaw.fieldSeriesTitleEdit")}
+                <input
+                  value={seriesTitle}
+                  onChange={(e) => setSeriesTitle(e.target.value)}
+                  className={inputClass}
+                />
+              </label>
+              <label className="block text-sm text-zinc-400">
+                {t("panel.comiclaw.fieldSeriesDesc")}
+                <textarea
+                  value={seriesDescription}
+                  onChange={(e) => setSeriesDescription(e.target.value)}
+                  rows={2}
+                  className={inputClass}
+                />
+              </label>
+              <label className="block text-sm text-zinc-400">
+                {t("panel.comiclaw.fieldSeriesCover")}
+                <input
+                  value={seriesCoverUrl}
+                  onChange={(e) => setSeriesCoverUrl(e.target.value)}
+                  placeholder="https://"
+                  className={inputClass}
+                />
+              </label>
+            </div>
           )}
 
           {error ? <p className="text-sm text-red-400">{error}</p> : null}
