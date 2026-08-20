@@ -266,9 +266,9 @@ const zh = {
 
   // 我的项目 / 认领
   "my.title": "我的项目",
-  "my.subtitle": "你认领过的所有项目,随时回来查看制作进度",
+  "my.subtitle": "短视频、漫剧、专栏都在这一份名单里。点进去制作；专栏用「管理」改名、删空栏目、处理申请。",
   "my.publicProfile": "我的公开主页",
-  "my.empty": "还没有项目。用右上角「新建」开私有或协作项目，或打开 comiclaw 发给你的链接。",
+  "my.empty": "还没有项目。用右上角「新建」选短视频、漫剧或专栏，或打开 comiclaw 发给你的链接。",
 
   // 我的角色(选角授权收益,Studio 范围内)
   "myAssets.title": "我的资产",
@@ -869,10 +869,11 @@ const en: Record<MessageKey, string> = {
   "panel.youtube.connectedFlash": "YouTube is connected.",
 
   "my.title": "My Projects",
-  "my.subtitle": "All projects you've claimed — check production progress anytime",
+  "my.subtitle":
+    "Videos, dramas, and columns in one list. Open one to produce; Manage on a column to rename, delete empties, or handle join requests.",
   "my.publicProfile": "My public profile",
   "my.empty":
-    "No projects yet. Use New for a private or collab project, or open a link comiclaw sent you.",
+    "No projects yet. Use New and pick Video, Drama, or Column — or open a link comiclaw sent you.",
 
   // My characters (licensing earnings, scoped to Studio)
   "myAssets.title": "My assets",

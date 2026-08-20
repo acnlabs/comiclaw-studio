@@ -15,9 +15,14 @@ export async function GET(req: Request) {
       id: true,
       slug: true,
       name: true,
+      coverUrl: true,
       acnOrgId: true,
       contributePolicy: true,
       updatedAt: true,
+      projects: {
+        where: { parentProjectId: null },
+        select: { updatedAt: true },
+      },
       _count: {
         select: {
           projects: true,
@@ -28,15 +33,23 @@ export async function GET(req: Request) {
   });
 
   return Response.json({
-    columns: columns.map((c) => ({
-      id: c.id,
-      slug: c.slug,
-      name: c.name,
-      acnOrgId: c.acnOrgId,
-      contributePolicy: c.contributePolicy,
-      entryCount: c._count.projects,
-      pendingJoinRequests: c._count.orgJoinRequests,
-      updatedAt: c.updatedAt,
-    })),
+    columns: columns.map((c) => {
+      const latest = c.projects.reduce(
+        (max, p) => (p.updatedAt > max ? p.updatedAt : max),
+        c.updatedAt,
+      );
+      return {
+        id: c.id,
+        slug: c.slug,
+        name: c.name,
+        coverUrl: c.coverUrl,
+        acnOrgId: c.acnOrgId,
+        contributePolicy: c.contributePolicy,
+        issueCount: c.projects.length, // 官方记；工作台「全 n 记」
+        entryCount: c._count.projects, // 含二创；删栏目拦截仍用这个
+        pendingJoinRequests: c._count.orgJoinRequests,
+        updatedAt: latest,
+      };
+    }),
   });
 }
