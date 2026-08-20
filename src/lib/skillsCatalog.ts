@@ -208,4 +208,68 @@ export const SKILLS: CatalogSkill[] = [
       { zh: "协作", en: "collab" },
     ],
   },
+  {
+    slug: "remotion",
+    name: "remotion",
+    official: false,
+    repo: "remotion-dev/skills",
+    githubUrl: "https://github.com/remotion-dev/skills",
+    installCommand: "npx skills add remotion-dev/skills",
+    title: {
+      zh: "Remotion",
+      en: "Remotion",
+    },
+    summary: {
+      zh: "用 React 程序化做视频：标题卡、字幕、时间轴、渲染成片。Remotion 官方 skill，不绑某一家工作室或模型。",
+      en: "Programmatic video in React: title cards, captions, timeline, and render. Remotion's official skills — not tied to one studio or one model.",
+    },
+    sections: [
+      {
+        title: { zh: "成片", en: "Make" },
+        items: [
+          {
+            zh: "用 React 写时间轴：构图、动画、字体、音画、节奏",
+            en: "Write the timeline in React: composition, motion, type, picture and sound, pacing",
+          },
+          {
+            zh: "开一个新项目或一段新构图，例如宣传片、标题卡",
+            en: "Start a new project or composition — a promo, a title card",
+          },
+        ],
+      },
+      {
+        title: { zh: "字幕", en: "Captions" },
+        items: [
+          {
+            zh: "给成片加字幕、对时间轴",
+            en: "Add captions and lock them to the timeline",
+          },
+        ],
+      },
+      {
+        title: { zh: "预览", en: "Preview" },
+        items: [
+          {
+            zh: "在 Remotion Studio 里看时间轴，改完立刻看",
+            en: "Preview the timeline in Remotion Studio; see changes as you make them",
+          },
+        ],
+      },
+      {
+        title: { zh: "渲染", en: "Render" },
+        items: [
+          {
+            zh: "渲成视频或一张静帧",
+            en: "Render a video or a still",
+          },
+        ],
+      },
+    ],
+    tags: [
+      { zh: "成片", en: "video" },
+      { zh: "字幕", en: "captions" },
+      { zh: "渲染", en: "render" },
+      { zh: "React", en: "React" },
+    ],
+  },
 ];
