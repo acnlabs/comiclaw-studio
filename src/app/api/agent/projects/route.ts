@@ -160,30 +160,11 @@ export async function POST(req: Request) {
       return badRequest("A drama episode inherits the show's Org and policy");
     }
     if (identity.kind !== "studio_key") {
-      const owner = ownerFromRecord(shell);
-      if (owner.ownerKind !== "agent" || owner.ownerAgentId !== identity.agentId) {
+      const shellOwner = ownerFromRecord(shell);
+      if (shellOwner.ownerKind !== "agent" || shellOwner.ownerAgentId !== identity.agentId) {
         return forbidden("You can only add episodes to a drama you own");
       }
     }
-    const actor =
-      identity.kind === "studio_key"
-        ? ({ kind: "studio_key" } as const)
-        : ({ kind: "agent", agentId: identity.agentId } as const);
-    const owner = resolveCreateOwner({
-      requested: {
-        kind: body.ownerKind,
-        userId: body.ownerUserId,
-        agentId: body.ownerAgentId,
-        orgId: body.ownerOrgId,
-      },
-      actor,
-    });
-    const denied = await assertCreateOwnerAllowed({
-      owner,
-      actor,
-      bearer: extractBearer(req) ?? undefined,
-    });
-    if (denied) return denied;
     const project = await withRetry(async () => {
       const dramaOrder = await nextDramaOrder(dramaProjectId);
       return prisma.project.create({
@@ -199,7 +180,6 @@ export async function POST(req: Request) {
           clientName: body.clientName ?? null,
           agentName: body.agentName ?? null,
           coverUrl: body.coverUrl ?? null,
-          ...ownerFields(owner),
         },
       });
     });

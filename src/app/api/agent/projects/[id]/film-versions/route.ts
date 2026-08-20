@@ -6,6 +6,7 @@ import { filmVersionSchema } from "@/lib/schemas";
 import { resolveAgentCreateAuthor } from "@/lib/contentAuthor";
 import { nextFilmVersion } from "@/lib/contentVersioning";
 import { gateAgentContentCreate } from "@/lib/contributeGate";
+import { isDramaShell } from "@/lib/dramaProject";
 import type { ProductionAuth } from "@/lib/acnAuth";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -18,9 +19,12 @@ export const POST = withProjectWorkerAuth(
 
     const project = await prisma.project.findUnique({
       where: { id },
-      select: { id: true, visibility: true },
+      select: { id: true, visibility: true, format: true },
     });
     if (!project) return notFoundJson();
+    if (isDramaShell(project.format)) {
+      return badRequest("A drama project does not take a final film; add an episode");
+    }
 
     const author = resolveAgentCreateAuthor({
       auth,

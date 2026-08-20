@@ -22,19 +22,23 @@ export default function DramaWorkspace({
   projectId,
   name,
   description,
+  ownerUserId,
   episodes,
 }: {
   projectId: string;
   name: string;
   description: string | null;
+  ownerUserId: string | null;
   episodes: DramaEpisodeRow[];
 }) {
   const { t } = useT();
   const router = useRouter();
-  const { getAccessTokenSilently } = useAuth0();
+  const { isAuthenticated, user, getAccessTokenSilently } = useAuth0();
   const [episodeName, setEpisodeName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const canAdd =
+    isAuthenticated && Boolean(ownerUserId) && user?.sub === ownerUserId;
 
   const addEpisode = useCallback(
     async (e: React.FormEvent) => {
@@ -145,28 +149,32 @@ export default function DramaWorkspace({
           </ul>
         )}
 
-        <form
-          onSubmit={addEpisode}
-          className="mt-6 flex flex-col gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4 sm:flex-row sm:items-end"
-        >
-          <label className="block min-w-0 flex-1 text-sm text-zinc-400">
-            {t("drama.episodeName")}
-            <input
-              value={episodeName}
-              onChange={(e) => setEpisodeName(e.target.value)}
-              placeholder={t("drama.episodeNamePlaceholder")}
-              className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-accent"
-            />
-          </label>
-          <button
-            type="submit"
-            disabled={busy || !episodeName.trim()}
-            className="rounded-full bg-accent px-5 py-2 text-sm font-medium text-zinc-950 transition-opacity hover:opacity-90 disabled:opacity-50"
-          >
-            {busy ? t("drama.adding") : t("drama.addEpisode")}
-          </button>
-        </form>
-        {error ? <p className="mt-2 text-sm text-red-400">{error}</p> : null}
+        {canAdd ? (
+          <>
+            <form
+              onSubmit={addEpisode}
+              className="mt-6 flex flex-col gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4 sm:flex-row sm:items-end"
+            >
+              <label className="block min-w-0 flex-1 text-sm text-zinc-400">
+                {t("drama.episodeName")}
+                <input
+                  value={episodeName}
+                  onChange={(e) => setEpisodeName(e.target.value)}
+                  placeholder={t("drama.episodeNamePlaceholder")}
+                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-accent"
+                />
+              </label>
+              <button
+                type="submit"
+                disabled={busy || !episodeName.trim()}
+                className="rounded-full bg-accent px-5 py-2 text-sm font-medium text-zinc-950 transition-opacity hover:opacity-90 disabled:opacity-50"
+              >
+                {busy ? t("drama.adding") : t("drama.addEpisode")}
+              </button>
+            </form>
+            {error ? <p className="mt-2 text-sm text-red-400">{error}</p> : null}
+          </>
+        ) : null}
       </section>
     </div>
   );

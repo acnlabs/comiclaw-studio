@@ -61,6 +61,7 @@ export async function syncProjectToWork(
     include: { filmVersions: { orderBy: { createdAt: "desc" }, take: 1 } },
   });
   if (!project) return null;
+  if (isDramaShell(project.format)) return null;
 
   const film = project.filmVersions[0];
   if (!film) return null; // 没有成片,无内容可发布
@@ -275,7 +276,7 @@ export async function publishProjectToComiclaw(
       await syncColumnToSeries(project.columnId);
     }
     if (project.dramaProjectId) {
-      const series = await syncDramaToSeries(project.dramaProjectId);
+      const series = await finalizeDramaPublish(project, listing, video.id);
       return { video, series, videoRegistry };
     }
     return { video, series: null as null, videoRegistry };
@@ -300,13 +301,7 @@ export async function publishProjectToComiclaw(
     const columnSeries = await syncColumnToSeries(project.columnId);
     seriesId = columnSeries?.id ?? seriesId;
   } else if (project.dramaProjectId) {
-    const series = await syncDramaToSeries(project.dramaProjectId);
-    if (series) {
-      await prisma.project.update({
-        where: { id: project.id },
-        data: { seriesWorkId: series.id },
-      });
-    }
+    const series = await finalizeDramaPublish(project, listing, video.id);
     return { video, series, videoRegistry };
   } else if (seriesId) {
     await assertSeriesUsable(seriesId, project);
@@ -401,7 +396,7 @@ export async function getComiclawPublishSnapshot(
       work: true,
       seriesWork: true,
       column: { select: { name: true, seriesWork: true } },
-      dramaProject: { select: { name: true, work: true } },
+      dramaProject: { select: { name: true, dramaSeriesWork: true } },
     },
   });
   if (!project) return null;
@@ -411,7 +406,9 @@ export async function getComiclawPublishSnapshot(
   const series =
     project.seriesWork ??
     project.column?.seriesWork ??
-    (project.dramaProject?.work?.kind === "SERIES" ? project.dramaProject.work : null);
+    (project.dramaProject?.dramaSeriesWork?.kind === "SERIES"
+      ? project.dramaProject.dramaSeriesWork
+      : null);
   const mode: "video" | "episode" =
     series || project.dramaProjectId || project.columnId ? "episode" : "video";
 
@@ -570,6 +567,61 @@ export async function syncColumnToSeries(columnId: string) {
   });
 }
 
+function seriesListingPatch(listing: ComiclawListing) {
+  return {
+    ...(listing.seriesTitle?.trim() ? { title: listing.seriesTitle.trim() } : {}),
+    ...(listing.seriesDescription !== undefined
+      ? { description: listing.seriesDescription }
+      : {}),
+    ...(listing.seriesCoverUrl !== undefined ? { coverUrl: listing.seriesCoverUrl } : {}),
+  };
+}
+
+async function finalizeDramaPublish(
+  project: { id: string; dramaProjectId: string | null },
+  listing: ComiclawListing,
+  videoId: string,
+) {
+  const dramaId = project.dramaProjectId;
+  if (!dramaId) return null;
+  const series = await syncDramaToSeries(dramaId);
+  if (!series) return null;
+
+  const patch = seriesListingPatch(listing);
+  if (Object.keys(patch).length > 0) {
+    await prisma.work.update({ where: { id: series.id }, data: patch });
+    await prisma.project.update({
+      where: { id: dramaId },
+      data: {
+        ...(patch.title ? { name: patch.title } : {}),
+        ...(listing.seriesDescription !== undefined
+          ? { description: listing.seriesDescription }
+          : {}),
+        ...(listing.seriesCoverUrl !== undefined
+          ? { coverUrl: listing.seriesCoverUrl }
+          : {}),
+      },
+    });
+  }
+
+  const episodeTitle = listing.episodeTitle?.trim();
+  await prisma.project.update({
+    where: { id: project.id },
+    data: {
+      seriesWorkId: series.id,
+      ...(episodeTitle ? { name: episodeTitle } : {}),
+    },
+  });
+  if (episodeTitle) {
+    await prisma.episode.updateMany({
+      where: { workId: series.id, sourceWorkId: videoId },
+      data: { title: episodeTitle },
+    });
+  }
+
+  return prisma.work.findUnique({ where: { id: series.id } });
+}
+
 // 把一部漫剧已出片的各集合成发现里的漫剧系列。
 // 每一集自己仍是推荐流里的短视频;系列不进推荐,避免同一支片子出现两次。
 export async function syncDramaToSeries(dramaProjectId: string) {
@@ -591,7 +643,7 @@ export async function syncDramaToSeries(dramaProjectId: string) {
   const aired = shell.dramaEpisodes.filter((p) => p.filmVersions[0]);
   if (aired.length === 0) {
     await prisma.work.deleteMany({
-      where: { projectId: dramaProjectId, kind: "SERIES" },
+      where: { dramaProjectId, kind: "SERIES" },
     });
     return null;
   }
@@ -613,9 +665,9 @@ export async function syncDramaToSeries(dramaProjectId: string) {
 
   return prisma.$transaction(async (tx) => {
     const work = await tx.work.upsert({
-      where: { projectId: dramaProjectId },
+      where: { dramaProjectId },
       update: data,
-      create: { ...data, projectId: dramaProjectId },
+      create: { ...data, dramaProjectId },
     });
 
     await tx.episode.deleteMany({ where: { workId: work.id } });

@@ -5,6 +5,7 @@ import { withProjectWorkerAuth, parseBody } from "@/lib/api";
 import { notFoundJson } from "@/lib/auth";
 import { createReleaseSchema } from "@/lib/schemas";
 import { gateAgentProjectAction } from "@/lib/contributeGate";
+import { isDramaShell } from "@/lib/dramaProject";
 import type { ProductionAuth } from "@/lib/acnAuth";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -16,7 +17,7 @@ export const POST = withProjectWorkerAuth(async (req, ctx: Ctx, auth: Production
 
   const project = await prisma.project.findUnique({
     where: { id },
-    select: { id: true, visibility: true, columnId: true, dramaProjectId: true },
+    select: { id: true, visibility: true, columnId: true, dramaProjectId: true, format: true },
   });
   if (!project) return notFoundJson();
 
@@ -42,7 +43,7 @@ export const POST = withProjectWorkerAuth(async (req, ctx: Ctx, auth: Production
   if (created.status === "PUBLISHED") {
     // 同步失败不影响发行记录创建
     try {
-      await syncProjectToWork(id);
+      if (!isDramaShell(project.format)) await syncProjectToWork(id);
       if (project.columnId) await syncColumnToSeries(project.columnId);
       if (project.dramaProjectId) await syncDramaToSeries(project.dramaProjectId);
     } catch (err) {

@@ -119,6 +119,8 @@ model Project {
   work           Work?
   seriesWorkId   String?
   seriesWork     Work?     @relation("ProjectSeriesWork", fields: [seriesWorkId], references: [id], onDelete: SetNull)
+  // 漫剧壳对应的发现系列;和成片的 Work.projectId 分开,避免壳上误出片把剧覆盖成短视频
+  dramaSeriesWork Work?    @relation("DramaSeriesWork")
   comments       Comment[]
   castingLicenses CastingLicense[]
   assetLicenses   AssetLicense[]
@@ -500,12 +502,15 @@ model Work {
   // 来源专栏:把该栏目各记的成片合成一个系列。这类作品是已入流作品的聚合视图,
   // 不再单独进推荐流,否则同一支视频会重复出现
   columnId    String?  @unique
+  // 来源漫剧壳:同上,和 projectId 分开,成片只挂在各集上
+  dramaProjectId String? @unique
   // 官方推荐:运维置顶的时刻。空 = 未推荐
   featuredAt  DateTime?
   publishedAt DateTime @default(now())
 
   project  Project?   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   column   Column?    @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  dramaShow Project?  @relation("DramaSeriesWork", fields: [dramaProjectId], references: [id], onDelete: Cascade)
   episodes Episode[] @relation("SeriesEpisodes")
   // 专栏选集里的一集若来自已发布的短视频,指向那条 Work,评论跟它走
   sourcedEpisodes Episode[] @relation("EpisodeSourceWork")
