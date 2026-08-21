@@ -11,7 +11,7 @@ import {
 import { mapError, parseBody } from "@/lib/api";
 import { createColumnSchema } from "@/lib/schemas";
 import { resolveOrgBindOnCreate } from "@/lib/orgBinding";
-import { slugifyLabel } from "@/lib/slugify";
+import { firstFreeColumnSlug, slugifyLabel } from "@/lib/slugify";
 import { claimColumnSlot } from "@/lib/columnQuota";
 
 const userCreateColumnSchema = createColumnSchema
@@ -81,19 +81,23 @@ export async function POST(req: Request) {
     return mapError(err);
   }
 
-  const slug =
-    body.slug?.trim() ||
-    slugifyLabel(body.name) ||
-    `column-${Date.now().toString(36)}`;
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
-    return badRequest("slug must be lowercase kebab-case");
-  }
+  const requested = body.slug?.trim() || "";
+  const slugOk = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+  const taken = async (s: string) =>
+    Boolean(await prisma.column.findUnique({ where: { slug: s }, select: { id: true } }));
 
-  const exists = await prisma.column.findUnique({
-    where: { slug },
-    select: { id: true },
-  });
-  if (exists) return conflict(`Column slug already exists: ${slug}`);
+  let slug: string;
+  if (requested) {
+    slug = slugifyLabel(requested);
+    if (!slug || !slugOk.test(slug)) {
+      return badRequest("slug must be lowercase kebab-case");
+    }
+    if (await taken(slug)) {
+      return conflict(`Column slug already exists: ${slug}`);
+    }
+  } else {
+    slug = await firstFreeColumnSlug(body.name, taken);
+  }
 
   const wantsOrgCreate = body.orgMode === "create";
 
