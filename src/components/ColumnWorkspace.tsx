@@ -7,6 +7,7 @@ import { useAuth0 } from "@auth0/auth0-react";
 import { useT } from "@/components/LocaleProvider";
 import type { MessageKey } from "@/lib/i18n";
 import { AUTH0_AUDIENCE } from "@/lib/auth0";
+import { numberedTitle } from "@/lib/unitTitle";
 
 export type ColumnEpisodeRow = {
   id: string;
@@ -134,11 +135,12 @@ export default function ColumnWorkspace({
                   ) : null}
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-medium text-zinc-100">
-                      {ep.entryOrder != null
-                        ? t("column.entryN", { n: ep.entryOrder })
-                        : null}
-                      {ep.entryOrder != null ? " · " : ""}
-                      {ep.name}
+                      {numberedTitle(
+                        ep.name,
+                        ep.entryOrder != null
+                          ? t("column.entryN", { n: ep.entryOrder })
+                          : null,
+                      )}
                     </div>
                   </div>
                   <span className="shrink-0 rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">

@@ -66,8 +66,8 @@ const zh = {
   // 发现
   "series.title": "发现",
   "series.subtitle": "漫剧与官方专栏，用 comiclaw 创作",
-  "series.empty": "「{cat}」分类下还没有作品",
-  "series.emptyAll": "还没有作品",
+  "series.empty": "还没有上架的{cat}。出片发行后会出现在这里。",
+  "series.emptyAll": "还没有上架的作品。出片发行后会出现在发现里。",
   "series.publishedAt": "{date} 发布",
   "series.creator": "创作者:{name}",
   "series.nothingToPlay": "暂无可播放内容",
@@ -675,8 +675,8 @@ const en: Record<MessageKey, string> = {
 
   "series.title": "Discover",
   "series.subtitle": "Comic dramas and official columns created with comiclaw",
-  "series.empty": "No works in \u201c{cat}\u201d yet",
-  "series.emptyAll": "No works yet",
+  "series.empty": "No listed {cat} yet. They show up here after a film is published.",
+  "series.emptyAll": "Nothing listed yet. Published films show up in Discover.",
   "series.publishedAt": "Published {date}",
   "series.creator": "Creator: {name}",
   "series.nothingToPlay": "Nothing to play yet",
