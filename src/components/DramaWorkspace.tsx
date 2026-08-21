@@ -7,6 +7,7 @@ import { useAuth0 } from "@auth0/auth0-react";
 import { useT } from "@/components/LocaleProvider";
 import type { MessageKey } from "@/lib/i18n";
 import { AUTH0_AUDIENCE } from "@/lib/auth0";
+import { numberedTitle } from "@/lib/unitTitle";
 
 export type DramaEpisodeRow = {
   id: string;
@@ -133,11 +134,12 @@ export default function DramaWorkspace({
                   ) : null}
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-medium text-zinc-100">
-                      {ep.dramaOrder != null
-                        ? t("drama.episodeN", { n: ep.dramaOrder })
-                        : null}
-                      {ep.dramaOrder != null ? " · " : ""}
-                      {ep.name}
+                      {numberedTitle(
+                        ep.name,
+                        ep.dramaOrder != null
+                          ? t("drama.episodeN", { n: ep.dramaOrder })
+                          : null,
+                      )}
                     </div>
                   </div>
                   <span className="shrink-0 rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">

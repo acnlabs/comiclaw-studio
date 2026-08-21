@@ -140,11 +140,9 @@ export default function MyProjects({ bare }: { bare?: boolean }) {
                         <span className="shrink-0 rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] font-medium text-zinc-300">
                           {t("studioCreate.formatColumn")}
                         </span>
-                        {item.column.contributePolicy !== "owner_only" ? (
-                          <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent">
-                            {t("studioCreate.kindCocreate")}
-                          </span>
-                        ) : null}
+                        <CollabBadge
+                          collab={item.column.contributePolicy !== "owner_only"}
+                        />
                       </div>
                       <div className="mt-1 text-xs text-zinc-500">
                         {t("common.updatedAt", {
@@ -194,6 +192,19 @@ export default function MyProjects({ bare }: { bare?: boolean }) {
   );
 }
 
+function CollabBadge({ collab }: { collab: boolean }) {
+  const { t } = useT();
+  return collab ? (
+    <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent">
+      {t("studioCreate.kindCocreate")}
+    </span>
+  ) : (
+    <span className="shrink-0 rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] font-medium text-zinc-400">
+      {t("studioCreate.kindPrivate")}
+    </span>
+  );
+}
+
 function ProjectRow({ project: p }: { project: MyProject }) {
   const { t, fmtDate } = useT();
   return (
@@ -218,11 +229,7 @@ function ProjectRow({ project: p }: { project: MyProject }) {
                 ? t("studioCreate.formatDrama")
                 : t("studioCreate.formatVideo")}
             </span>
-            {p.visibility === "PUBLIC" ? (
-              <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent">
-                {t("studioCreate.kindCocreate")}
-              </span>
-            ) : null}
+            <CollabBadge collab={p.visibility === "PUBLIC"} />
           </div>
           <div className="mt-1 text-xs text-zinc-500">
             {t("common.updatedAt", { date: fmtDate(p.updatedAt) })}
