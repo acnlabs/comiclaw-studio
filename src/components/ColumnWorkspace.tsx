@@ -63,7 +63,6 @@ export default function ColumnWorkspace({
           body: JSON.stringify({
             name: episodeName.trim(),
             columnId,
-            visibility: "PUBLIC",
           }),
         });
         const data = (await res.json().catch(() => null)) as {
