@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import ColumnWorkspace from "@/components/ColumnWorkspace";
+import { isCollabColumn } from "@/lib/columnIssue";
 
 export const dynamic = "force-dynamic";
 
@@ -15,23 +16,31 @@ export default async function ColumnWorkspacePage(props: {
       name: true,
       description: true,
       ownerUserId: true,
+      contributePolicy: true,
     },
   });
   if (!column) notFound();
 
-  const entries = await prisma.project.findMany({
-    where: { columnId: column.id, parentProjectId: null },
-    orderBy: [{ entryOrder: "asc" }, { createdAt: "asc" }],
-    select: {
-      id: true,
-      name: true,
-      shareToken: true,
-      entryOrder: true,
-      currentStage: true,
-      coverUrl: true,
-      work: { select: { id: true } },
-    },
-  });
+  const collab = isCollabColumn(column.contributePolicy);
+  const entries = collab
+    ? await prisma.project.findMany({
+        where: {
+          columnId: column.id,
+          parentProjectId: null,
+          visibility: "PUBLIC",
+        },
+        orderBy: [{ entryOrder: "asc" }, { createdAt: "asc" }],
+        select: {
+          id: true,
+          name: true,
+          shareToken: true,
+          entryOrder: true,
+          currentStage: true,
+          coverUrl: true,
+          work: { select: { id: true } },
+        },
+      })
+    : [];
 
   return (
     <ColumnWorkspace
@@ -39,6 +48,7 @@ export default async function ColumnWorkspacePage(props: {
       name={column.name}
       description={column.description}
       ownerUserId={column.ownerUserId}
+      contributePolicy={column.contributePolicy}
       episodes={entries.map((ep) => ({
         id: ep.id,
         name: ep.name,

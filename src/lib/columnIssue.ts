@@ -8,8 +8,12 @@ export type ColumnForIssue = {
 };
 
 /** 记跟着栏目：owner_only 是私有，其余是协作公开。 */
+export function isCollabColumn(policy: string): boolean {
+  return policy !== "owner_only";
+}
+
 export function columnIssueInheritance(column: ColumnForIssue) {
-  const collab = column.contributePolicy !== "owner_only";
+  const collab = isCollabColumn(column.contributePolicy);
   return {
     format: PROJECT_FORMAT_VIDEO,
     columnId: column.id,

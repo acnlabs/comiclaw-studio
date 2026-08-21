@@ -35,10 +35,45 @@ export async function GET(req: Request, ctx: Ctx) {
       createdAt: true,
       updatedAt: true,
       _count: { select: { projects: true } },
+      projects: {
+        where: { parentProjectId: null },
+        orderBy: [{ entryOrder: "asc" }, { createdAt: "asc" }],
+        select: {
+          id: true,
+          name: true,
+          shareToken: true,
+          entryOrder: true,
+          currentStage: true,
+          coverUrl: true,
+          work: { select: { id: true } },
+        },
+      },
     },
   });
 
-  return Response.json({ column });
+  return Response.json({
+    column: {
+      id: column.id,
+      slug: column.slug,
+      name: column.name,
+      description: column.description,
+      coverUrl: column.coverUrl,
+      acnOrgId: column.acnOrgId,
+      contributePolicy: column.contributePolicy,
+      createdAt: column.createdAt,
+      updatedAt: column.updatedAt,
+      _count: column._count,
+    },
+    issues: column.projects.map((ep) => ({
+      id: ep.id,
+      name: ep.name,
+      shareToken: ep.shareToken,
+      entryOrder: ep.entryOrder,
+      currentStage: ep.currentStage,
+      coverUrl: ep.coverUrl,
+      workId: ep.work?.id ?? null,
+    })),
+  });
 }
 
 /**

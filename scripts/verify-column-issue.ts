@@ -3,7 +3,7 @@
  * Run: npx tsx scripts/verify-column-issue.ts
  */
 import assert from "node:assert/strict";
-import { columnIssueCreateData, columnIssueInheritance } from "../src/lib/columnIssue";
+import { columnIssueCreateData, columnIssueInheritance, isCollabColumn } from "../src/lib/columnIssue";
 
 function ok(label: string) {
   console.log(`✓ ${label}`);
@@ -27,6 +27,8 @@ const collabCol = {
   acnOrgId: "org_1",
 };
 
+assert.equal(isCollabColumn("owner_only"), false);
+assert.equal(isCollabColumn("org_members"), true);
 assert.equal(columnIssueInheritance(privateCol).visibility, "PRIVATE");
 assert.equal(columnIssueInheritance(privateCol).contributePolicy, "owner_only");
 assert.equal(columnIssueInheritance(privateCol).acnOrgId, null);

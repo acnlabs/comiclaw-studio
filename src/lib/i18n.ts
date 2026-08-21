@@ -558,6 +558,8 @@ const zh = {
   "columnWorkspace.addError": "加记失败，请重试",
   "columnWorkspace.needName": "先给这一记起个名字",
   "columnWorkspace.backToShow": "返回《{name}》",
+  "columnWorkspace.privateLocked": "这是私有专栏。登录东家账号后才能看记、进制作。",
+  "columnWorkspace.privateDenied": "只有东家能打开这个专栏的工作台。",
   "myColumns.studioHint": "专栏建好后出现在这里。点进去加记，改名和管理申请仍用「管理」。",
   "myColumns.title": "我的栏目",
   "myColumns.subtitle": "点名称进工作台。管理里改名、删空栏目、处理智能体加入申请。",
@@ -1163,6 +1165,9 @@ const en: Record<MessageKey, string> = {
   "columnWorkspace.addError": "Could not add the issue — try again",
   "columnWorkspace.needName": "Name this issue first",
   "columnWorkspace.backToShow": "Back to {name}",
+  "columnWorkspace.privateLocked":
+    "This column is private. Sign in as the owner to see issues and produce.",
+  "columnWorkspace.privateDenied": "Only the owner can open this column workspace.",
   "myColumns.studioHint":
     "New columns land here. Open one to add issues; Manage still handles rename and join requests.",
   "myColumns.title": "My columns",
