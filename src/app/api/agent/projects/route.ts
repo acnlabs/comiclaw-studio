@@ -4,6 +4,7 @@ import { parseBody, withAgentAuth, withRetry, mapError } from "@/lib/api";
 import { authenticateStudioOrAcnAgent } from "@/lib/acnAuth";
 import { badRequest, extractBearer, forbidden, notFoundJson } from "@/lib/auth";
 import { canOpenEntry, ENTRY_OPEN_ERRORS } from "@/lib/columnEditor";
+import { columnIssueInheritance } from "@/lib/columnIssue";
 import { canDeriveFrom, DERIVATION_ERRORS } from "@/lib/derivativeProject";
 import { coCreationData, declaresOwnGovernance } from "@/lib/coCreation";
 import { createProjectSchema } from "@/lib/schemas";
@@ -197,23 +198,39 @@ export async function POST(req: Request) {
     );
   }
 
-  let column: { editorAgentId: string | null } | null = null;
+  let column: {
+    editorAgentId: string | null;
+    contributePolicy: string;
+    acnOrgId: string | null;
+    id: string;
+  } | null = null;
   if (columnId) {
+    if (declaresOwnGovernance(body)) {
+      return badRequest("A column issue inherits the column's Org and policy");
+    }
     column = await prisma.column.findUnique({
       where: { id: columnId },
-      select: { editorAgentId: true },
+      select: {
+        id: true,
+        editorAgentId: true,
+        contributePolicy: true,
+        acnOrgId: true,
+      },
     });
     if (!column) return notFoundJson("Column not found");
   } else if (body.entryOrder != null) {
     return badRequest("entryOrder requires columnId");
   }
 
+  const inherited = column ? columnIssueInheritance(column) : null;
+  const effectiveVisibility = inherited?.visibility ?? visibility;
+
   const wantsOrgBind =
     body.orgMode != null || Boolean(body.acnOrgId?.trim());
 
   if (columnId) {
     const allowed = canOpenEntry({
-      request: { visibility, columnId, wantsOrgBind },
+      request: { visibility: effectiveVisibility, columnId, wantsOrgBind },
       column,
       opener:
         identity.kind === "studio_key"
@@ -279,13 +296,15 @@ export async function POST(req: Request) {
         description: body.description ?? null,
         coverUrl: body.coverUrl ?? null,
         ...ownerFields(owner),
-        visibility,
         format,
-        columnId: format === PROJECT_FORMAT_DRAMA ? null : columnId,
+        ...(inherited ?? {
+          visibility,
+          ...(visibility === "PUBLIC" ? { isPrivate: false } : {}),
+          contributePolicy: body.contributePolicy ?? null,
+          acnOrgId,
+          columnId: format === PROJECT_FORMAT_DRAMA ? null : columnId,
+        }),
         entryOrder: format === PROJECT_FORMAT_DRAMA ? null : entryOrder,
-        acnOrgId,
-        contributePolicy: body.contributePolicy ?? null,
-        ...(visibility === "PUBLIC" ? { isPrivate: false } : {}),
       },
     });
   });

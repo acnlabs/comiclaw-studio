@@ -18,6 +18,7 @@ import { reconcilePendingLicenses } from "@/lib/casting";
 import { maxOrgCreatesPerDay, startOfUtcDay } from "@/lib/columnQuota";
 import { ownerFields, ownerFromRecord, resolveCreateOwner } from "@/lib/owner";
 import { ensureUserProfile } from "@/lib/userHandle";
+import { columnIssueCreateData } from "@/lib/columnIssue";
 import {
   dramaEpisodeCreateData,
   invalidDramaCreate,
@@ -152,8 +153,8 @@ async function createDerivative(
  * - PRIVATE: classic delivery cell
  * - PUBLIC: standalone collab project (own theme; optional ACN Org)
  * - format=DRAMA: 漫剧壳,集另加
- * - dramaProjectId: 一部漫剧下的一集
- * - columnId + PUBLIC: official 记 under a column the user owns
+ * - dramaProjectId: 一部漫剧下的一集（可见性跟着这部剧）
+ * - columnId: 专栏下的一记（可见性跟着这个专栏）
  * - parentProjectId: a co-creation project under someone else's entry
  */
 export async function POST(req: Request) {
@@ -183,9 +184,6 @@ export async function POST(req: Request) {
   });
   if (dramaError) return badRequest(dramaError);
 
-  if (visibility === "PRIVATE" && columnId) {
-    return badRequest("PRIVATE projects cannot attach to a column");
-  }
   if (body.orgMode === "attach" || body.acnOrgId?.trim()) {
     return badRequest(
       "orgMode=attach is not available for user-created projects; use create or none"
@@ -227,14 +225,48 @@ export async function POST(req: Request) {
   }
 
   if (columnId) {
+    if (declaresOwnGovernance(body)) {
+      return badRequest("A column issue inherits the column's Org and policy");
+    }
     const column = await prisma.column.findUnique({
       where: { id: columnId },
-      select: { id: true, ownerUserId: true },
+      select: {
+        id: true,
+        ownerUserId: true,
+        contributePolicy: true,
+        acnOrgId: true,
+      },
     });
     if (!column) return notFoundJson("Column not found");
     if (column.ownerUserId !== sub) {
-      return forbidden("You can only open PUBLIC entries under columns you own");
+      return forbidden("You can only add issues to a column you own");
     }
+    const owner = resolveCreateOwner({ actor: { kind: "user", userId: sub } });
+    await ensureUserProfile(sub);
+    const project = await withRetry(async () => {
+      const entryOrder = await nextEntryOrder(columnId);
+      return prisma.project.create({
+        data: columnIssueCreateData(
+          column,
+          { name: body.name, description: body.description },
+          entryOrder,
+          owner,
+        ),
+      });
+    });
+    return Response.json(
+      {
+        id: project.id,
+        shareToken: project.shareToken,
+        sharePath: `/p/${project.shareToken}`,
+        visibility: project.visibility,
+        format: project.format,
+        columnId: project.columnId,
+        entryOrder: project.entryOrder,
+        acnOrgId: project.acnOrgId,
+      },
+      { status: 201 },
+    );
   }
 
   const wantsOrgCreate = body.orgMode === "create";
