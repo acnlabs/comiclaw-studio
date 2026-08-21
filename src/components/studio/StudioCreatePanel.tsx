@@ -7,6 +7,7 @@ import { useT } from "@/components/LocaleProvider";
 import { Modal } from "@/components/ui";
 import { AUTH0_AUDIENCE } from "@/lib/auth0";
 import type { MessageKey } from "@/lib/i18n";
+import { slugifyLabel } from "@/lib/slugify";
 
 type Format = "VIDEO" | "DRAMA" | "COLUMN";
 type Kind = "private" | "cocreate";
@@ -66,6 +67,7 @@ export default function StudioCreatePanel() {
   const [format, setFormat] = useState<Format>("VIDEO");
   const [kind, setKind] = useState<Kind>("private");
   const [name, setName] = useState("");
+  const [slug, setSlug] = useState("");
   const [description, setDescription] = useState("");
   const [orgMode, setOrgMode] = useState<OrgMode>("create");
   const [busy, setBusy] = useState(false);
@@ -84,6 +86,7 @@ export default function StudioCreatePanel() {
   const openDialog = () => {
     setOpen(true);
     setError(null);
+    setSlug("");
   };
 
   const close = () => {
@@ -116,12 +119,14 @@ export default function StudioCreatePanel() {
               ? {
                   name: name.trim(),
                   description: description.trim() || null,
+                  slug: slugifyLabel(slug) || undefined,
                   orgMode: "none",
                   contributePolicy: "owner_only",
                 }
               : {
                   name: name.trim(),
                   description: description.trim() || null,
+                  slug: slugifyLabel(slug) || undefined,
                   orgMode,
                   orgJoinPolicy: orgMode === "create" ? "approval" : undefined,
                   contributePolicy: orgMode === "create" ? "org_members" : "open",
@@ -221,6 +226,29 @@ export default function StudioCreatePanel() {
               className={inputClass}
             />
           </label>
+
+          {format === "COLUMN" ? (
+            <label className="block text-sm text-zinc-400">
+              {t("studioCreate.columnSlug")}
+              <input
+                value={slug}
+                onChange={(e) => setSlug(e.target.value.toLowerCase())}
+                placeholder={slugifyLabel(name) || t("studioCreate.columnSlugAuto")}
+                className={inputClass}
+              />
+              <span className="mt-1 block text-xs text-zinc-600">
+                {t("studioCreate.columnSlugPreview", {
+                  slug:
+                    slugifyLabel(slug) ||
+                    slugifyLabel(name) ||
+                    t("studioCreate.columnSlugAuto"),
+                })}
+              </span>
+              <span className="mt-1 block text-xs leading-relaxed text-zinc-600">
+                {t("studioCreate.columnSlugHint")}
+              </span>
+            </label>
+          ) : null}
 
           <label className="block text-sm text-zinc-400">
             {t("studioCreate.description")}
