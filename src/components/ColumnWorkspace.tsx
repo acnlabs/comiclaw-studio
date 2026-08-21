@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth0 } from "@auth0/auth0-react";
 import { useT } from "@/components/LocaleProvider";
 import type { MessageKey } from "@/lib/i18n";
 import { AUTH0_AUDIENCE } from "@/lib/auth0";
+import { isCollabColumn } from "@/lib/columnIssue";
 import { numberedTitle } from "@/lib/unitTitle";
 
 export type ColumnEpisodeRow = {
@@ -24,22 +25,96 @@ export default function ColumnWorkspace({
   name,
   description,
   ownerUserId,
-  episodes,
+  contributePolicy,
+  episodes: initialEpisodes,
 }: {
   columnId: string;
   name: string;
   description: string | null;
   ownerUserId: string | null;
+  contributePolicy: string;
   episodes: ColumnEpisodeRow[];
 }) {
   const { t } = useT();
   const router = useRouter();
-  const { isAuthenticated, user, getAccessTokenSilently } = useAuth0();
+  const pathname = usePathname();
+  const {
+    isAuthenticated,
+    isLoading,
+    user,
+    getAccessTokenSilently,
+    loginWithRedirect,
+  } = useAuth0();
   const [episodeName, setEpisodeName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [episodes, setEpisodes] = useState<ColumnEpisodeRow[]>(initialEpisodes);
+  const [privateStatus, setPrivateStatus] = useState<
+    "open" | "loading" | "locked" | "denied"
+  >(isCollabColumn(contributePolicy) ? "open" : "loading");
+
   const canAdd =
     isAuthenticated && Boolean(ownerUserId) && user?.sub === ownerUserId;
+  const privateColumn = !isCollabColumn(contributePolicy);
+
+  useEffect(() => {
+    if (!privateColumn) {
+      setEpisodes(initialEpisodes);
+      setPrivateStatus("open");
+      return;
+    }
+    if (isLoading) return;
+    if (!isAuthenticated) {
+      setEpisodes([]);
+      setPrivateStatus("locked");
+      return;
+    }
+    if (!ownerUserId || user?.sub !== ownerUserId) {
+      setEpisodes([]);
+      setPrivateStatus("denied");
+      return;
+    }
+    let active = true;
+    (async () => {
+      try {
+        const token = await getAccessTokenSilently({
+          authorizationParams: { audience: AUTH0_AUDIENCE },
+        });
+        const res = await fetch(`/api/user/my-columns/${columnId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          if (active) {
+            setEpisodes([]);
+            setPrivateStatus("denied");
+          }
+          return;
+        }
+        const data = (await res.json()) as { issues?: ColumnEpisodeRow[] };
+        if (active) {
+          setEpisodes(data.issues ?? []);
+          setPrivateStatus("open");
+        }
+      } catch {
+        if (active) {
+          setEpisodes([]);
+          setPrivateStatus("denied");
+        }
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [
+    privateColumn,
+    initialEpisodes,
+    isLoading,
+    isAuthenticated,
+    ownerUserId,
+    user?.sub,
+    getAccessTokenSilently,
+    columnId,
+  ]);
 
   const addEpisode = useCallback(
     async (e: React.FormEvent) => {
@@ -105,79 +180,103 @@ export default function ColumnWorkspace({
         <p className="mt-3 text-sm text-zinc-500">{t("columnWorkspace.hint")}</p>
       </header>
 
-      <section className="mt-8">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-medium text-zinc-300">
-            {t("column.issues", { n: episodes.length })}
-          </h2>
-        </div>
-
-        {episodes.length === 0 ? (
-          <div className="mt-4 rounded-2xl border border-dashed border-zinc-800 px-6 py-14 text-center text-sm text-zinc-500">
-            {t("columnWorkspace.empty")}
-          </div>
-        ) : (
-          <ul className="mt-4 space-y-3">
-            {episodes.map((ep) => (
-              <li key={ep.id}>
-                <Link
-                  href={`/p/${ep.shareToken}`}
-                  className="flex items-center gap-4 rounded-2xl border border-zinc-800 bg-zinc-900/50 px-5 py-4 transition-colors hover:border-zinc-700"
-                >
-                  {ep.coverUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={ep.coverUrl}
-                      alt=""
-                      className="h-12 w-12 shrink-0 rounded-lg object-cover"
-                    />
-                  ) : null}
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate font-medium text-zinc-100">
-                      {numberedTitle(
-                        ep.name,
-                        ep.entryOrder != null
-                          ? t("column.entryN", { n: ep.entryOrder })
-                          : null,
-                      )}
-                    </div>
-                  </div>
-                  <span className="shrink-0 rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
-                    {t(`stage.${ep.currentStage}` as MessageKey)}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {canAdd ? (
-          <>
-            <form
-              onSubmit={addEpisode}
-              className="mt-6 flex flex-col gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4 sm:flex-row sm:items-end"
+      {privateStatus === "loading" ? (
+        <div className="mt-10 py-14 text-center text-sm text-zinc-600">…</div>
+      ) : privateStatus === "locked" || privateStatus === "denied" ? (
+        <div className="mt-10 flex flex-col items-center px-4 py-16 text-center">
+          <div className="mb-3 text-3xl">🔒</div>
+          <p className="max-w-sm text-sm text-zinc-400">
+            {privateStatus === "denied"
+              ? t("columnWorkspace.privateDenied")
+              : t("columnWorkspace.privateLocked")}
+          </p>
+          {privateStatus === "locked" ? (
+            <button
+              type="button"
+              onClick={() =>
+                loginWithRedirect({ appState: { returnTo: pathname || "/" } })
+              }
+              className="mt-6 rounded-full bg-accent px-5 py-2 text-sm font-medium text-zinc-950 transition-opacity hover:opacity-90"
             >
-              <label className="block min-w-0 flex-1 text-sm text-zinc-400">
-                {t("columnWorkspace.episodeName")}
-                <input
-                  value={episodeName}
-                  onChange={(e) => setEpisodeName(e.target.value)}
-                  placeholder={t("columnWorkspace.episodeNamePlaceholder")}
-                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-accent"
-                />
-              </label>
-              <button
-                type="submit"
-                disabled={busy || !episodeName.trim()}
-                className="rounded-full bg-accent px-5 py-2 text-sm font-medium text-zinc-950 transition-opacity hover:opacity-90 disabled:opacity-50"
+              {t("nav.login")}
+            </button>
+          ) : null}
+        </div>
+      ) : (
+        <section className="mt-8">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-sm font-medium text-zinc-300">
+              {t("column.issues", { n: episodes.length })}
+            </h2>
+          </div>
+
+          {episodes.length === 0 ? (
+            <div className="mt-4 rounded-2xl border border-dashed border-zinc-800 px-6 py-14 text-center text-sm text-zinc-500">
+              {t("columnWorkspace.empty")}
+            </div>
+          ) : (
+            <ul className="mt-4 space-y-3">
+              {episodes.map((ep) => (
+                <li key={ep.id}>
+                  <Link
+                    href={`/p/${ep.shareToken}`}
+                    className="flex items-center gap-4 rounded-2xl border border-zinc-800 bg-zinc-900/50 px-5 py-4 transition-colors hover:border-zinc-700"
+                  >
+                    {ep.coverUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={ep.coverUrl}
+                        alt=""
+                        className="h-12 w-12 shrink-0 rounded-lg object-cover"
+                      />
+                    ) : null}
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-medium text-zinc-100">
+                        {numberedTitle(
+                          ep.name,
+                          ep.entryOrder != null
+                            ? t("column.entryN", { n: ep.entryOrder })
+                            : null,
+                        )}
+                      </div>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
+                      {t(`stage.${ep.currentStage}` as MessageKey)}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {canAdd ? (
+            <>
+              <form
+                onSubmit={addEpisode}
+                className="mt-6 flex flex-col gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4 sm:flex-row sm:items-end"
               >
-                {busy ? t("columnWorkspace.adding") : t("columnWorkspace.addEpisode")}
-              </button>
-            </form>
-            {error ? <p className="mt-2 text-sm text-red-400">{error}</p> : null}
-          </>
-        ) : null}
-      </section>
+                <label className="block min-w-0 flex-1 text-sm text-zinc-400">
+                  {t("columnWorkspace.episodeName")}
+                  <input
+                    value={episodeName}
+                    onChange={(e) => setEpisodeName(e.target.value)}
+                    placeholder={t("columnWorkspace.episodeNamePlaceholder")}
+                    className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-accent"
+                  />
+                </label>
+                <button
+                  type="submit"
+                  disabled={busy || !episodeName.trim()}
+                  className="rounded-full bg-accent px-5 py-2 text-sm font-medium text-zinc-950 transition-opacity hover:opacity-90 disabled:opacity-50"
+                >
+                  {busy ? t("columnWorkspace.adding") : t("columnWorkspace.addEpisode")}
+                </button>
+              </form>
+              {error ? <p className="mt-2 text-sm text-red-400">{error}</p> : null}
+            </>
+          ) : null}
+        </section>
+      )}
     </div>
   );
 }
