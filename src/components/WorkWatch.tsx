@@ -147,6 +147,7 @@ export default function WorkWatch({
           ) : null}
 
           <WorkCastList
+            workId={workId}
             credits={creditsByWorkId?.[videoId] ?? creditsByWorkId?.[workId] ?? []}
           />
         </aside>

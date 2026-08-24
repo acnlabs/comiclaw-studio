@@ -3,15 +3,17 @@
 import Link from "next/link";
 import { useT } from "@/components/LocaleProvider";
 import { agentPlanetProfileUrl } from "@/lib/agentLinks";
-import type { CreditRow } from "@/lib/workCredit";
+import { creditCanChat, type CreditRow } from "@/lib/workCredit";
 import { creditLabelKeys } from "@/lib/workCreditLabels";
 
 export default function FeedCastSheet({
   credits,
   onClose,
+  onChat,
 }: {
   credits: CreditRow[];
   onClose: () => void;
+  onChat: (row: CreditRow) => void;
 }) {
   const { t } = useT();
 
@@ -60,9 +62,18 @@ export default function FeedCastSheet({
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1.5 text-xs">
+                  {creditCanChat(row) ? (
+                    <button
+                      type="button"
+                      className="text-accent hover:opacity-80"
+                      onClick={() => onChat(row)}
+                    >
+                      {t("feed.castChat")}
+                    </button>
+                  ) : null}
                   <Link
                     href={row.href}
-                    className="text-accent hover:opacity-80"
+                    className={creditCanChat(row) ? "text-zinc-400 hover:text-zinc-200" : "text-accent hover:opacity-80"}
                     onClick={onClose}
                   >
                     {t("feed.castOpenProfile")}

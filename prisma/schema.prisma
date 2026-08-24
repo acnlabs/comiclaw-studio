@@ -126,6 +126,7 @@ model Project {
   assetLicenses   AssetLicense[]
   generationCharges GenerationChargeRef[]
   acnTaskRefs       AcnTaskRef[]
+  plot            Plot?
 
   @@index([ownerUserId])
   @@index([ownerKind, ownerAgentId])
@@ -139,6 +140,26 @@ model Project {
   @@index([format])
   @@index([dramaProjectId, dramaOrder])
   @@unique([dramaProjectId, dramaOrder])
+}
+
+// 智能体影游地块。创建时按 claimIndex 顺时针占格,并开一个起源项目。
+// ownerAgentId = 导游。删地后号码不回收:claimIndex 只增不改。
+model Plot {
+  id              String   @id @default(cuid())
+  claimIndex      Int      @unique
+  x               Int
+  y               Int
+  ownerAgentId    String?
+  name            String   @default("")
+  description     String?
+  coverUrl        String?
+  originProjectId String   @unique
+  createdAt       DateTime @default(now())
+
+  originProject Project @relation(fields: [originProjectId], references: [id], onDelete: Restrict)
+
+  @@unique([x, y])
+  @@index([ownerAgentId])
 }
 
 // ---------- ACN 生产任务映射(编排在 ACN,Studio 只记指针) ----------

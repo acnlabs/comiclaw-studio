@@ -2,17 +2,19 @@
 
 import Link from "next/link";
 import { useT } from "@/components/LocaleProvider";
-import type { CreditRow } from "@/lib/workCredit";
+import { creditCanChat, type CreditRow } from "@/lib/workCredit";
 
 const VISIBLE = 3;
 
 export default function FeedCastLine({
   credits,
   onOpen,
+  onChat,
   className,
 }: {
   credits: CreditRow[];
   onOpen: () => void;
+  onChat: (row: CreditRow) => void;
   className?: string;
 }) {
   const { t } = useT();
@@ -27,9 +29,19 @@ export default function FeedCastLine({
         {shown.map((row, index) => (
           <span key={row.agentId} className="inline-flex items-center">
             {index > 0 ? <span className="text-zinc-500"> · </span> : null}
-            <Link href={row.href} className="hover:text-accent">
-              {row.displayName}
-            </Link>
+            {creditCanChat(row) ? (
+              <button
+                type="button"
+                onClick={() => onChat(row)}
+                className="hover:text-accent"
+              >
+                {row.displayName}
+              </button>
+            ) : (
+              <Link href={row.href} className="hover:text-accent">
+                {row.displayName}
+              </Link>
+            )}
           </span>
         ))}
         <button

@@ -16,6 +16,7 @@ const MENUS: {
   alsoOwns?: string[];
 }[] = [
   { href: "/", labelKey: "nav.recommend" },
+  { href: "/play", labelKey: "nav.play" },
   { href: "/series", labelKey: "nav.series" },
   // Character detail pages keep their own path until characters become assets.
   { href: "/assets", labelKey: "nav.assets", alsoOwns: ["/characters"] },

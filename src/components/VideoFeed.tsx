@@ -8,6 +8,7 @@ import { useT } from "@/components/LocaleProvider";
 import AuthorCredit from "@/components/AuthorCredit";
 import FeedCastLine from "@/components/FeedCastLine";
 import FeedCastSheet from "@/components/FeedCastSheet";
+import InterfazeChatModal from "@/components/interfaze/InterfazeChatModal";
 import WorkDiscussion from "@/components/WorkDiscussion";
 import { isDiscoverColumnCategory } from "@/lib/discover";
 import type { CreditRow } from "@/lib/workCredit";
@@ -55,6 +56,7 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [castOpen, setCastOpen] = useState(false);
+  const [chat, setChat] = useState<{ agentId: string; name: string } | null>(null);
 
   signedInRef.current = isAuthenticated;
   tokenRef.current = getAccessTokenSilently;
@@ -62,6 +64,7 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
   useEffect(() => {
     setCommentsOpen(false);
     setCastOpen(false);
+    setChat(null);
   }, [activeIndex]);
 
   useEffect(() => {
@@ -273,6 +276,11 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
                     setCommentsOpen(false);
                     setCastOpen(true);
                   }}
+                  onChat={(row) => {
+                    setCommentsOpen(false);
+                    setCastOpen(false);
+                    setChat({ agentId: row.agentId, name: row.displayName });
+                  }}
                   className="pointer-events-auto mt-2 inline-flex max-w-full text-left"
                 />
               </div>
@@ -324,6 +332,10 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
         <FeedCastSheet
           credits={items[activeIndex].credits ?? []}
           onClose={() => setCastOpen(false)}
+          onChat={(row) => {
+            setCastOpen(false);
+            setChat({ agentId: row.agentId, name: row.displayName });
+          }}
         />
       ) : null}
 
@@ -355,6 +367,18 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
           </div>
         </div>
       )}
+
+      <InterfazeChatModal
+        open={Boolean(chat)}
+        agentId={chat?.agentId ?? ""}
+        agentName={chat?.name}
+        metadata={
+          chat && items[activeIndex]
+            ? { workId: items[activeIndex].id, role: "cast" }
+            : undefined
+        }
+        onClose={() => setChat(null)}
+      />
     </div>
   );
 }
