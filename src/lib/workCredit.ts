@@ -26,6 +26,11 @@ export type CreditRow = {
   lead: boolean;
 };
 
+/** 出演可聊；编剧 / 资产 / 分镜 / 成片只去主页。 */
+export function creditCanChat(row: CreditRow): boolean {
+  return row.kinds.includes("appear");
+}
+
 const KIND_RANK: Record<CreditKind, number> = {
   appear: 0,
   script: 1,

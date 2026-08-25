@@ -31,8 +31,15 @@ const WRITE_OPERATIONS = new Set([
  * Set `PREVIEW_DATABASE_IS_SHADOW=1` on the Preview environment once it points
  * at a shadow database — then previews write normally again, to their own copy.
  */
+/** Local next pointing at production: set STUDIO_DB_READ_ONLY=1 so we cannot write live rows. */
+function databaseWritesBlocked(): boolean {
+  const flag = (process.env.STUDIO_DB_READ_ONLY ?? "").trim();
+  if (flag === "1" || flag.toLowerCase() === "true") return true;
+  return previewDatabaseIsShared();
+}
+
 function guarded(client: PrismaClient): PrismaClient {
-  if (!previewDatabaseIsShared()) return client;
+  if (!databaseWritesBlocked()) return client;
 
   return client.$extends({
     query: {
@@ -40,9 +47,9 @@ function guarded(client: PrismaClient): PrismaClient {
         async $allOperations({ operation, model, args, query }) {
           if (WRITE_OPERATIONS.has(operation)) {
             throw new Error(
-              `This deployment shares the production database and may not write ` +
-                `(${model}.${operation}). Point Preview at a shadow database and set ` +
-                `PREVIEW_DATABASE_IS_SHADOW=1.`
+              `Database writes are blocked (${model}.${operation}). ` +
+                `Local production reads: unset STUDIO_DB_READ_ONLY. ` +
+                `Preview: point at a shadow database and set PREVIEW_DATABASE_IS_SHADOW=1.`
             );
           }
           return query(args);

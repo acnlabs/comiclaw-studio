@@ -9,10 +9,12 @@ export function Modal({
   open,
   onClose,
   children,
+  titleId,
 }: {
   open: boolean;
   onClose: () => void;
   children: React.ReactNode;
+  titleId?: string;
 }) {
   const { t } = useT();
 
@@ -35,6 +37,7 @@ export function Modal({
       onClick={onClose}
       role="dialog"
       aria-modal="true"
+      aria-labelledby={titleId}
     >
       <div
         className="relative max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-zinc-800 bg-zinc-900 p-5"
