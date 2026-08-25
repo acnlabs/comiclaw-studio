@@ -290,11 +290,7 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
       </div>
 
       {/* 右侧悬浮控制 */}
-      <div
-        className={`absolute top-1/2 flex -translate-y-1/2 flex-col gap-2 ${
-          chat ? "right-3 md:right-[27.5rem]" : "right-3 sm:right-6"
-        }`}
-      >
+      <div className="absolute right-3 top-1/2 flex -translate-y-1/2 flex-col gap-2 sm:right-6">
         <button
           onClick={() => {
             setChat(null);
