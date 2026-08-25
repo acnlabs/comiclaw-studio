@@ -4,6 +4,7 @@
   --background: #0b0b10;
   --foreground: #e8e6e3;
   --accent: #f5b83d;
+  --interfaze-dock-width: 26rem;
 }
 
 @theme inline {
@@ -114,5 +115,12 @@ body {
     animation: none;
     opacity: 1;
     transform: none;
+  }
+}
+
+@media (min-width: 768px) {
+  html.interfaze-dock-open {
+    padding-right: var(--interfaze-dock-width);
+    overflow-x: hidden;
   }
 }

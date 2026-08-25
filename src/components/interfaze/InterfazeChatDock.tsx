@@ -28,7 +28,11 @@ export default function InterfazeChatDock({
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    document.documentElement.classList.add("interfaze-dock-open");
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.documentElement.classList.remove("interfaze-dock-open");
+    };
   }, [open, onClose]);
 
   if (!open) return null;
@@ -42,7 +46,7 @@ export default function InterfazeChatDock({
         onClick={onClose}
       />
       <aside
-        className="fixed inset-x-0 bottom-0 z-50 flex max-h-[80dvh] flex-col rounded-t-2xl border border-zinc-800 bg-zinc-900 p-4 md:inset-y-0 md:top-12 md:left-auto md:right-0 md:max-h-none md:w-[26rem] md:rounded-none md:border-y-0 md:border-r-0 md:border-l"
+        className="fixed inset-x-0 bottom-0 z-50 flex max-h-[80dvh] flex-col rounded-t-2xl border border-zinc-800 bg-zinc-900 p-4 md:inset-y-0 md:left-auto md:right-0 md:max-h-none md:w-[var(--interfaze-dock-width)] md:rounded-none md:border-y-0 md:border-r-0 md:border-l"
         role="dialog"
         aria-modal="true"
         aria-labelledby={TITLE_ID}
