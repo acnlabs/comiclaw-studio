@@ -1,3 +1,4 @@
+import { embedSessionContext } from "@/lib/embedContext";
 import { bareAgentId } from "@/lib/myAgents";
 
 /** AgentPlanet Chat Gateway (same origin as /api/chat/my-agents). */
@@ -27,6 +28,7 @@ export function chatGatewayConfigured(): boolean {
 export type EmbedSessionInput = {
   agentId: string;
   parentOrigin: string;
+  context?: string;
   metadata?: Record<string, unknown>;
   locale?: string;
   theme?: "dark" | "light" | "auto";
@@ -60,6 +62,25 @@ function pickNumber(obj: Record<string, unknown>, ...keys: string[]): number | n
   return null;
 }
 
+/** FastAPI structured errors use `{ detail: { code, message } }`. */
+function gatewayFailure(
+  data: Record<string, unknown> | null,
+  fallback: string,
+): { code?: string; error: string } {
+  const detail = data?.detail;
+  const nested =
+    detail && typeof detail === "object" && !Array.isArray(detail)
+      ? (detail as Record<string, unknown>)
+      : null;
+  const code = pickString(data ?? {}, "code") || pickString(nested ?? {}, "code") || undefined;
+  const error =
+    pickString(data ?? {}, "error", "message") ||
+    pickString(nested ?? {}, "message", "error") ||
+    (typeof detail === "string" && detail.trim() ? detail.trim() : "") ||
+    fallback;
+  return { code, error };
+}
+
 /**
  * Human Auth0 JWT → short-lived Interfaze embed session.
  * @see agentplanet docs/product/interfaze-embed-v0.md
@@ -85,6 +106,7 @@ export async function createEmbedSession(
       body: JSON.stringify({
         agent_id: agentId,
         parent_origin: parentOrigin,
+        context: embedSessionContext(input.metadata, input.context),
         metadata: {
           source: "comiclaw-studio",
           ...input.metadata,
@@ -96,14 +118,12 @@ export async function createEmbedSession(
     });
     const data = (await res.json().catch(() => null)) as Record<string, unknown> | null;
     if (!res.ok || !data) {
+      const failure = gatewayFailure(data, "embed session failed");
       return {
         ok: false,
         status: res.status >= 400 ? res.status : 502,
-        code: typeof data?.code === "string" ? data.code : undefined,
-        error:
-          (typeof data?.error === "string" && data.error) ||
-          (typeof data?.message === "string" && data.message) ||
-          "embed session failed",
+        code: failure.code,
+        error: failure.error,
       };
     }
     const embedUrl = pickString(data, "embed_url", "embedUrl");
