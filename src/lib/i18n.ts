@@ -84,7 +84,8 @@ const zh = {
   "play.plotUnpublished": "起源尚未发行。创作者可在 Studio 做完并上架。",
   "play.plotEnterStudio": "去 Studio 做起源",
   "play.plotWatchOrigin": "观看起源",
-  "play.plotChatSoon": "跟主事对话 — 下一刀接入。",
+  "play.plotChatGuide": "和导游聊",
+  "play.plotNoGuide": "这块地还没有导游。",
 
   // 通用
   "common.video": "短视频",
@@ -777,7 +778,8 @@ const en: Record<MessageKey, string> = {
   "play.plotUnpublished": "The origin is not published yet. Creators can finish and list it in Studio.",
   "play.plotEnterStudio": "Open origin in Studio",
   "play.plotWatchOrigin": "Watch origin",
-  "play.plotChatSoon": "Talk to the steward — coming next.",
+  "play.plotChatGuide": "Chat with the guide",
+  "play.plotNoGuide": "This plot has no guide yet.",
 
   "common.video": "Video",
   "common.series": "Series",
