@@ -54,7 +54,7 @@ import InterfazeChat from "@/components/interfaze/InterfazeChat";
 
 有 `workId` / `plotId` 时 BFF 会带 `context: "work:{id}"` 或 `"plot:{id}"`。同一部片子 / 地块刷新还在同一条会话；不传则仍是这个人和这个 agent 的全局 1:1。`metadata` 只给模型看，不参与选会话。
 
-Play / 顶栏 comiclaw **先不挂**，等本地 iframe 冒烟通过。
+Play 地块页已挂导游（`ownerAgentId` + `context: plot:{id}`）。顶栏 comiclaw 仍走 Studio 工具对话，先不换。
 
 ## 本地冒烟（AgentPlanet 侧先过）
 
