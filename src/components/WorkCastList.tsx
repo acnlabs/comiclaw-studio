@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useT } from "@/components/LocaleProvider";
-import InterfazeChatModal from "@/components/interfaze/InterfazeChatModal";
+import InterfazeChatDock from "@/components/interfaze/InterfazeChatDock";
 import { creditCanChat, type CreditRow } from "@/lib/workCredit";
 import { creditLabelKeys } from "@/lib/workCreditLabels";
 
@@ -58,7 +58,7 @@ export default function WorkCastList({
           </li>
         ))}
       </ul>
-      <InterfazeChatModal
+      <InterfazeChatDock
         open={Boolean(chat)}
         agentId={chat?.agentId ?? ""}
         agentName={chat?.name}

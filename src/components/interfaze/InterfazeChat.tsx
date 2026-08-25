@@ -55,10 +55,12 @@ export default function InterfazeChat({
   agentId,
   metadata,
   className,
+  fill = false,
 }: {
   agentId: string;
   metadata?: Record<string, unknown>;
   className?: string;
+  fill?: boolean;
 }) {
   const { isAuthenticated, isLoading, getAccessTokenSilently } = useAuth0();
   const { t } = useT();
@@ -137,7 +139,7 @@ export default function InterfazeChat({
       const payload = e.data as { type?: string; height?: number; code?: string } | null;
       if (!payload || typeof payload.type !== "string") return;
       if (payload.type === "interfaze:ready" || payload.type === "interfaze:resize") {
-        if (typeof payload.height === "number" && payload.height > 0) {
+        if (!fill && typeof payload.height === "number" && payload.height > 0) {
           setHeight(Math.max(MIN_HEIGHT, payload.height));
         }
         return;
@@ -148,7 +150,7 @@ export default function InterfazeChat({
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [embedUrl]);
+  }, [embedUrl, fill]);
 
   if (isLoading) return null;
   if (!isAuthenticated) {
@@ -183,7 +185,7 @@ export default function InterfazeChat({
   }
 
   return (
-    <div className={className}>
+    <div className={`${fill ? "relative min-h-0 flex-1" : ""} ${className ?? ""}`.trim()}>
       {loading && !embedUrl ? (
         <p className="text-sm text-zinc-500">{t("interfaze.loading")}</p>
       ) : null}
@@ -191,8 +193,10 @@ export default function InterfazeChat({
         <iframe
           title={t("interfaze.title")}
           src={embedUrl}
-          className="w-full rounded-2xl border border-zinc-800 bg-zinc-950"
-          style={{ height }}
+          className={`w-full border border-zinc-800 bg-zinc-950 ${
+            fill ? "absolute inset-0 h-full rounded-xl" : "rounded-2xl"
+          }`}
+          style={fill ? undefined : { height }}
           allow="clipboard-write"
         />
       ) : null}

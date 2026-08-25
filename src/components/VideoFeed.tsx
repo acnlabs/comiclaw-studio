@@ -8,7 +8,7 @@ import { useT } from "@/components/LocaleProvider";
 import AuthorCredit from "@/components/AuthorCredit";
 import FeedCastLine from "@/components/FeedCastLine";
 import FeedCastSheet from "@/components/FeedCastSheet";
-import InterfazeChatModal from "@/components/interfaze/InterfazeChatModal";
+import InterfazeChatDock from "@/components/interfaze/InterfazeChatDock";
 import WorkDiscussion from "@/components/WorkDiscussion";
 import { isDiscoverColumnCategory } from "@/lib/discover";
 import type { CreditRow } from "@/lib/workCredit";
@@ -290,9 +290,14 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
       </div>
 
       {/* 右侧悬浮控制 */}
-      <div className="absolute right-3 top-1/2 flex -translate-y-1/2 flex-col gap-2 sm:right-6">
+      <div
+        className={`absolute top-1/2 flex -translate-y-1/2 flex-col gap-2 ${
+          chat ? "right-3 md:right-[27.5rem]" : "right-3 sm:right-6"
+        }`}
+      >
         <button
           onClick={() => {
+            setChat(null);
             setCastOpen(false);
             setCommentsOpen(true);
           }}
@@ -368,7 +373,7 @@ export default function VideoFeed({ items }: { items: FeedItem[] }) {
         </div>
       )}
 
-      <InterfazeChatModal
+      <InterfazeChatDock
         open={Boolean(chat)}
         agentId={chat?.agentId ?? ""}
         agentName={chat?.name}
