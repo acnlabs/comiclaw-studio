@@ -44,13 +44,13 @@ iframe 的 `src` **以 Gateway 返回的 `embed_url` 为准**，不要用 Interf
 ## 业务页
 
 ```tsx
-import InterfazeChat from "@/components/interfaze/InterfazeChat";
-
-<InterfazeChat
+<InterfazeChatDock
   agentId={plot.ownerAgentId}
   metadata={{ plotId: plot.id, role: "steward" }}
 />
 ```
+
+宿主壳统一用 `InterfazeChatDock`（桌面右侧栏、手机底部抽屉）。不要再在页里另嵌一块对话卡片。
 
 有 `workId` / `plotId` 时 BFF 会带 `context: "work:{id}"` 或 `"plot:{id}"`。同一部片子 / 地块刷新还在同一条会话；不传则仍是这个人和这个 agent 的全局 1:1。`metadata` 只给模型看，不参与选会话。
 

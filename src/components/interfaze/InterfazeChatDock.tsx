@@ -46,12 +46,12 @@ export default function InterfazeChatDock({
         onClick={onClose}
       />
       <aside
-        className="fixed inset-x-0 bottom-0 z-50 flex max-h-[80dvh] flex-col rounded-t-2xl border border-zinc-800 bg-zinc-900 p-4 md:inset-y-0 md:left-auto md:right-0 md:max-h-none md:w-[var(--interfaze-dock-width)] md:rounded-none md:border-y-0 md:border-r-0 md:border-l"
+        className="fixed inset-x-0 bottom-0 z-40 flex h-[80dvh] flex-col overflow-hidden rounded-t-2xl bg-zinc-950 md:inset-x-auto md:top-[var(--interfaze-nav-height)] md:right-0 md:bottom-0 md:h-auto md:max-h-none md:w-[var(--interfaze-dock-width)] md:rounded-none"
         role="dialog"
         aria-modal="true"
         aria-labelledby={TITLE_ID}
       >
-        <div className="mb-3 flex items-center justify-between gap-3 pr-1">
+        <div className="flex h-12 shrink-0 items-center justify-between gap-3 px-3">
           <h2 id={TITLE_ID} className="truncate text-sm font-semibold text-zinc-50">
             {title}
           </h2>
@@ -60,7 +60,7 @@ export default function InterfazeChatDock({
             onClick={onClose}
             aria-label={t("detail.close")}
             title={t("detail.close")}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-zinc-400 transition-colors hover:bg-zinc-700 hover:text-zinc-200"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
           >
             ✕
           </button>

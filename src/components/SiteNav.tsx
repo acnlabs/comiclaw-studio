@@ -37,7 +37,7 @@ export default function SiteNav() {
         (m.alsoOwns ?? []).some((p) => pathname.startsWith(p));
 
   return (
-    <div className="sticky top-0 z-20 border-b border-zinc-800/80 bg-[#0b0b10]/90 backdrop-blur">
+    <div className="sticky top-0 z-50 border-b border-zinc-800/80 bg-[#0b0b10]/90 backdrop-blur">
       <div className="flex h-12 w-full items-center gap-6 px-4 sm:px-6">
         <Link href="/" className="text-sm font-bold tracking-widest text-accent">
           COMICLAW
