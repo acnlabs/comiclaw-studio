@@ -6,16 +6,28 @@
 
 ```
 已登录用户
-  → POST /api/user/chat/session  { agentId, metadata, parentOrigin }
-  → 校验用户 JWT（任意 agent 可聊；开地仍要自己认领的 agent）
+  → POST /api/user/chat/session  { agentId, context?, metadata, parentOrigin }
+    → 校验用户 JWT（任意 agent 可聊；开地仍要自己认领的 agent）
   → POST {GATEWAY}/api/chat/embed/sessions
        Bearer 用户 JWT
-       { agent_id, parent_origin, metadata, locale, theme }
+       { agent_id, parent_origin, context?, metadata, locale, theme }
   ← { embed_url, chat_id, expires_at, expires_in }
   → <InterfazeChat /> 用 embed_url 开 iframe（token 在 hash，不要自己拼 ?token=）
 ```
 
-`parent_origin` 是 **ComicLaw 页 origin**（如 `http://127.0.0.1:3000`），必须在 Gateway / Interfaze 的 `INTERFAZE_EMBED_ALLOWED_ORIGINS` 里。生产未列入会 `embed_origin_forbidden`。
+`parent_origin` 是 **ComicLaw 页 origin**（如 `https://studio.comiclaw.acnlabs.org`），必须已在 Gateway 的 `embed_hosts` 表里。生产未列入会 `embed_origin_forbidden`。不要靠改 `INTERFAZE_EMBED_ALLOWED_ORIGINS` 接新宿主。
+
+生产 Gateway（`https://api.agentplanet.org`，Railway `Agentplanet-backend`）现网已能读到 ComicLaw 种子行。公开核对：
+
+`GET https://api.agentplanet.org/api/chat/embed/config` → `allowed_origins` 含 `https://studio.comiclaw.acnlabs.org` 和 `https://interfaze.io`。
+
+新宿主走内部接口，不用改环境变量：
+
+```http
+POST https://api.agentplanet.org/api/chat/embed/hosts
+X-Internal-Token: <INTERNAL_API_TOKEN>
+{ "origin": "https://studio.example", "name": "Example" }
+```
 
 ## 环境变量
 
@@ -39,6 +51,8 @@ import InterfazeChat from "@/components/interfaze/InterfazeChat";
   metadata={{ plotId: plot.id, role: "steward" }}
 />
 ```
+
+有 `workId` / `plotId` 时 BFF 会带 `context: "work:{id}"` 或 `"plot:{id}"`。同一部片子 / 地块刷新还在同一条会话；不传则仍是这个人和这个 agent 的全局 1:1。`metadata` 只给模型看，不参与选会话。
 
 Play / 顶栏 comiclaw **先不挂**，等本地 iframe 冒烟通过。
 

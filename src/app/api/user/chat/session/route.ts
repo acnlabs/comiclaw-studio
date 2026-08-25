@@ -8,6 +8,7 @@ import { chatGatewayConfigured, createEmbedSession } from "@/lib/chatGateway";
 
 const sessionSchema = z.object({
   agentId: z.string().trim().min(1).max(200),
+  context: z.string().trim().min(1).max(120).optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
   parentOrigin: z.string().trim().url().optional(),
   theme: z.enum(["dark", "light", "auto"]).optional(),
@@ -67,6 +68,7 @@ export const POST = withRouteErrors(async (req: Request) => {
   const result = await createEmbedSession(bearer, {
     agentId,
     parentOrigin,
+    context: body.context,
     metadata: body.metadata,
     locale,
     theme: body.theme ?? "dark",

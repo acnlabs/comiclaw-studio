@@ -5,6 +5,7 @@ import { useAuth0 } from "@auth0/auth0-react";
 import { useT } from "@/components/LocaleProvider";
 import { AUTH0_AUDIENCE } from "@/lib/auth0";
 import { WALLET_URL } from "@/components/CreditsBadge";
+import { embedSessionContext } from "@/lib/embedContext";
 import type { MessageKey } from "@/lib/i18n";
 
 const REFRESH_SKEW_MS = 30_000;
@@ -32,6 +33,7 @@ function errorKey(code?: string): MessageKey {
   if (code === "UNAUTHORIZED" || code === "AUTH_TOKEN_FAILED") return "chat.sessionExpired";
   if (code === "insufficient_credits") return "interfaze.noCredits";
   if (code === "embed_origin_forbidden") return "interfaze.originForbidden";
+  if (code === "chat_forbidden") return "interfaze.chatForbidden";
   if (
     code === "embed_token_invalid" ||
     code === "embed_scope_denied" ||
@@ -39,7 +41,11 @@ function errorKey(code?: string): MessageKey {
   ) {
     return "interfaze.tokenInvalid";
   }
-  if (code === "UPSTREAM_ERROR" || code === "embed_metadata_invalid") {
+  if (
+    code === "UPSTREAM_ERROR" ||
+    code === "embed_metadata_invalid" ||
+    code === "embed_context_invalid"
+  ) {
     return "interfaze.upstreamError";
   }
   return "interfaze.error";
@@ -71,6 +77,8 @@ export default function InterfazeChat({
       const token = await getAccessTokenSilently({
         authorizationParams: { audience: AUTH0_AUDIENCE },
       });
+      const metadata =
+        metaKey === "{}" ? undefined : (JSON.parse(metaKey) as Record<string, unknown>);
       const res = await fetch("/api/user/chat/session", {
         method: "POST",
         headers: {
@@ -79,7 +87,8 @@ export default function InterfazeChat({
         },
         body: JSON.stringify({
           agentId,
-          metadata: metaKey === "{}" ? undefined : (JSON.parse(metaKey) as Record<string, unknown>),
+          metadata,
+          context: embedSessionContext(metadata),
           parentOrigin: window.location.origin,
           theme: "dark",
         }),
