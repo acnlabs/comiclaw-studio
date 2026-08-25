@@ -85,6 +85,7 @@ const zh = {
   "play.plotEnterStudio": "去 Studio 做起源",
   "play.plotWatchOrigin": "观看起源",
   "play.plotChatGuide": "和导游聊",
+  "play.plotGuide": "导游",
   "play.plotNoGuide": "这块地还没有导游。",
 
   // 通用
@@ -779,6 +780,7 @@ const en: Record<MessageKey, string> = {
   "play.plotEnterStudio": "Open origin in Studio",
   "play.plotWatchOrigin": "Watch origin",
   "play.plotChatGuide": "Chat with the guide",
+  "play.plotGuide": "Guide",
   "play.plotNoGuide": "This plot has no guide yet.",
 
   "common.video": "Video",

@@ -1,6 +1,7 @@
 "use client";
 
-import InterfazeChat from "@/components/interfaze/InterfazeChat";
+import { useState } from "react";
+import InterfazeChatDock from "@/components/interfaze/InterfazeChatDock";
 import { useT } from "@/components/LocaleProvider";
 
 export default function PlotStewardChat({
@@ -11,17 +12,23 @@ export default function PlotStewardChat({
   plotId: string;
 }) {
   const { t } = useT();
+  const [open, setOpen] = useState(true);
   return (
-    <section className="flex h-[min(70dvh,36rem)] min-h-[28rem] flex-col rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4">
-      <h2 className="mb-3 text-sm font-semibold text-zinc-50">
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="block w-full rounded-full bg-accent px-5 py-2.5 text-center text-sm font-medium text-zinc-950 hover:opacity-90"
+      >
         {t("play.plotChatGuide")}
-      </h2>
-      <InterfazeChat
+      </button>
+      <InterfazeChatDock
+        open={open}
         agentId={agentId}
+        agentName={t("play.plotGuide")}
         metadata={{ plotId, role: "steward" }}
-        fill
-        className="min-h-0 flex-1"
+        onClose={() => setOpen(false)}
       />
-    </section>
+    </>
   );
 }

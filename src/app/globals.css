@@ -5,6 +5,7 @@
   --foreground: #e8e6e3;
   --accent: #f5b83d;
   --interfaze-dock-width: 26rem;
+  --interfaze-nav-height: 3rem;
 }
 
 @theme inline {
@@ -120,7 +121,9 @@ body {
 
 @media (min-width: 768px) {
   html.interfaze-dock-open {
-    padding-right: var(--interfaze-dock-width);
     overflow-x: hidden;
+  }
+  html.interfaze-dock-open .site-main {
+    padding-right: var(--interfaze-dock-width);
   }
 }

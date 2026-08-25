@@ -160,7 +160,7 @@ export default function InterfazeChat({
   if (errorCode && !embedUrl) {
     const showTopUp = errorCode === "insufficient_credits";
     return (
-      <div className={`rounded-2xl border border-zinc-800 bg-zinc-900/50 px-4 py-6 text-sm text-zinc-300 ${className ?? ""}`}>
+      <div className={`${fill ? "px-4 py-6" : "rounded-2xl border border-zinc-800 bg-zinc-900/50 px-4 py-6"} text-sm text-zinc-300 ${className ?? ""}`}>
         <p>{t(errorKey(errorCode))}</p>
         {showTopUp ? (
           <a
@@ -193,8 +193,8 @@ export default function InterfazeChat({
         <iframe
           title={t("interfaze.title")}
           src={embedUrl}
-          className={`w-full border border-zinc-800 bg-zinc-950 ${
-            fill ? "absolute inset-0 h-full rounded-xl" : "rounded-2xl"
+          className={`w-full bg-zinc-950 ${
+            fill ? "absolute inset-0 h-full" : "rounded-2xl border border-zinc-800"
           }`}
           style={fill ? undefined : { height }}
           allow="clipboard-write"
